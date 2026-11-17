@@ -13,39 +13,32 @@
 const DIARY_CONFIG = {
   him: "석영",
   her: "예은",
-  startDate: "2026-01-01", // 사귀기 시작한 날 (YYYY-MM-DD) → 여기에 맞춰 D+ 가 계산돼요
+  firstMet: "2026-07-10",  // 처음 만난 날
+  startDate: "2026-07-17", // 사귀기 시작한 날 → 여기에 맞춰 D+ 가 계산돼요
+  himBirthday: "1993-08-11",
+  herBirthday: "1997-09-29",
   title: "석영 ♥ 예은 데이트 일지",
 };
 
 const DIARY_ENTRIES = [
   {
-    date: "2026-11-15",
-    category: "food",
-    title: "첫 기록! 성수동 파스타집",
-    place: "서울 성수동",
+    date: "2026-07-17",
+    category: "anniv",
+    title: "우리 1일 💕",
+    place: "",
     rating: 5,
-    memo: "예시 기록이에요. 이 줄을 지우고 진짜 기록을 적어보세요 🍝 크림 파스타가 진짜 맛있었음. 다음엔 트러플 피자도 도전!",
-    tags: ["파스타", "성수", "재방문각"],
+    memo: "석영이와 예은이가 사귀기 시작한 날!",
+    tags: ["1일", "시작"],
     photo: "",
   },
   {
-    date: "2026-10-03",
-    category: "travel",
-    title: "가을 강릉 여행",
-    place: "강원도 강릉",
+    date: "2026-07-10",
+    category: "anniv",
+    title: "우리가 처음 만난 날",
+    place: "합정 대동",
     rating: 5,
-    memo: "예시 기록이에요. 안목해변 카페거리에서 커피 마시고 노을 봤던 날 🌅",
-    tags: ["강릉", "바다", "1박2일"],
-    photo: "",
-  },
-  {
-    date: "2026-09-20",
-    category: "cafe",
-    title: "연남동 디저트 카페",
-    place: "서울 연남동",
-    rating: 4,
-    memo: "예시 기록이에요. 말차 케이크 🍰 + 예은이 취향 저격.",
-    tags: ["카페", "연남", "말차"],
+    memo: "합정 대동에서 처음 만난 날 ✨",
+    tags: ["첫만남", "합정"],
     photo: "",
   },
 ];

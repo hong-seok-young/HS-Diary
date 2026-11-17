@@ -33,9 +33,14 @@ GitHub Pages를 켜면 여기서도 볼 수 있어요: https://hong-seok-young.g
 },
 ```
 
-## 처음에 바꿀 것
+## 기본 정보
 
-`data/entries.js` 맨 위 `DIARY_CONFIG`의 `startDate`를 사귀기 시작한 날로 바꾸면 D+ 날짜가 맞게 계산돼요.
+`data/entries.js` 맨 위 `DIARY_CONFIG`에 처음 만난 날, 사귄 날, 두 사람 생일이 들어 있어요.
+여기 날짜로 D+ 숫자와 "다가오는 기념일"(100일 단위, 주년, 생일)이 자동 계산돼요.
+
+## 배포
+
+`main` 브랜치에 올리면 자동으로 https://hong-seok-young.github.io/HS-Diary/ 에 반영돼요.
 
 ## 사진
 

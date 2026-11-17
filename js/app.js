@@ -95,10 +95,56 @@
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const days = Math.round((today - start) / 86400000) + 1; // 사귄 날이 1일
-      $("dday").textContent = days > 0 ? `우리 만난 지 D+${days} 💕` : `D${days - 1}`;
+      $("dday").textContent = days > 0 ? `우리 사귄 지 D+${days} 💕` : `D${days - 1}`;
     } else {
       $("dday").textContent = "💕 오늘도 사랑해 💕";
     }
+    const bits = [];
+    if (parseDate(config.firstMet)) bits.push(`처음 만난 날 ${fmtDate(config.firstMet)}`);
+    if (start) bits.push(`사귄 날 ${fmtDate(config.startDate)}`);
+    $("since").textContent = bits.join("  ·  ");
+  }
+
+  // ---------- 다가오는 기념일 ----------
+  function nextYearly(md, today) {
+    // md: 기준 날짜(월/일만 사용). 오늘 포함해서 다음에 오는 날짜를 돌려줘요.
+    let d = new Date(today.getFullYear(), md.getMonth(), md.getDate());
+    if (d < today) d = new Date(today.getFullYear() + 1, md.getMonth(), md.getDate());
+    return d;
+  }
+  function renderUpcoming() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const events = [];
+    const start = parseDate(config.startDate);
+    if (start) {
+      // 다음 100일 단위 (사귄 날이 1일)
+      const passed = Math.round((today - start) / 86400000) + 1;
+      const nextHundred = Math.max(100, Math.ceil(passed / 100) * 100);
+      const hd = new Date(start.getFullYear(), start.getMonth(), start.getDate() + nextHundred - 1);
+      events.push({ emoji: "💯", name: `${nextHundred}일`, date: hd });
+      // 다음 N주년
+      const ann = nextYearly(start, today);
+      const years = ann.getFullYear() - start.getFullYear();
+      if (years > 0) events.push({ emoji: "💍", name: `${years}주년`, date: ann });
+    }
+    const hb = parseDate(config.himBirthday);
+    if (hb) events.push({ emoji: "🎂", name: `${config.him || "석영"} 생일`, date: nextYearly(hb, today) });
+    const sb = parseDate(config.herBirthday);
+    if (sb) events.push({ emoji: "🎂", name: `${config.her || "예은"} 생일`, date: nextYearly(sb, today) });
+
+    if (!events.length) return;
+    events.sort((a, b) => a.date - b.date);
+    $("upcomingList").innerHTML = events.map((ev) => {
+      const left = Math.round((ev.date - today) / 86400000);
+      const ds = `${ev.date.getFullYear()}.${String(ev.date.getMonth() + 1).padStart(2, "0")}.${String(ev.date.getDate()).padStart(2, "0")} (${DAYS[ev.date.getDay()]})`;
+      return `<div class="up-item">
+        <span class="up-emoji">${ev.emoji}</span>
+        <span class="up-text"><div class="up-name">${esc(ev.name)}</div><div class="up-date">${ds}</div></span>
+        <span class="up-dday${left === 0 ? " today" : ""}">${left === 0 ? "오늘!" : "D-" + left}</span>
+      </div>`;
+    }).join("");
+    $("upcoming").hidden = false;
   }
 
   // ---------- stats ----------
@@ -337,6 +383,7 @@
   }
 
   renderHeader();
+  renderUpcoming();
   bind();
   render();
 })();
