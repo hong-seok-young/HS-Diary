@@ -1,0 +1,24 @@
+# main 브랜치에 올리면 gh-pages 브랜치로 그대로 복사해서 사이트에 반영해요.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync main to gh-pages
+        run: git push --force origin HEAD:gh-pages
