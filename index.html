@@ -2,7 +2,9 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="color-scheme" content="light only">
+  <meta name="theme-color" content="#ffe3ec">
   <title>석영 ♥ 예은 데이트 일지</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💕</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,7 +24,6 @@
       <h1 id="diaryTitle">우리의 데이트 일지</h1>
       <p class="dday" id="dday">D+0</p>
       <p class="since" id="since"></p>
-      <p class="sub">갔던 곳, 여행지, 맛집, 카페… 우리 둘의 모든 순간을 기록해요 ✨</p>
     </div>
   </header>
 
@@ -66,27 +67,18 @@
 
     <section class="tools">
       <details>
-        <summary>📦 내보내기 / 가져오기 (깃에 저장하기)</summary>
+        <summary>📦 내보내기</summary>
         <div class="tools-body">
-          <p>
-            "기록 추가"로 입력한 내용은 이 브라우저에만 저장돼요.<br>
-            다른 기기에서도 보려면 아래 버튼으로 내보낸 코드를 <code>data/entries.js</code>의
-            <code>DIARY_ENTRIES</code> 자리에 붙여 넣고 깃에 올려 주세요.
-          </p>
           <div class="tools-btns">
-            <button class="btn" id="btnExport">📋 전체 기록 코드 복사</button>
+            <button class="btn" id="btnExport">📋 코드 복사</button>
             <button class="btn" id="btnDownload">⬇️ entries.js 다운로드</button>
-            <button class="btn danger" id="btnClearLocal">🧹 브라우저 임시 기록 비우기</button>
+            <button class="btn danger" id="btnClearLocal">🧹 임시 기록 비우기</button>
           </div>
-          <textarea id="exportBox" rows="8" readonly placeholder="여기에 코드가 나와요"></textarea>
+          <textarea id="exportBox" rows="8" readonly ></textarea>
         </div>
       </details>
     </section>
   </main>
-
-  <footer class="footer">
-    <p>made with 💗 for <span id="footNames">석영 &amp; 예은</span></p>
-  </footer>
 
   <!-- 기록 추가 / 수정 모달 -->
   <div class="modal" id="modal" hidden>
@@ -105,16 +97,16 @@
             <option value="etc">🌈 기타</option>
           </select>
         </label>
-        <label>제목 <input type="text" id="fTitle" placeholder="예: 한강 피크닉" required></label>
-        <label>장소 <input type="text" id="fPlace" placeholder="예: 서울 여의도"></label>
+        <label>제목 <input type="text" id="fTitle"  required></label>
+        <label>장소 <input type="text" id="fPlace" ></label>
         <label>하트
           <div class="rating-input" id="fRating">
             <span data-v="1">🤍</span><span data-v="2">🤍</span><span data-v="3">🤍</span><span data-v="4">🤍</span><span data-v="5">🤍</span>
           </div>
         </label>
-        <label>메모 <textarea id="fMemo" rows="4" placeholder="그날의 기분, 먹은 것, 다음에 또 가고 싶은지…"></textarea></label>
-        <label>태그 <input type="text" id="fTags" placeholder="쉼표로 구분: 파스타, 성수, 재방문각"></label>
-        <label>사진 <input type="text" id="fPhoto" placeholder="photos/파일명.jpg 또는 이미지 URL"></label>
+        <label>메모 <textarea id="fMemo" rows="3"></textarea></label>
+        <label>태그 <input type="text" id="fTags" placeholder="쉼표로 구분"></label>
+        <label>사진 <input type="text" id="fPhoto" placeholder="파일명 또는 URL"></label>
         <div class="modal-btns">
           <button type="button" class="btn" id="btnCancel">취소</button>
           <button type="button" class="btn danger" id="btnDelete" hidden>삭제</button>

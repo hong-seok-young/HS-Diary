@@ -86,7 +86,6 @@
     const her = config.her || "예은";
     $("nameHim").textContent = him;
     $("nameHer").textContent = her;
-    $("footNames").textContent = `${him} & ${her}`;
     if (config.title) {
       document.title = config.title;
     }
@@ -102,7 +101,7 @@
     const bits = [];
     if (parseDate(config.firstMet)) bits.push(`처음 만난 날 ${fmtDate(config.firstMet)}`);
     if (start) bits.push(`사귄 날 ${fmtDate(config.startDate)}`);
-    $("since").textContent = bits.join("  ·  ");
+    $("since").innerHTML = bits.map((t) => `<span>${esc(t)}</span>`).join("");
   }
 
   // ---------- 다가오는 기념일 ----------
@@ -196,7 +195,7 @@
         <article class="card cat-${cat}" data-id="${esc(e._id)}" tabindex="0" title="눌러서 수정">
           <div class="card-top">
             <span class="badge ${cat}">${CATS[cat]}</span>
-            ${e._local ? '<span class="badge local">이 브라우저에만 저장됨</span>' : ""}
+            ${e._local ? '<span class="badge local">임시</span>' : ""}
             <span class="card-date">${esc(fmtDate(e.date))}</span>
           </div>
           <h3>${esc(e.title)}</h3>
@@ -362,9 +361,9 @@
         $("btnExport").textContent = "✅ 복사 완료!";
       } catch (e) {
         $("exportBox").select();
-        $("btnExport").textContent = "아래 코드를 복사해 주세요";
+        $("btnExport").textContent = "아래 코드 복사";
       }
-      setTimeout(() => ($("btnExport").textContent = "📋 전체 기록 코드 복사"), 2000);
+      setTimeout(() => ($("btnExport").textContent = "📋 코드 복사"), 2000);
     });
     $("btnDownload").addEventListener("click", () => {
       const blob = new Blob([fullFile()], { type: "text/javascript;charset=utf-8" });
