@@ -40,16 +40,17 @@
           <span class="sc-flower f3 tap" data-sprite="flowerC" data-scale="2"></span>
           <span class="sc-flower f4 tap" data-sprite="flowerB" data-scale="2"></span>
           <span class="sc-flower f5 tap" data-sprite="flowerA" data-scale="2"></span>
+          <div class="sc-tint"></div>
           <div class="couple">
             <button class="bob" data-who="him" data-sprite="him" aria-label="석영"></button>
             <button class="bob b2" data-who="her" data-sprite="her" aria-label="예은"></button>
           </div>
         </div>
-        <div class="bubble" id="bubble" role="status" hidden></div>
+        <div class="bubble" id="bubble" role="status"></div>
       </div>
       <h1 id="diaryTitle">석영이와 예은이</h1>
       <button class="dday" id="dday" aria-expanded="false" aria-controls="since">D+0</button>
-      <div class="since" id="since" hidden></div>
+      <div class="fold" id="since"><div class="fold-in"><div class="since" id="sinceBox"></div></div></div>
     </div>
   </header>
 
@@ -61,21 +62,21 @@
     </nav>
 
     <div class="panels" id="panels">
-      <section class="panel box" id="panel-upcoming" hidden>
+      <section class="panel fold" id="panel-upcoming"><div class="fold-in"><div class="panel-box box">
         <div class="upcoming-list" id="upcomingList"></div>
-      </section>
+      </div></div></section>
 
-      <section class="panel box" id="panel-stats" hidden>
+      <section class="panel fold" id="panel-stats"><div class="fold-in"><div class="panel-box box">
         <div class="stats">
           <button class="stat" data-stat="all"><span class="stat-num" id="statTotal">0</span><span class="stat-label">기록</span></button>
           <button class="stat" data-stat="travel"><span class="stat-num" id="statTravel">0</span><span class="stat-label">여행</span></button>
           <button class="stat" data-stat="food"><span class="stat-num" id="statFood">0</span><span class="stat-label">맛집</span></button>
           <button class="stat" data-stat="places" aria-expanded="false"><span class="stat-num" id="statPlaces">0</span><span class="stat-label">장소</span></button>
         </div>
-        <div class="places" id="places" hidden></div>
-      </section>
+        <div class="fold" id="places"><div class="fold-in"><div class="places" id="placesList"></div></div></div>
+      </div></div></section>
 
-      <section class="panel box" id="panel-search" hidden>
+      <section class="panel fold" id="panel-search"><div class="fold-in"><div class="panel-box box">
         <div class="search-row">
           <input type="search" id="search" placeholder="검색">
           <select id="sort">
@@ -93,7 +94,7 @@
           <button class="chip" data-cat="anniv"><span data-icon="anniv"></span>기념일</button>
           <button class="chip" data-cat="etc"><span data-icon="etc"></span>기타</button>
         </div>
-      </section>
+      </div></div></section>
     </div>
 
     <div class="active-filter" id="activeFilter" hidden>
@@ -121,7 +122,7 @@
   </main>
 
   <button class="fab" id="btnAdd" aria-label="기록 추가">+</button>
-  <div class="toast" id="toast" role="status" hidden></div>
+  <div class="toast" id="toast" role="status"></div>
 
   <!-- 기록 추가 / 수정 모달 -->
   <div class="modal" id="modal" hidden>

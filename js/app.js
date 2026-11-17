@@ -98,6 +98,12 @@
     if (/^(https?:|data:|photos\/|\.\/|\/)/.test(p)) return p;
     return "photos/" + p;
   }
+  function isOpen(el) {
+    return el.classList.contains("is-open");
+  }
+  function setOpen(el, open) {
+    el.classList.toggle("is-open", open);
+  }
   function restart(el, cls) {
     // 같은 움직임을 처음부터 다시 틀어요.
     el.classList.remove(cls);
@@ -177,10 +183,9 @@
   function toast(msg) {
     const t = $("toast");
     t.textContent = msg;
-    t.hidden = false;
-    restart(t, "show");
+    setOpen(t, true);
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+    toastTimer = setTimeout(() => setOpen(t, false), 2200);
   }
 
   // ---------- 머리: 제목, D+ ----------
@@ -198,10 +203,10 @@
     const rows = [];
     if (parseDate(config.firstMet)) rows.push(["처음 만난 날", fmtDate(config.firstMet)]);
     if (parseDate(config.startDate)) rows.push(["사귄 날", fmtDate(config.startDate)]);
-    $("since").innerHTML = rows.map((r) => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join("");
+    $("sinceBox").innerHTML = rows.map((r) => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join("");
   }
   function setSince(open) {
-    $("since").hidden = !open;
+    setOpen($("since"), open);
     $("dday").setAttribute("aria-expanded", String(open));
   }
 
@@ -234,14 +239,14 @@
     const b = $("bubble");
     b.textContent = text;
     b.className = "bubble from-" + who;
-    b.hidden = false;
-    restart(b, "show");
+    void b.offsetWidth;
+    setOpen(b, true);
     clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(hideBubble, 4000);
   }
   function hideBubble() {
     clearTimeout(bubbleTimer);
-    $("bubble").hidden = true;
+    setOpen($("bubble"), false);
   }
   function onAnimEnd(el, cls) {
     el.addEventListener("animationend", function done(ev) {
@@ -269,9 +274,7 @@
       if (!t) return;
       if (t.classList.contains("sc-sun") || t.classList.contains("sc-moon")) {
         document.body.classList.toggle("night");
-        const now = document.querySelector(document.body.classList.contains("night") ? ".sc-moon" : ".sc-sun");
-        play(now, "rise");
-        burstAt(now, 8);
+        burstAt(t, 8);
       } else if (t.classList.contains("sc-tree")) {
         play(t, "shake");
         burstAt(t, 4);
@@ -291,11 +294,7 @@
       b.classList.toggle("active", on);
       b.setAttribute("aria-expanded", String(on));
     });
-    document.querySelectorAll(".panel").forEach((p) => {
-      const on = p.id === "panel-" + name;
-      p.hidden = !on;
-      if (on) restart(p, "unfold");
-    });
+    document.querySelectorAll(".panel").forEach((p) => setOpen(p, p.id === "panel-" + name));
     if (name === "stats") renderStats(true);
     if (name !== "stats") setPlaces(false);
   }
@@ -311,15 +310,18 @@
   }
 
   function countUp(el, to) {
-    const steps = Math.min(to, 8);
-    if (steps <= 1) { el.textContent = to; return; }
-    let i = 0;
+    // 화면 주사율에 맞춰 숫자가 올라가요.
+    if (to <= 1) { el.textContent = to; return; }
+    const dur = 500;
+    let t0 = null;
     el.textContent = 0;
-    const timer = setInterval(() => {
-      i++;
-      el.textContent = Math.round((to * i) / steps);
-      if (i >= steps) clearInterval(timer);
-    }, 45);
+    function tick(now) {
+      if (t0 === null) t0 = now;
+      const k = Math.min(1, (now - t0) / dur);
+      el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   }
   function placeList() {
     const counts = new Map();
@@ -343,18 +345,15 @@
     });
   }
   function setPlaces(open) {
-    const box = $("places");
+    const box = $("placesList");
     const btn = document.querySelector('.stat[data-stat="places"]');
     if (open) {
       const places = placeList();
       box.innerHTML = places.length
         ? places.map(([p, n]) => `<button class="place" data-place="${esc(p)}">${PIXEL.icon("pin", 2)}${esc(p)}<i>${n}</i></button>`).join("")
         : `<span class="muted">아직 장소가 없어요</span>`;
-      box.hidden = false;
-      restart(box, "unfold");
-    } else {
-      box.hidden = true;
     }
+    setOpen($("places"), open);
     btn.classList.toggle("active", open);
     btn.setAttribute("aria-expanded", String(open));
   }
@@ -391,21 +390,21 @@
   }
 
   // ---------- 기록 목록 ----------
-  function cardHtml(e) {
+  function cardHtml(e, i) {
     const cat = CATS[e.category] ? e.category : "etc";
     const d = parseDate(e.date);
     const day = d ? `${pad(d.getMonth() + 1)}.${pad(d.getDate())}` : "";
     const src = photoSrc(e.photo);
     const open = state.openCard === e._id;
     return `
-      <article class="card cat-${cat}${open ? " open" : ""}" data-id="${esc(e._id)}">
+      <article class="card cat-${cat}${open ? " open" : ""}" data-id="${esc(e._id)}" style="--i:${Math.min(i || 0, 8)}">
         <button class="card-head" aria-expanded="${open}">
           <span class="cat-ico ${cat}">${PIXEL.icon(cat, 2)}</span>
           <span class="card-title">${esc(e.title)}</span>
           <span class="card-day">${day}</span>
           <span class="chev">${PIXEL.icon("down", 2)}</span>
         </button>
-        <div class="card-body"${open ? "" : " hidden"}>
+        <div class="card-body fold${open ? " is-open" : ""}"><div class="fold-in"><div class="card-detail">
           <p class="card-meta">${esc(CATS[cat])} · ${esc(fmtDate(e.date))}${e._local ? ' · <span class="muted">임시</span>' : ""}</p>
           ${e.place ? `<p class="card-place">${PIXEL.icon("pin", 2)}${esc(e.place)}</p>` : ""}
           <div class="card-rating">${stars(e.rating)}</div>
@@ -413,7 +412,7 @@
           ${e.memo ? `<p class="card-memo">${esc(e.memo)}</p>` : ""}
           ${(e.tags || []).length ? `<div class="tags">${e.tags.map((t) => `<button class="tag" data-tag="${esc(t)}">#${esc(t)}</button>`).join("")}</div>` : ""}
           <div class="card-actions"><button class="btn small" data-edit>수정</button></div>
-        </div>
+        </div></div></div>
       </article>`;
   }
 
@@ -422,7 +421,7 @@
     $("empty").hidden = list.length > 0;
     let html = "";
     if (state.sort === "rating") {
-      html = list.map(cardHtml).join("");
+      html = `<div class="month-items"><div class="fold-in">${list.map(cardHtml).join("")}</div></div>`;
     } else {
       // 달마다 묶어서, 달 이름을 누르면 접혀요.
       const groups = [];
@@ -436,7 +435,7 @@
         const folded = state.folded.has(g.key);
         return `<div class="month${folded ? " folded" : ""}" data-month="${esc(g.key)}">
           <button class="month-label" aria-expanded="${!folded}"><span>${esc(g.key)}<i>${g.items.length}</i></span></button>
-          <div class="month-items"${folded ? " hidden" : ""}>${g.items.map(cardHtml).join("")}</div>
+          <div class="month-items fold${folded ? "" : " is-open"}"><div class="fold-in">${g.items.map(cardHtml).join("")}</div></div>
         </div>`;
       }).join("");
     }
@@ -447,7 +446,7 @@
     const prev = document.querySelector(".card.open");
     if (prev && prev.dataset.id !== id) {
       prev.classList.remove("open");
-      prev.querySelector(".card-body").hidden = true;
+      setOpen(prev.querySelector(".card-body"), false);
       prev.querySelector(".card-head").setAttribute("aria-expanded", "false");
     }
     state.openCard = id;
@@ -455,9 +454,7 @@
     const card = [...document.querySelectorAll(".card")].find((c) => c.dataset.id === id);
     if (!card) return;
     card.classList.add("open");
-    const body = card.querySelector(".card-body");
-    body.hidden = false;
-    restart(body, "unfold");
+    setOpen(card.querySelector(".card-body"), true);
     card.querySelector(".card-head").setAttribute("aria-expanded", "true");
   }
 
@@ -465,7 +462,7 @@
     renderStats(false);
     renderUpcoming();
     renderTimeline();
-    if (!$("places").hidden) setPlaces(true);
+    if (isOpen($("places"))) setPlaces(true);
   }
 
   // ---------- 입력창 ----------
@@ -501,11 +498,18 @@
       setRating(5);
       $("btnDelete").hidden = true;
     }
+    $("modal").classList.remove("closing");
     $("modal").hidden = false;
     $("fTitle").focus();
   }
   function closeModal() {
-    $("modal").hidden = true;
+    const m = $("modal");
+    if (m.hidden || m.classList.contains("closing")) return;
+    m.classList.add("closing");
+    setTimeout(() => {
+      m.hidden = true;
+      m.classList.remove("closing");
+    }, 160);
   }
   function upsertLocal(entry) {
     const i = localEntries.findIndex((e) => e._id === entry._id);
@@ -564,12 +568,9 @@
     bindScene();
 
     $("dday").addEventListener("click", () => {
-      const open = $("since").hidden;
+      const open = !isOpen($("since"));
       setSince(open);
-      if (open) {
-        restart($("since"), "unfold");
-        burstAt($("dday"), 8);
-      }
+      if (open) burstAt($("dday"), 8);
     });
 
     $("menu").addEventListener("click", (ev) => {
@@ -591,7 +592,7 @@
       play(s, "boing");
       const kind = s.dataset.stat;
       if (kind === "places") {
-        setPlaces($("places").hidden);
+        setPlaces(!isOpen($("places")));
         return;
       }
       setPlaces(false);
@@ -618,9 +619,7 @@
         else state.folded.delete(key);
         month.parentNode.classList.toggle("folded", fold);
         month.setAttribute("aria-expanded", String(!fold));
-        const items = month.parentNode.querySelector(".month-items");
-        items.hidden = fold;
-        if (!fold) restart(items, "unfold");
+        setOpen(month.parentNode.querySelector(".month-items"), !fold);
         return;
       }
       const card = ev.target.closest(".card");
@@ -733,6 +732,6 @@
 
   // 처음 한 번, 눌러 볼 수 있다는 걸 알려 줘요.
   setTimeout(() => {
-    if ($("bubble").hidden && bubbleIdx === 0) showBubble("우리를 눌러 봐", "her");
+    if (!isOpen($("bubble")) && bubbleIdx === 0) showBubble("우리를 눌러 봐", "her");
   }, 1200);
 })();
