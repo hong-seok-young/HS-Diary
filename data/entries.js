@@ -17,7 +17,7 @@ const DIARY_CONFIG = {
   startDate: "2026-07-17", // 사귀기 시작한 날 → 여기에 맞춰 D+ 가 계산돼요
   himBirthday: "1993-08-11",
   herBirthday: "1997-09-29",
-  title: "석영 ♥ 예은 데이트 일지",
+  title: "석영이와 예은이",
 };
 
 const DIARY_ENTRIES = [

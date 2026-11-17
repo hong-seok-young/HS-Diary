@@ -1,7 +1,7 @@
 {
   "id": "hs-diary",
-  "name": "석영 ♥ 예은 데이트 일지",
-  "short_name": "데이트 일지",
+  "name": "석영이와 예은이",
+  "short_name": "석영이와 예은이",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
