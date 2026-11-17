@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light only">
-  <meta name="theme-color" content="#eceae3">
+  <meta name="theme-color" content="#fdf3dc">
   <title>석영이와 예은이</title>
   <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -19,9 +19,30 @@
 <body>
   <header class="hero">
     <div class="hero-inner box">
-      <div class="couple" aria-hidden="true">
-        <span data-sprite="him"></span>
-        <span data-sprite="her"></span>
+      <div class="scene" id="scene" aria-hidden="true">
+        <span class="sc-sun" data-sprite="sun" data-scale="3"></span>
+        <span class="sc-moon" data-sprite="moon" data-scale="3"></span>
+        <span class="sc-star s1" data-sprite="twinkle" data-scale="2"></span>
+        <span class="sc-star s2" data-sprite="twinkle" data-scale="2"></span>
+        <span class="sc-star s3" data-sprite="twinkle" data-scale="2"></span>
+        <span class="sc-star s4" data-sprite="twinkle" data-scale="2"></span>
+        <span class="sc-star s5" data-sprite="twinkle" data-scale="2"></span>
+        <span class="sc-cloud c1" data-sprite="cloud" data-scale="3"></span>
+        <span class="sc-cloud c2" data-sprite="cloudSmall" data-scale="3"></span>
+        <span class="sc-cloud c3" data-sprite="cloud" data-scale="2"></span>
+        <div class="sc-hills" data-bg="hills" data-scale="3"></div>
+        <span class="sc-tree t1" data-sprite="tree" data-scale="3"></span>
+        <span class="sc-tree t2" data-sprite="tree" data-scale="2"></span>
+        <div class="sc-ground" data-bg="ground" data-scale="3"></div>
+        <span class="sc-flower f1" data-sprite="flowerA" data-scale="2"></span>
+        <span class="sc-flower f2" data-sprite="flowerB" data-scale="2"></span>
+        <span class="sc-flower f3" data-sprite="flowerC" data-scale="2"></span>
+        <span class="sc-flower f4" data-sprite="flowerB" data-scale="2"></span>
+        <span class="sc-flower f5" data-sprite="flowerA" data-scale="2"></span>
+        <div class="couple">
+          <span class="bob" data-sprite="him"></span>
+          <span class="bob b2" data-sprite="her"></span>
+        </div>
       </div>
       <h1 id="diaryTitle">석영이와 예은이</h1>
       <p class="dday" id="dday">D+0</p>

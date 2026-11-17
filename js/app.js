@@ -381,6 +381,10 @@
     });
   }
 
+  // 저녁 7시부터 아침 6시까지는 밤 풍경
+  const hour = new Date().getHours();
+  if (hour >= 19 || hour < 6) document.body.classList.add("night");
+
   PIXEL.fill(document);
   renderHeader();
   renderUpcoming();

@@ -110,18 +110,18 @@
     ],
   };
 
-  // 여러 색 캐릭터
+  // 여러 색 그림 (캐릭터, 배경)
   const SPRITES = {
     him: {
-      colors: { H: "#333c57", S: "#f2c9a0", E: "#1a1c2c", B: "#3b5dc9", P: "#29366f", K: "#1a1c2c" },
+      colors: { H: "#4a4038", S: "#f7d3b0", E: "#4a3a30", C: "#f4a58a", M: "#c9735f", B: "#7fb2e5", P: "#5c6f9c", K: "#4a3a30" },
       rows: [
         "...HHHHHH...",
         "..HHHHHHHH..",
         "..HHHHHHHH..",
         "..HSSSSSSH..",
         "..SSESSESS..",
-        "..SSSSSSSS..",
-        "...SSSSSS...",
+        "..SCSSSSCS..",
+        "...SSMMSS...",
         "..BBBBBBBB..",
         ".SBBBBBBBBS.",
         ".SBBBBBBBBS.",
@@ -132,24 +132,120 @@
       ],
     },
     her: {
-      colors: { H: "#5a3a2e", S: "#f2c9a0", E: "#1a1c2c", G: "#38b764", K: "#1a1c2c" },
+      colors: { H: "#7a5440", S: "#f7d3b0", E: "#4a3a30", C: "#f4a58a", M: "#c9735f", G: "#ffd978", D: "#f5b94e", K: "#4a3a30" },
       rows: [
         "...HHHHHH...",
         "..HHHHHHHH..",
         ".HHHHHHHHHH.",
         ".HHSSSSSSHH.",
         ".HSSESSESSH.",
-        ".HSSSSSSSSH.",
-        ".HHSSSSSSHH.",
+        ".HSCSSSSCSH.",
+        ".HHSSMMSSHH.",
         ".HHGGGGGGHH.",
         ".SGGGGGGGGS.",
         ".SGGGGGGGGS.",
         "..GGGGGGGG..",
-        ".GGGGGGGGGG.",
+        ".DDDDDDDDDD.",
         "...SS..SS...",
         "...KK..KK...",
       ],
     },
+    cloud: {
+      colors: { W: "#ffffff", L: "#e3f1fa" },
+      rows: [
+        "....WWWW........",
+        "..WWWWWWWW.WW...",
+        ".WWWWWWWWWWWWW..",
+        "WWWWWWWWWWWWWWW.",
+        "WWWWWWWWWWWWWWWW",
+        ".LLLLLLLLLLLLLL.",
+      ],
+    },
+    cloudSmall: {
+      colors: { W: "#ffffff", L: "#e3f1fa" },
+      rows: [
+        "...WWW....",
+        ".WWWWWWW..",
+        "WWWWWWWWWW",
+        ".LLLLLLLL.",
+      ],
+    },
+    sun: {
+      colors: { Y: "#ffd978", O: "#ffc65c" },
+      rows: [
+        "...YYY...",
+        ".YYYYYYY.",
+        ".YYYYYYO.",
+        "YYYYYYYOO",
+        "YYYYYYYOO",
+        "YYYYYYOOO",
+        ".YYYYOOO.",
+        ".YYOOOOO.",
+        "...OOO...",
+      ],
+    },
+    moon: {
+      colors: { M: "#fff3c4" },
+      rows: [
+        "...MMM...",
+        ".MMMMM...",
+        ".MMMM....",
+        "MMMM.....",
+        "MMMM.....",
+        "MMMM....M",
+        ".MMMM..MM",
+        ".MMMMMMM.",
+        "...MMM...",
+      ],
+    },
+    twinkle: {
+      colors: { S: "#fff3c4" },
+      rows: [".S.", "SSS", ".S."],
+    },
+    hills: {
+      colors: { G: "#c4e8b6" },
+      rows: [
+        "................................",
+        "......GGGGGG....................",
+        "...GGGGGGGGGGGG.........GGGG....",
+        ".GGGGGGGGGGGGGGGG....GGGGGGGGGG.",
+        "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+        "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+        "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+        "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+      ],
+    },
+    ground: {
+      colors: { D: "#74c178", G: "#95d590", g: "#84cb84" },
+      rows: [
+        "..D.......D.....",
+        "DDDDDDDDDDDDDDDD",
+        "GGGGGGGGGGGGGGGG",
+        "GGgGGGGGGGGGgGGG",
+        "GGGGGGGgGGGGGGGG",
+        "GGGGGGGGGGGGGGGG",
+      ],
+    },
+    tree: {
+      colors: { L: "#86cc86", D: "#66b46e", T: "#9a785a" },
+      rows: [
+        "...LLLL...",
+        ".LLLLLLLL.",
+        "LLLDLLLLLL",
+        "LLLLLLLDLL",
+        "LLDLLLLLLL",
+        "LLLLLLDLLL",
+        ".LLLLLLLL.",
+        "..LLLLLL..",
+        "....TT....",
+        "....TT....",
+        "....TT....",
+        "...TTTT...",
+      ],
+    },
+    flowerA: { colors: { P: "#ffffff", O: "#ffc65c", S: "#66b46e" }, rows: [".P.", "POP", ".P.", ".S.", ".S."] },
+    flowerB: { colors: { P: "#ffe08f", O: "#f5a56b", S: "#66b46e" }, rows: [".P.", "POP", ".P.", ".S.", ".S."] },
+    flowerC: { colors: { P: "#cdbdee", O: "#ffffff", S: "#66b46e" }, rows: [".P.", "POP", ".P.", ".S.", ".S."] },
   };
 
   // rows → <svg> 문자열. 같은 색이 이어지면 한 칸으로 묶어요.
@@ -181,13 +277,22 @@
       const s = SPRITES[name];
       return s ? toSvg(s.rows, s.colors, scale || 4, "px px-sprite") : "";
     },
-    // data-icon / data-sprite 속성이 있는 자리를 그림으로 채워요.
+    // CSS 배경으로 쓸 수 있는 주소로 바꿔요. (옆으로 반복되는 언덕, 잔디)
+    dataUri(name, scale) {
+      const sp = SPRITES[name];
+      if (!sp) return "";
+      return `url("data:image/svg+xml,${encodeURIComponent(toSvg(sp.rows, sp.colors, scale || 3, "px"))}")`;
+    },
+    // data-icon / data-sprite / data-bg 속성이 있는 자리를 그림으로 채워요.
     fill(root) {
       (root || document).querySelectorAll("[data-icon]").forEach((el) => {
         el.innerHTML = this.icon(el.dataset.icon, Number(el.dataset.scale) || 2);
       });
       (root || document).querySelectorAll("[data-sprite]").forEach((el) => {
         el.innerHTML = this.sprite(el.dataset.sprite, Number(el.dataset.scale) || 4);
+      });
+      (root || document).querySelectorAll("[data-bg]").forEach((el) => {
+        el.style.backgroundImage = this.dataUri(el.dataset.bg, Number(el.dataset.scale) || 3);
       });
     },
   };
