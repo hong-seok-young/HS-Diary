@@ -4,28 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light only">
-  <meta name="theme-color" content="#ffe3ec">
+  <meta name="theme-color" content="#eceae3">
   <title>석영이와 예은이</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💕</text></svg>">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="석영이와 예은이">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="preload" href="fonts/neodgm.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div class="bg-hearts" aria-hidden="true"></div>
-
   <header class="hero">
-    <div class="hero-inner">
-      <div class="couple">
-        <span class="name him" id="nameHim">석영</span>
-        <span class="heart-beat">💗</span>
-        <span class="name her" id="nameHer">예은</span>
+    <div class="hero-inner box">
+      <div class="couple" aria-hidden="true">
+        <span data-sprite="him"></span>
+        <span data-sprite="her"></span>
       </div>
       <h1 id="diaryTitle">석영이와 예은이</h1>
       <p class="dday" id="dday">D+0</p>
@@ -35,52 +31,52 @@
 
   <main class="container">
     <section class="stats" id="stats">
-      <div class="stat"><span class="stat-num" id="statTotal">0</span><span class="stat-label">기록</span></div>
-      <div class="stat"><span class="stat-num" id="statTravel">0</span><span class="stat-label">여행</span></div>
-      <div class="stat"><span class="stat-num" id="statFood">0</span><span class="stat-label">맛집</span></div>
-      <div class="stat"><span class="stat-num" id="statPlaces">0</span><span class="stat-label">장소</span></div>
+      <div class="stat box"><span class="stat-num" id="statTotal">0</span><span class="stat-label">기록</span></div>
+      <div class="stat box"><span class="stat-num" id="statTravel">0</span><span class="stat-label">여행</span></div>
+      <div class="stat box"><span class="stat-num" id="statFood">0</span><span class="stat-label">맛집</span></div>
+      <div class="stat box"><span class="stat-num" id="statPlaces">0</span><span class="stat-label">장소</span></div>
     </section>
 
-    <section class="upcoming" id="upcoming" hidden>
-      <h2>🗓️ 다가오는 기념일</h2>
+    <section class="upcoming box" id="upcoming" hidden>
+      <h2><span data-icon="calendar"></span>다가오는 기념일</h2>
       <div class="upcoming-list" id="upcomingList"></div>
     </section>
 
     <section class="toolbar">
       <div class="filters" id="filters">
         <button class="chip active" data-cat="all">전체</button>
-        <button class="chip" data-cat="date">💑 데이트</button>
-        <button class="chip" data-cat="travel">✈️ 여행</button>
-        <button class="chip" data-cat="food">🍽️ 맛집</button>
-        <button class="chip" data-cat="cafe">☕ 카페</button>
-        <button class="chip" data-cat="anniv">🎂 기념일</button>
-        <button class="chip" data-cat="etc">🌈 기타</button>
+        <button class="chip" data-cat="date"><span data-icon="date"></span>데이트</button>
+        <button class="chip" data-cat="travel"><span data-icon="travel"></span>여행</button>
+        <button class="chip" data-cat="food"><span data-icon="food"></span>맛집</button>
+        <button class="chip" data-cat="cafe"><span data-icon="cafe"></span>카페</button>
+        <button class="chip" data-cat="anniv"><span data-icon="anniv"></span>기념일</button>
+        <button class="chip" data-cat="etc"><span data-icon="etc"></span>기타</button>
       </div>
       <div class="toolbar-right">
-        <input type="search" id="search" placeholder="🔍 장소, 제목, 태그 검색">
+        <input type="search" id="search" placeholder="검색">
         <select id="sort">
           <option value="desc">최신순</option>
           <option value="asc">오래된순</option>
-          <option value="rating">하트순</option>
+          <option value="rating">별점순</option>
         </select>
-        <button class="btn primary" id="btnAdd">＋ 기록 추가</button>
+        <button class="btn primary" id="btnAdd">+ 기록 추가</button>
       </div>
     </section>
 
     <section class="timeline" id="timeline"></section>
 
-    <p class="empty" id="empty" hidden>아직 기록이 없어요. 첫 데이트를 기록해볼까요? 💕</p>
+    <p class="empty" id="empty" hidden>아직 기록이 없어요</p>
 
     <section class="tools">
-      <details>
-        <summary>📦 내보내기</summary>
+      <details class="box">
+        <summary>내보내기</summary>
         <div class="tools-body">
           <div class="tools-btns">
-            <button class="btn" id="btnExport">📋 코드 복사</button>
-            <button class="btn" id="btnDownload">⬇️ entries.js 다운로드</button>
-            <button class="btn danger" id="btnClearLocal">🧹 임시 기록 비우기</button>
+            <button class="btn" id="btnExport">코드 복사</button>
+            <button class="btn" id="btnDownload">entries.js 다운로드</button>
+            <button class="btn danger" id="btnClearLocal">임시 기록 비우기</button>
           </div>
-          <textarea id="exportBox" rows="8" readonly ></textarea>
+          <textarea id="exportBox" rows="8" readonly></textarea>
         </div>
       </details>
     </section>
@@ -88,26 +84,26 @@
 
   <!-- 기록 추가 / 수정 모달 -->
   <div class="modal" id="modal" hidden>
-    <div class="modal-card">
-      <h2 id="modalTitle">💕 새 기록</h2>
+    <div class="modal-card box">
+      <h2 id="modalTitle">새 기록</h2>
       <form id="form">
         <input type="hidden" id="fId">
         <label>날짜 <input type="date" id="fDate" required></label>
         <label>종류
           <select id="fCat">
-            <option value="date">💑 데이트</option>
-            <option value="travel">✈️ 여행</option>
-            <option value="food">🍽️ 맛집</option>
-            <option value="cafe">☕ 카페</option>
-            <option value="anniv">🎂 기념일</option>
-            <option value="etc">🌈 기타</option>
+            <option value="date">데이트</option>
+            <option value="travel">여행</option>
+            <option value="food">맛집</option>
+            <option value="cafe">카페</option>
+            <option value="anniv">기념일</option>
+            <option value="etc">기타</option>
           </select>
         </label>
-        <label>제목 <input type="text" id="fTitle"  required></label>
-        <label>장소 <input type="text" id="fPlace" ></label>
-        <label>하트
+        <label>제목 <input type="text" id="fTitle" required></label>
+        <label>장소 <input type="text" id="fPlace"></label>
+        <label>별점
           <div class="rating-input" id="fRating">
-            <span data-v="1">🤍</span><span data-v="2">🤍</span><span data-v="3">🤍</span><span data-v="4">🤍</span><span data-v="5">🤍</span>
+            <span data-v="1"></span><span data-v="2"></span><span data-v="3"></span><span data-v="4"></span><span data-v="5"></span>
           </div>
         </label>
         <label>메모 <textarea id="fMemo" rows="3"></textarea></label>
@@ -116,13 +112,14 @@
         <div class="modal-btns">
           <button type="button" class="btn" id="btnCancel">취소</button>
           <button type="button" class="btn danger" id="btnDelete" hidden>삭제</button>
-          <button type="submit" class="btn primary">저장 💾</button>
+          <button type="submit" class="btn primary">저장</button>
         </div>
       </form>
     </div>
   </div>
 
   <script src="data/entries.js"></script>
+  <script src="js/pixel.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

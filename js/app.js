@@ -1,5 +1,5 @@
 // ============================================================
-// 석영 ♥ 예은 데이트 일지
+// 석영이와 예은이
 // - data/entries.js 의 기록 + 이 브라우저(localStorage)에 임시 저장한 기록을 합쳐서 보여줘요.
 // ============================================================
 (function () {
@@ -7,12 +7,12 @@
 
   const LS_KEY = "hs-diary-local-entries";
   const CATS = {
-    date: "💑 데이트",
-    travel: "✈️ 여행",
-    food: "🍽️ 맛집",
-    cafe: "☕ 카페",
-    anniv: "🎂 기념일",
-    etc: "🌈 기타",
+    date: "데이트",
+    travel: "여행",
+    food: "맛집",
+    cafe: "카페",
+    anniv: "기념일",
+    etc: "기타",
   };
   const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -42,7 +42,7 @@
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(localEntries));
     } catch (e) {
-      alert("브라우저 저장에 실패했어요 😢");
+      alert("브라우저 저장에 실패했어요");
     }
   }
 
@@ -70,9 +70,11 @@
     if (!d) return s || "";
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")} (${DAYS[d.getDay()]})`;
   }
-  function hearts(n) {
+  function stars(n) {
     n = Math.max(0, Math.min(5, Number(n) || 0));
-    return "💗".repeat(n) + "🤍".repeat(5 - n);
+    let out = "";
+    for (let i = 1; i <= 5; i++) out += `<span class="star${i <= n ? " on" : ""}">${PIXEL.icon("star", 2)}</span>`;
+    return out;
   }
   function photoSrc(p) {
     if (!p) return "";
@@ -82,21 +84,18 @@
 
   // ---------- header ----------
   function renderHeader() {
-    const him = config.him || "석영";
-    const her = config.her || "예은";
-    $("nameHim").textContent = him;
-    $("nameHer").textContent = her;
     if (config.title) {
       document.title = config.title;
+      $("diaryTitle").textContent = config.title;
     }
     const start = parseDate(config.startDate);
     if (start) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const days = Math.round((today - start) / 86400000) + 1; // 사귄 날이 1일
-      $("dday").textContent = days > 0 ? `우리 사귄 지 D+${days} 💕` : `D${days - 1}`;
+      $("dday").textContent = days > 0 ? `D+${days}` : `D${days - 1}`;
     } else {
-      $("dday").textContent = "💕 오늘도 사랑해 💕";
+      $("dday").hidden = true;
     }
     const bits = [];
     if (parseDate(config.firstMet)) bits.push(`처음 만난 날 ${fmtDate(config.firstMet)}`);
@@ -121,16 +120,16 @@
       const passed = Math.round((today - start) / 86400000) + 1;
       const nextHundred = Math.max(100, Math.ceil(passed / 100) * 100);
       const hd = new Date(start.getFullYear(), start.getMonth(), start.getDate() + nextHundred - 1);
-      events.push({ emoji: "💯", name: `${nextHundred}일`, date: hd });
+      events.push({ icon: "star", name: `${nextHundred}일`, date: hd });
       // 다음 N주년
       const ann = nextYearly(start, today);
       const years = ann.getFullYear() - start.getFullYear();
-      if (years > 0) events.push({ emoji: "💍", name: `${years}주년`, date: ann });
+      if (years > 0) events.push({ icon: "flag", name: `${years}주년`, date: ann });
     }
     const hb = parseDate(config.himBirthday);
-    if (hb) events.push({ emoji: "🎂", name: `${config.him || "석영"} 생일`, date: nextYearly(hb, today) });
+    if (hb) events.push({ icon: "anniv", name: `${config.him || "석영"} 생일`, date: nextYearly(hb, today) });
     const sb = parseDate(config.herBirthday);
-    if (sb) events.push({ emoji: "🎂", name: `${config.her || "예은"} 생일`, date: nextYearly(sb, today) });
+    if (sb) events.push({ icon: "anniv", name: `${config.her || "예은"} 생일`, date: nextYearly(sb, today) });
 
     if (!events.length) return;
     events.sort((a, b) => a.date - b.date);
@@ -138,9 +137,9 @@
       const left = Math.round((ev.date - today) / 86400000);
       const ds = `${ev.date.getFullYear()}.${String(ev.date.getMonth() + 1).padStart(2, "0")}.${String(ev.date.getDate()).padStart(2, "0")} (${DAYS[ev.date.getDay()]})`;
       return `<div class="up-item">
-        <span class="up-emoji">${ev.emoji}</span>
+        <span class="up-icon">${PIXEL.icon(ev.icon, 2)}</span>
         <span class="up-text"><div class="up-name">${esc(ev.name)}</div><div class="up-date">${ds}</div></span>
-        <span class="up-dday${left === 0 ? " today" : ""}">${left === 0 ? "오늘!" : "D-" + left}</span>
+        <span class="up-dday${left === 0 ? " today" : ""}">${left === 0 ? "오늘" : "D-" + left}</span>
       </div>`;
     }).join("");
     $("upcoming").hidden = false;
@@ -184,9 +183,9 @@
     let lastMonth = "";
     list.forEach((e) => {
       const d = parseDate(e.date);
-      const month = d ? `${d.getFullYear()}년 ${d.getMonth() + 1}월` : "날짜 없음";
+      const month = d ? `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}` : "날짜 없음";
       if (state.sort !== "rating" && month !== lastMonth) {
-        html += `<div class="month-label">${esc(month)}</div>`;
+        html += `<div class="month-label"><span>${esc(month)}</span></div>`;
         lastMonth = month;
       }
       const cat = CATS[e.category] ? e.category : "etc";
@@ -194,13 +193,13 @@
       html += `
         <article class="card cat-${cat}" data-id="${esc(e._id)}" tabindex="0" title="눌러서 수정">
           <div class="card-top">
-            <span class="badge ${cat}">${CATS[cat]}</span>
+            <span class="badge ${cat}">${PIXEL.icon(cat, 2)}${CATS[cat]}</span>
             ${e._local ? '<span class="badge local">임시</span>' : ""}
             <span class="card-date">${esc(fmtDate(e.date))}</span>
           </div>
           <h3>${esc(e.title)}</h3>
-          ${e.place ? `<p class="card-place">📍 ${esc(e.place)}</p>` : ""}
-          <div class="card-rating">${hearts(e.rating)}</div>
+          ${e.place ? `<p class="card-place">${PIXEL.icon("pin", 2)}${esc(e.place)}</p>` : ""}
+          <div class="card-rating">${stars(e.rating)}</div>
           ${src ? `<img class="card-photo" src="${esc(src)}" alt="${esc(e.title)}" loading="lazy" onerror="this.remove()">` : ""}
           ${e.memo ? `<p class="card-memo">${esc(e.memo)}</p>` : ""}
           ${(e.tags || []).length ? `<div class="tags">${e.tags.map((t) => `<span class="tag">#${esc(t)}</span>`).join("")}</div>` : ""}
@@ -214,13 +213,14 @@
   function setRating(n) {
     rating = n;
     $("fRating").querySelectorAll("span").forEach((s) => {
-      s.textContent = Number(s.dataset.v) <= n ? "💗" : "🤍";
+      s.innerHTML = PIXEL.icon("star", 3);
+      s.classList.toggle("on", Number(s.dataset.v) <= n);
     });
   }
   function openModal(entry) {
     $("form").reset();
     if (entry) {
-      $("modalTitle").textContent = "✏️ 기록 수정";
+      $("modalTitle").textContent = "기록 수정";
       $("fId").value = entry._id;
       $("fDate").value = entry.date || "";
       $("fCat").value = CATS[entry.category] ? entry.category : "etc";
@@ -232,7 +232,7 @@
       setRating(Number(entry.rating) || 0);
       $("btnDelete").hidden = false;
     } else {
-      $("modalTitle").textContent = "💕 새 기록";
+      $("modalTitle").textContent = "새 기록";
       $("fId").value = "";
       const t = new Date();
       $("fDate").value = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
@@ -272,7 +272,7 @@
   }
   function fullFile() {
     return (
-      "// 석영 ♥ 예은 데이트 일지 데이터 (사이트에서 내보낸 파일)\n" +
+      "// 석영이와 예은이 일지 데이터 (사이트에서 내보낸 파일)\n" +
       "// category: date / travel / food / cafe / anniv / etc, rating: 1~5\n\n" +
       "const DIARY_CONFIG = " + JSON.stringify(config, null, 2) + ";\n\n" +
       exportCode()
@@ -341,7 +341,7 @@
 
     $("btnDelete").addEventListener("click", () => {
       const id = $("fId").value;
-      if (!id || !confirm("이 기록을 지울까요? 🥺")) return;
+      if (!id || !confirm("이 기록을 지울까요?")) return;
       if (id.startsWith("file-")) {
         // 파일에 있는 기록은 "삭제 표시"만 해 두고, 내보내기 때 빠지게 해요.
         upsertLocal({ _id: id, _deleted: true });
@@ -358,12 +358,12 @@
       $("exportBox").value = code;
       try {
         await navigator.clipboard.writeText(code);
-        $("btnExport").textContent = "✅ 복사 완료!";
+        $("btnExport").textContent = "복사 완료";
       } catch (e) {
         $("exportBox").select();
         $("btnExport").textContent = "아래 코드 복사";
       }
-      setTimeout(() => ($("btnExport").textContent = "📋 코드 복사"), 2000);
+      setTimeout(() => ($("btnExport").textContent = "코드 복사"), 2000);
     });
     $("btnDownload").addEventListener("click", () => {
       const blob = new Blob([fullFile()], { type: "text/javascript;charset=utf-8" });
@@ -381,6 +381,7 @@
     });
   }
 
+  PIXEL.fill(document);
   renderHeader();
   renderUpcoming();
   bind();
