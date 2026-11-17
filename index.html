@@ -19,70 +19,87 @@
 <body>
   <header class="hero">
     <div class="hero-inner box">
-      <div class="scene" id="scene" aria-hidden="true">
-        <span class="sc-sun" data-sprite="sun" data-scale="3"></span>
-        <span class="sc-moon" data-sprite="moon" data-scale="3"></span>
-        <span class="sc-star s1" data-sprite="twinkle" data-scale="2"></span>
-        <span class="sc-star s2" data-sprite="twinkle" data-scale="2"></span>
-        <span class="sc-star s3" data-sprite="twinkle" data-scale="2"></span>
-        <span class="sc-star s4" data-sprite="twinkle" data-scale="2"></span>
-        <span class="sc-star s5" data-sprite="twinkle" data-scale="2"></span>
-        <span class="sc-cloud c1" data-sprite="cloud" data-scale="3"></span>
-        <span class="sc-cloud c2" data-sprite="cloudSmall" data-scale="3"></span>
-        <span class="sc-cloud c3" data-sprite="cloud" data-scale="2"></span>
-        <div class="sc-hills" data-bg="hills" data-scale="3"></div>
-        <span class="sc-tree t1" data-sprite="tree" data-scale="3"></span>
-        <span class="sc-tree t2" data-sprite="tree" data-scale="2"></span>
-        <div class="sc-ground" data-bg="ground" data-scale="3"></div>
-        <span class="sc-flower f1" data-sprite="flowerA" data-scale="2"></span>
-        <span class="sc-flower f2" data-sprite="flowerB" data-scale="2"></span>
-        <span class="sc-flower f3" data-sprite="flowerC" data-scale="2"></span>
-        <span class="sc-flower f4" data-sprite="flowerB" data-scale="2"></span>
-        <span class="sc-flower f5" data-sprite="flowerA" data-scale="2"></span>
-        <div class="couple">
-          <span class="bob" data-sprite="him"></span>
-          <span class="bob b2" data-sprite="her"></span>
+      <div class="scene-wrap">
+        <div class="scene" id="scene">
+          <span class="sc-sun tap" data-sprite="sun" data-scale="3"></span>
+          <span class="sc-moon tap" data-sprite="moon" data-scale="3"></span>
+          <span class="sc-star s1" data-sprite="twinkle" data-scale="2"></span>
+          <span class="sc-star s2" data-sprite="twinkle" data-scale="2"></span>
+          <span class="sc-star s3" data-sprite="twinkle" data-scale="2"></span>
+          <span class="sc-star s4" data-sprite="twinkle" data-scale="2"></span>
+          <span class="sc-star s5" data-sprite="twinkle" data-scale="2"></span>
+          <span class="sc-cloud c1 tap" data-sprite="cloud" data-scale="3"></span>
+          <span class="sc-cloud c2 tap" data-sprite="cloudSmall" data-scale="3"></span>
+          <span class="sc-cloud c3 tap" data-sprite="cloud" data-scale="2"></span>
+          <div class="sc-hills" data-bg="hills" data-scale="3"></div>
+          <span class="sc-tree t1 tap" data-sprite="tree" data-scale="3"></span>
+          <span class="sc-tree t2 tap" data-sprite="tree" data-scale="2"></span>
+          <div class="sc-ground" data-bg="ground" data-scale="3"></div>
+          <span class="sc-flower f1 tap" data-sprite="flowerA" data-scale="2"></span>
+          <span class="sc-flower f2 tap" data-sprite="flowerB" data-scale="2"></span>
+          <span class="sc-flower f3 tap" data-sprite="flowerC" data-scale="2"></span>
+          <span class="sc-flower f4 tap" data-sprite="flowerB" data-scale="2"></span>
+          <span class="sc-flower f5 tap" data-sprite="flowerA" data-scale="2"></span>
+          <div class="couple">
+            <button class="bob" data-who="him" data-sprite="him" aria-label="석영"></button>
+            <button class="bob b2" data-who="her" data-sprite="her" aria-label="예은"></button>
+          </div>
         </div>
+        <div class="bubble" id="bubble" role="status" hidden></div>
       </div>
       <h1 id="diaryTitle">석영이와 예은이</h1>
-      <p class="dday" id="dday">D+0</p>
-      <p class="since" id="since"></p>
+      <button class="dday" id="dday" aria-expanded="false" aria-controls="since">D+0</button>
+      <div class="since" id="since" hidden></div>
     </div>
   </header>
 
   <main class="container">
-    <section class="stats" id="stats">
-      <div class="stat box"><span class="stat-num" id="statTotal">0</span><span class="stat-label">기록</span></div>
-      <div class="stat box"><span class="stat-num" id="statTravel">0</span><span class="stat-label">여행</span></div>
-      <div class="stat box"><span class="stat-num" id="statFood">0</span><span class="stat-label">맛집</span></div>
-      <div class="stat box"><span class="stat-num" id="statPlaces">0</span><span class="stat-label">장소</span></div>
-    </section>
+    <nav class="menu" id="menu">
+      <button class="menu-btn" data-panel="upcoming" aria-expanded="false"><span data-icon="calendar"></span>기념일</button>
+      <button class="menu-btn" data-panel="stats" aria-expanded="false"><span data-icon="chart"></span>통계</button>
+      <button class="menu-btn" data-panel="search" aria-expanded="false"><span data-icon="search"></span>찾기</button>
+    </nav>
 
-    <section class="upcoming box" id="upcoming" hidden>
-      <h2><span data-icon="calendar"></span>다가오는 기념일</h2>
-      <div class="upcoming-list" id="upcomingList"></div>
-    </section>
+    <div class="panels" id="panels">
+      <section class="panel box" id="panel-upcoming" hidden>
+        <div class="upcoming-list" id="upcomingList"></div>
+      </section>
 
-    <section class="toolbar">
-      <div class="filters" id="filters">
-        <button class="chip active" data-cat="all">전체</button>
-        <button class="chip" data-cat="date"><span data-icon="date"></span>데이트</button>
-        <button class="chip" data-cat="travel"><span data-icon="travel"></span>여행</button>
-        <button class="chip" data-cat="food"><span data-icon="food"></span>맛집</button>
-        <button class="chip" data-cat="cafe"><span data-icon="cafe"></span>카페</button>
-        <button class="chip" data-cat="anniv"><span data-icon="anniv"></span>기념일</button>
-        <button class="chip" data-cat="etc"><span data-icon="etc"></span>기타</button>
-      </div>
-      <div class="toolbar-right">
-        <input type="search" id="search" placeholder="검색">
-        <select id="sort">
-          <option value="desc">최신순</option>
-          <option value="asc">오래된순</option>
-          <option value="rating">별점순</option>
-        </select>
-        <button class="btn primary" id="btnAdd">+ 기록 추가</button>
-      </div>
-    </section>
+      <section class="panel box" id="panel-stats" hidden>
+        <div class="stats">
+          <button class="stat" data-stat="all"><span class="stat-num" id="statTotal">0</span><span class="stat-label">기록</span></button>
+          <button class="stat" data-stat="travel"><span class="stat-num" id="statTravel">0</span><span class="stat-label">여행</span></button>
+          <button class="stat" data-stat="food"><span class="stat-num" id="statFood">0</span><span class="stat-label">맛집</span></button>
+          <button class="stat" data-stat="places" aria-expanded="false"><span class="stat-num" id="statPlaces">0</span><span class="stat-label">장소</span></button>
+        </div>
+        <div class="places" id="places" hidden></div>
+      </section>
+
+      <section class="panel box" id="panel-search" hidden>
+        <div class="search-row">
+          <input type="search" id="search" placeholder="검색">
+          <select id="sort">
+            <option value="desc">최신순</option>
+            <option value="asc">오래된순</option>
+            <option value="rating">별점순</option>
+          </select>
+        </div>
+        <div class="filters" id="filters">
+          <button class="chip active" data-cat="all">전체</button>
+          <button class="chip" data-cat="date"><span data-icon="date"></span>데이트</button>
+          <button class="chip" data-cat="travel"><span data-icon="travel"></span>여행</button>
+          <button class="chip" data-cat="food"><span data-icon="food"></span>맛집</button>
+          <button class="chip" data-cat="cafe"><span data-icon="cafe"></span>카페</button>
+          <button class="chip" data-cat="anniv"><span data-icon="anniv"></span>기념일</button>
+          <button class="chip" data-cat="etc"><span data-icon="etc"></span>기타</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="active-filter" id="activeFilter" hidden>
+      <span id="activeFilterText"></span>
+      <button class="link" id="btnClearFilter">지우기</button>
+    </div>
 
     <section class="timeline" id="timeline"></section>
 
@@ -102,6 +119,9 @@
       </details>
     </section>
   </main>
+
+  <button class="fab" id="btnAdd" aria-label="기록 추가">+</button>
+  <div class="toast" id="toast" role="status" hidden></div>
 
   <!-- 기록 추가 / 수정 모달 -->
   <div class="modal" id="modal" hidden>
