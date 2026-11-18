@@ -412,22 +412,33 @@
       }
     });
   }
-  // 풍경 속 화분: 같이 키우기 게임의 지금 모습
+  // 풍경 속 화분들: 같이 키우기 정원의 앞 세 칸
   function renderScenePlant() {
     if (!window.Garden) return;
-    const el = $("plant");
-    const g = Garden.sceneSvg();
-    const p = g.state.plant;
-    const key = p ? [p.species, p.stage, p.thirsty, g.state.skin, p.bugs.length, p.ready].join(":") : "none";
-    if (el.dataset.k !== key) {
-      const grew = el.dataset.k && p && el.dataset.stage && Number(el.dataset.stage) < p.stage;
-      el.dataset.k = key;
-      el.dataset.stage = p ? String(p.stage) : "0";
-      el.innerHTML = g.html + (p && p.bugs.length ? `<i class="plant-bug">${PIXEL.sprite("bug", 2)}</i>` : "") + (p && (p.thirsty || p.ready) ? `<i class="plant-alert">${p.ready ? PIXEL.icon("star", 2) : "!"}</i>` : "");
-      if (grew) { play(el, "boing"); burstAt(el, 8); }
-    }
-    el.classList.toggle("thirsty", !!(p && p.thirsty));
-    el.classList.toggle("ready", !!(p && p.ready));
+    const list = Garden.sceneSvgs();
+    const scene = $("scene");
+    const first = $("plant");
+    list.forEach((g, i) => {
+      let el = i === 0 ? first : scene.querySelector(`.sc-plant[data-plot="${g.plot}"]`);
+      if (!el) {
+        el = document.createElement("button");
+        el.className = "sc-plant extra";
+        el.setAttribute("aria-label", "정원 화분");
+        first.parentNode.insertBefore(el, first.nextSibling);
+      }
+      el.dataset.plot = String(g.plot);
+      el.style.setProperty("--n", String(i));
+      const p = g.plant;
+      if (el.dataset.k !== g.key) {
+        const grew = el.dataset.k && p && el.dataset.stage && Number(el.dataset.stage) < p.stage;
+        el.dataset.k = g.key;
+        el.dataset.stage = p ? String(p.stage) : "0";
+        el.innerHTML = g.html + (p && p.bugs.length ? `<i class="plant-bug">${PIXEL.sprite("bug", 2)}</i>` : "") + (p && (p.thirsty || p.wilted || p.ready) ? `<i class="plant-alert">${p.ready ? PIXEL.icon("star", 2) : "!"}</i>` : "");
+        if (grew) { play(el, "boing"); burstAt(el, 8); }
+      }
+      el.classList.toggle("thirsty", !!(p && (p.thirsty || p.wilted)));
+      el.classList.toggle("ready", !!(p && p.ready));
+    });
     $("tileGarden").textContent = Garden.badge();
   }
   // 상대가 보낸 하트가 새로 오면 풍경에서 날아와요.
@@ -462,9 +473,10 @@
         bubbleIdx++;
         return;
       }
-      if (ev.target.closest("#plant")) {
-        play($("plant"), "boing");
-        setPanel("garden");
+      const pot = ev.target.closest(".sc-plant");
+      if (pot) {
+        play(pot, "boing");
+        if (window.Garden) Garden.open("plot", { plot: pot.dataset.plot || "0" });
       }
     });
   }
@@ -497,7 +509,6 @@
     });
     document.querySelectorAll(".panel").forEach((p) => setOpen(p, p.id === "panel-" + name));
     document.body.classList.toggle("sheet-open", !!name);
-    if (name === "garden" && window.Garden) Garden.render();
     if (name === "mood") renderMood();
     if (name === "poke") renderPoke();
     if (name === "quest") renderQuest();
@@ -707,7 +718,7 @@
     if (state.openPanel === "mood") renderMood();
     if (state.openPanel === "poke") renderPoke();
     if (state.openPanel === "quest" && !questEditing && !(document.activeElement && document.activeElement.id === "questInput")) renderQuest();
-    if (state.openPanel === "garden" && window.Garden && !quiet) Garden.render();
+    if (window.Garden && Garden.isOpen() && !quiet) Garden.render();
   }
 
   // ---------- 기록 ----------
@@ -1015,7 +1026,8 @@
       const t = ev.target;
       if (!t.closest) return;
       if (t.closest(".modal") || t.closest(".toast") || t.closest(".lightbox") || t.closest(".nav")) return;
-      if (!t.closest(".couple") && !t.closest("#plant")) hideBubble();
+      if (t.closest(".game")) return;
+      if (!t.closest(".couple") && !t.closest(".sc-plant")) hideBubble();
       if (state.openPanel && !t.closest("#menu") && !t.closest("#panels")) setPanel(null);
       if (state.openCard && !t.closest(".card")) setOpenCard(null);
     }, true);
@@ -1062,6 +1074,7 @@
       const me = t.closest("[data-me]");
       if (me) {
         silently(() => Store.setMe(me.dataset.me));
+        if (window.Garden) Garden.attend();
         toast(`${WHO[me.dataset.me]} 폰으로 기억할게요`);
         renderHome();
         if (state.openPanel) setPanel(state.openPanel);
@@ -1109,6 +1122,7 @@
     $("menu").addEventListener("click", (ev) => {
       const b = ev.target.closest(".tile");
       if (!b) return;
+      if (b.dataset.game) { play(b, "boing"); setPanel(null); if (window.Garden) Garden.open(b.dataset.game); return; }
       setPanel(state.openPanel === b.dataset.panel ? null : b.dataset.panel);
     });
     $("panels").addEventListener("click", (ev) => {
@@ -1482,15 +1496,16 @@
 
   // ---------- 시작 ----------
   // 풍경과 게임이 쓰는 공용 도구
-  window.HSD = { toast, burst, bubble: showBubble };
+  window.HSD = { toast, burst, bubble: showBubble, mood: (who) => Number(Store.pair("m:" + todayKey(), who)) || 0 };
   PIXEL.fill(document);
   bind();
   bindInstall();
   if (window.Garden) {
     Garden.bind({
-      toast, burstAt, play, silently, whoAsk, esc,
+      toast, burst, burstAt, play, silently, whoAsk, esc,
       onChanged() { renderTiles(); renderScenePlant(); },
     });
+    Garden.attend();
   }
   if (window.Scene) Scene.init();
   renderView();

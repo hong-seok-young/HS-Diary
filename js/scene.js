@@ -231,14 +231,21 @@
   function activity(d, w) {
     const h = d.getHours();
     const weekend = d.getDay() === 0 || d.getDay() === 6;
+    const out = !w.wet && !w.snowy;
+    const kite = weekend && out && (w.wind || 0) >= 1.5;
     if (h < 6) return { key: "sleep", label: "꿈나라" };
-    if (h === 23) return { key: "bedtime", label: "잘 시간" };
-    if (h >= 7 && h < 9) return { key: "breakfast", label: "아침 식사" };
+    if (h === 6) return { key: "stretch", label: "아침 체조" };
+    if (h === 7 || h === 8) return { key: "breakfast", label: "아침 식사" };
+    if (h === 10 || h === 11) return kite ? { key: "kite", label: "연날리기" } : { key: "read", label: "책 읽기" };
     if (h === 12) return { key: "lunch", label: "점심시간" };
+    if (h === 13 || h === 14) return kite ? { key: "kite", label: "연날리기" } : !w.wet ? { key: "walk", label: w.snowy ? "눈길 산책" : "산책" } : { key: "read", label: "책 읽기" };
     if (h === 15) return { key: "snack", label: "간식 시간" };
+    if (h === 16) return { key: "cafe", label: "카페 데이트" };
     if (h === 18) return { key: "dinner", label: "저녁 식사" };
-    if (h >= 20 && h < 23 && !w.wet && !w.snowy) return { key: "campfire", label: "모닥불" };
-    if (weekend && h >= 10 && h < 17 && !w.wet && !w.snowy && (w.wind || 0) >= 1.5) return { key: "kite", label: "연날리기" };
+    if (h === 19) return { key: "movie", label: "영화 보기" };
+    if (h === 20 || h === 21) return out ? { key: "campfire", label: "모닥불" } : { key: "movie", label: "영화 보기" };
+    if (h === 22) return out && w.kind !== "cloudy" ? { key: "stargaze", label: "별 보기" } : { key: "movie", label: "영화 보기" };
+    if (h === 23) return { key: "bedtime", label: "잘 시간" };
     return null;
   }
 
@@ -366,12 +373,16 @@
     scene.classList.toggle("golden", S.golden > 0.35 && S.dark < 0.6);
     scene.classList.toggle("sleeping", !!S.act && S.act.key === "sleep");
     scene.classList.toggle("sleepy", !!S.act && S.act.key === "bedtime");
+    scene.classList.toggle("stretch", !!S.act && S.act.key === "stretch");
 
     // 무지개: 비가 그치고 한 시간 안에 해가 있으면
     const rainbow = (wx && wx.lastWetAt && Date.now() - wx.lastWetAt < 90 * 60000 && !S.w.wet && S.dark < 0.3) || qs.get("rainbow") === "1";
     $("rainbow").classList.toggle("on", !!rainbow || rainbowEgg > Date.now());
 
     placeClouds();
+    paintSeason();
+    paintVillage();
+    syncCritters();
     renderChips();
     const key = [S.act && S.act.key, S.w.kind, S.season, S.specials.map((s) => s.key).join(","), S.dark > 0.55, Math.round(S.w.temp || 0) <= 3, Math.round(S.w.temp || 0) >= 28].join("|");
     if (force || key !== lastKey) { lastKey = key; renderProps(); }
@@ -427,6 +438,10 @@
     if (a === "dinner" || a === "campfire" || (S.dark > 0.55 && new Date(now()).getMonth() === 11)) html += `<span class="lights" style='background-image:${PIXEL.dataUri("lights", 2)}'></span>`;
     if (a === "campfire") back += `<span class="prop fire" style="${L(62)};bottom:10px">${PIXEL.sprite("fire1", 3)}${PIXEL.sprite("fire2", 3)}</span>`;
     if (a === "kite") html += `<span class="prop kite" id="kite" style="left:18%;top:14%">${PIXEL.sprite("kite", 3)}</span>`;
+    if (a === "read") html += prop("book", 3, `${L(-52)};bottom:30px`, "held") + prop("book2", 3, `${L(36)};bottom:30px`, "held b2");
+    if (a === "cafe") back += prop("cafeTable", 3, `${L(62)};bottom:12px`), html += prop("mug", 3, `${L(-60)};bottom:28px`, "held") + steam(`${L(-56)};bottom:46px`);
+    if (a === "movie") back += prop("screen", 3, `${L(66)};bottom:14px`, "screen"), html += prop("popcorn", 3, `${L(-56)};bottom:26px`, "held");
+    if (a === "stargaze") back += prop("telescope", 3, `${L(64)};bottom:12px`, "scope");
     // 특별한 날
     let hat = { him: "", her: "" };
     if (a === "sleep" || a === "bedtime") hat = { him: "nightCap", her: "nightCap" };
@@ -465,6 +480,250 @@
       html += `<i style="left:${x}%;top:${y}%;animation-delay:-${(i * 0.37).toFixed(2)}s"></i>`;
     }
     box.innerHTML = html;
+  }
+
+  // ---------- 배경 마을 ----------
+  const TREE_COLORS = {
+    spring: { L: "#ffc4d6", D: "#ff9ec0" },
+    summer: { L: "#86cc86", D: "#66b46e" },
+    autumn: { L: "#f5a56b", D: "#e0823f" },
+  };
+  const GROUND_COLORS = {
+    spring: { D: "#7fca7f", G: "#a2dc95", g: "#8fd28a" },
+    summer: { D: "#74c178", G: "#95d590", g: "#84cb84" },
+    autumn: { D: "#b9b36a", G: "#d2cd86", g: "#c4bf76" },
+    winter: { D: "#bcd3c2", G: "#e3eee6", g: "#d2e2d6" },
+  };
+  const HILL_COLORS = { spring: "#cdeec0", summer: "#c4e8b6", autumn: "#e2dba0", winter: "#e6f0ea" };
+  function el(tag, cls, html, style) {
+    const e = document.createElement(tag);
+    e.className = cls;
+    if (html) e.innerHTML = html;
+    if (style) e.setAttribute("style", style);
+    return e;
+  }
+  function buildVillage() {
+    const hills = scene.querySelector(".sc-hills");
+    const house = PIXEL.rows("house");
+    const house2 = PIXEL.rows("house2");
+    const lit = (c) => Object.assign({}, c, { G: "#ffe08f" });
+    const h1 = el("span", "house h1", PIXEL.draw(house.rows, house.colors, 2, "px day") + PIXEL.draw(house.rows, lit(house.colors), 2, "px nite") + '<i class="smoke"><b></b><b></b><b></b></i>');
+    const h2 = el("span", "house h2", PIXEL.draw(house2.rows, house2.colors, 2, "px day") + PIXEL.draw(house2.rows, lit(house2.colors), 2, "px nite") + '<i class="smoke"><b></b><b></b><b></b></i>');
+    [el("div", "sc-mountains", "", ""), h1, h2].forEach((x) => scene.insertBefore(x, hills));
+    scene.insertBefore(el("div", "sc-fence", "", ""), hills.nextSibling);
+    scene.insertBefore(el("span", "sc-lamp", PIXEL.sprite("lamp", 2)), scene.querySelector(".sc-ground").nextSibling);
+    scene.insertBefore(el("div", "sc-glow"), $("couple"));
+    scene.insertBefore(el("div", "sc-critters", "", ""), $("props"));
+  }
+  let seasonDrawn = "";
+  function paintSeason() {
+    const key = S.season + (S.w.snowy ? "-snow" : "");
+    if (key === seasonDrawn) return;
+    seasonDrawn = key;
+    const winter = S.season === "winter";
+    scene.querySelector(".sc-mountains").style.backgroundImage = PIXEL.dataUri(winter ? "mountainsSnow" : "mountains", 3);
+    scene.querySelector(".sc-fence").style.backgroundImage = PIXEL.dataUri("fence", 2, winter ? { F: "#e8d9c0" } : null);
+    scene.querySelector(".sc-ground").style.backgroundImage = PIXEL.dataUri("ground", 3, GROUND_COLORS[S.season]);
+    scene.querySelector(".sc-ground").style.backgroundColor = GROUND_COLORS[S.season].G;
+    scene.querySelector(".sc-hills").style.backgroundImage = PIXEL.dataUri("hills", 3, { G: HILL_COLORS[S.season] });
+    scene.querySelectorAll(".sc-tree").forEach((t) => {
+      const scale = t.classList.contains("t1") ? 3 : 2;
+      if (winter) {
+        const r = PIXEL.rows("treeBare");
+        t.innerHTML = PIXEL.draw(r.rows, r.colors, scale);
+      } else {
+        const r = PIXEL.rows("tree");
+        t.innerHTML = PIXEL.draw(r.rows, Object.assign(r.colors, TREE_COLORS[S.season]), scale);
+      }
+    });
+    const flowers = { spring: ["flowerA", "flowerB", "flowerC"], summer: ["flowerB", "flowerB", "flowerA"], autumn: ["flowerC", "flowerC", "flowerB"] }[S.season];
+    scene.querySelectorAll(".sc-flower").forEach((f, i) => {
+      f.style.display = winter ? "none" : "";
+      if (flowers) f.innerHTML = PIXEL.sprite(flowers[i % 3], 2);
+    });
+  }
+  function paintVillage() {
+    const night = S.dark > 0.45;
+    scene.classList.toggle("lit", night);
+    const m = scene.querySelector(".sc-mountains");
+    m.style.filter = `brightness(${(1 - S.dark * 0.55).toFixed(2)}) saturate(${(1 - S.dark * 0.4).toFixed(2)})`;
+    m.style.opacity = S.w.kind === "fog" ? "0.25" : S.w.wet || S.w.snowy ? "0.55" : "1";
+    scene.classList.toggle("smoky", (S.w.temp != null && S.w.temp < 12) || S.season === "winter");
+    const glow = scene.querySelector(".sc-glow");
+    glow.style.opacity = String(clamp((S.dark - 0.35) * 1.6, 0, 1));
+    const wind = S.w.wind || 0;
+    scene.dataset.wind = wind >= 7 ? "windy" : wind >= 2.5 ? "breeze" : "calm";
+  }
+
+  // ---------- 동물 ----------
+  // 정해진 범위 안에서 목표점을 바꿔 가며 돌아다녀요.
+  const critters = [];
+  function addCritter(kind, opts) {
+    const box = scene.querySelector(".sc-critters");
+    const frames = opts.frames || [kind];
+    const e = el(opts.button ? "button" : "span", "critter " + kind, frames.map((f) => PIXEL.sprite(f, opts.scale || 2)).join(""));
+    if (frames.length > 1) e.classList.add("anim");
+    box.appendChild(e);
+    const c = Object.assign({ kind, el: e, x: opts.x, y: opts.y, tx: opts.x, ty: opts.y, speed: 30, rest: 0, face: 1 }, opts);
+    critters.push(c);
+    return c;
+  }
+  function clearCritters(kind) {
+    for (let i = critters.length - 1; i >= 0; i--) {
+      if (!kind || critters[i].kind === kind) { critters[i].el.remove(); critters.splice(i, 1); }
+    }
+  }
+  function hasCritter(kind) {
+    return critters.some((c) => c.kind === kind);
+  }
+  function treeTop(sel) {
+    const t = scene.querySelector(sel);
+    if (!t) return null;
+    const sr = scene.getBoundingClientRect();
+    const r = t.getBoundingClientRect();
+    return { x: r.left - sr.left, y: r.top - sr.top, w: r.width, h: r.height };
+  }
+  function syncCritters() {
+    const day = S.dark < 0.35;
+    const night = S.dark > 0.6;
+    const dry = !S.w.wet && !S.w.snowy;
+    const gt = groundTop();
+    const want = {
+      fly: day && dry && (S.season === "spring" || S.season === "summer") ? 2 : 0,
+      dfly: day && dry && S.season === "autumn" ? 2 : 0,
+      bat: S.dark > 0.3 && S.dark < 0.85 && !S.rising && (S.season === "summer" || S.season === "autumn") && dry ? 2 : 0,
+      frog: S.w.wet ? 1 : 0,
+      snail: day && (S.w.kind === "drizzle" || (wx && wx.lastWetAt && Date.now() - wx.lastWetAt < 3 * 3600000)) ? 1 : 0,
+      owl: night ? 1 : 0,
+      squirrel: day && S.season === "autumn" ? 1 : 0,
+    };
+    Object.keys(want).forEach((k) => {
+      const have = critters.filter((c) => c.kind === k).length;
+      if (have > want[k]) clearCritters(k);
+      for (let i = have; i < want[k]; i++) {
+        if (k === "fly") addCritter("fly", { frames: ["fly1", "fly2"], x: rand(20, S.W - 20), y: rand(gt - 50, gt - 10), speed: 28, area: [10, S.W - 10, gt - 70, gt - 6] });
+        if (k === "dfly") addCritter("dfly", { frames: ["dfly"], x: rand(20, S.W - 20), y: rand(30, gt - 30), speed: 70, dart: true, area: [10, S.W - 10, 24, gt - 20] });
+        if (k === "bat") addCritter("bat", { frames: ["bat1", "bat2"], x: rand(20, S.W - 20), y: rand(14, 50), speed: 60, area: [0, S.W, 10, S.H * 0.4] });
+        if (k === "frog") addCritter("frog", { button: true, x: S.W * 0.3, y: gt + 6, speed: 0, hop: true, scale: 2 });
+        if (k === "snail") addCritter("snail", { button: true, x: S.W * 0.85, y: gt + 10, speed: 3, area: [S.W * 0.1, S.W * 0.9, gt + 10, gt + 10], scale: 2 });
+        if (k === "owl") { const t = treeTop(".sc-tree.t2"); if (t) addCritter("owl", { button: true, x: t.x + t.w / 2 - 7, y: t.y - 10, speed: 0, scale: 2 }); }
+        if (k === "squirrel") { const t = treeTop(".sc-tree.t1"); if (t) addCritter("squirrel", { button: true, x: t.x + t.w / 2, y: t.y + 4, speed: 0, perch: t, scale: 2 }); }
+      }
+    });
+    if (!S.dogDone && day && dry && (new Date(now()).getDay() % 6 === 0) && !hasCritter("dog") && Math.random() < 0.5) {
+      S.dogDone = true;
+      setTimeout(() => { if (!hasCritter("dog")) addCritter("dog", { button: true, frames: ["dog1", "dog2"], x: -30, y: groundTop() + 4, tx: S.W + 40, ty: groundTop() + 4, speed: 36, walkOff: true, scale: 3 }); }, rand(2000, 9000));
+    }
+  }
+  function stepCritters(dt, time) {
+    for (let i = critters.length - 1; i >= 0; i--) {
+      const c = critters[i];
+      if (c.hop) {
+        c.rest -= dt;
+        if (c.rest <= 0) { c.rest = rand(2, 5); play(c.el, "hop"); }
+      } else if (c.speed > 0) {
+        const dx = c.tx - c.x, dy = c.ty - c.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 2) {
+          if (c.walkOff) { c.el.remove(); critters.splice(i, 1); continue; }
+          const a = c.area;
+          c.tx = rand(a[0], a[1]);
+          c.ty = rand(a[2], a[3]);
+        } else {
+          const v = c.speed * (c.dart ? (Math.sin(time * 3 + i) > 0.6 ? 2.4 : 0.4) : 1);
+          c.x += (dx / d) * v * dt + (S.gust * 0.05 * dt);
+          c.y += (dy / d) * v * dt + (c.kind === "fly" ? Math.sin(time * 6 + i) * 10 * dt : 0);
+          if (Math.abs(dx) > 1) c.face = dx < 0 ? -1 : 1;
+        }
+      } else if (c.perch && c.kind === "squirrel") {
+        // 다람쥐는 가끔 나무에서 내려왔다가 올라가요.
+        c.rest -= dt;
+        if (c.rest <= 0) {
+          c.rest = rand(5, 10);
+          const down = c.y < c.perch.y + c.perch.h * 0.5;
+          c.y = down ? groundTop() + 2 : c.perch.y + 4;
+          c.x = c.perch.x + c.perch.w / 2 + (down ? rand(6, 26) : 0);
+          c.el.classList.toggle("down", down);
+        }
+      }
+      c.el.style.transform = `translate(${Math.round(c.x)}px, ${Math.round(c.y)}px) scaleX(${c.kind === "dog" || c.kind === "snail" ? -c.face : c.face})`;
+    }
+  }
+  function tapCritter(c, x, y) {
+    const H = window.HSD || {};
+    play(c.el, "boing");
+    if (c.kind === "frog") { play(c.el, "hop"); if (H.bubble) H.bubble("개굴", "him"); for (let k = 0; k < 6; k++) spawn({ t: "splash", x: x + rand(-6, 6), y: y + 4, vx: rand(-60, 60), vy: rand(-140, -60), life: 0.5 }); }
+    if (c.kind === "owl") { if (H.bubble) H.bubble("부엉", "her"); shootingStar(x + 30, y - 10); }
+    if (c.kind === "squirrel") { if (H.bubble) H.bubble("도토리 줄게", "her"); for (let k = 0; k < 3; k++) spawnLeaf(x + rand(-6, 6), y, rand(-60, 60), -rand(40, 100)); }
+    if (c.kind === "snail") { if (H.bubble) H.bubble("느릿느릿", "him"); c.el.classList.add("hide"); setTimeout(() => c.el.classList.remove("hide"), 2500); }
+    if (c.kind === "dog") { if (H.bubble) H.bubble("멍멍!", "him"); burst(x, y - 10, 6, "heart"); c.speed = 70; }
+  }
+
+  // ---------- 감정 표시 ----------
+  let emoteT = 4;
+  function emote(who, kind) {
+    const p = charPos(who);
+    if (!p) return;
+    const e = el("span", "emote", PIXEL.sprite(kind, 3), `left:${Math.round(p.x + (who === "him" ? -22 : 10))}px;top:${Math.round(p.y - 86)}px`);
+    $("props").appendChild(e);
+    e.addEventListener("animationend", () => e.remove());
+  }
+  function pickEmote(who) {
+    const w = S.w;
+    const H = window.HSD || {};
+    const mood = H.mood ? H.mood(who) : 0;
+    const pool = [];
+    if (S.act && (S.act.key === "sleep" || S.act.key === "bedtime")) return null;
+    if (w.temp != null && w.temp >= 28) pool.push("emoSweat", "emoSweat");
+    if (w.temp != null && w.temp <= 0) pool.push("emoDots");
+    if (w.kind === "thunder") pool.push("emoBang", "emoBang");
+    if (w.wet) pool.push("emoDots", "emoQ");
+    if (S.celebrate) pool.push("emoStar", "emoHeart", "emoHeart");
+    if (mood === 1 || mood === 2) pool.push("emoHeart", "emoNote", "emoNote");
+    if (mood === 4 || mood === 5) pool.push("emoSweat", "emoDots");
+    if (S.act && ["walk", "cafe", "movie", "stargaze", "kite"].includes(S.act.key)) pool.push("emoHeart", "emoNote");
+    pool.push("emoHeart", "emoNote", "emoStar", "emoQ");
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function stepEmotes(dt) {
+    emoteT -= dt;
+    if (emoteT > 0) return;
+    emoteT = rand(6, 13);
+    const who = Math.random() < 0.5 ? "him" : "her";
+    const k = pickEmote(who);
+    if (k) emote(who, k);
+    if (S.w.temp != null && S.w.temp <= 0) { const b = document.querySelector(`.bob[data-who="${who}"]`); if (b) play(b, "shiver"); }
+  }
+
+  // ---------- 산책: 둘이 왔다 갔다 ----------
+  let walkX = 0;
+  let walkDir = 1;
+  function stepWalk(dt, time) {
+    const couple = $("couple");
+    if (!couple) return;
+    const walking = S.act && S.act.key === "walk";
+    const target = walking ? Math.sin(time / 7) * Math.min(70, S.W * 0.18) : 0;
+    const prev = walkX;
+    walkX += (target - walkX) * Math.min(1, dt * 1.5);
+    const v = walkX - prev;
+    if (Math.abs(v) > 0.02) walkDir = v < 0 ? -1 : 1;
+    couple.style.transform = `translateX(calc(-50% + ${walkX.toFixed(1)}px))`;
+    couple.classList.toggle("walking", walking && Math.abs(v) > 0.02);
+    couple.classList.toggle("face-left", walking && walkDir < 0);
+  }
+
+  // ---------- 별자리 (별 보기) ----------
+  const CONST = [[0.62, 0.12], [0.68, 0.2], [0.75, 0.16], [0.8, 0.26], [0.88, 0.22], [0.84, 0.34]];
+  function drawConstellation(ctx, time) {
+    if (!S.act || S.act.key !== "stargaze" || S.dark < 0.6) return;
+    const pts = CONST.map(([x, y]) => [x * S.W, y * S.H]);
+    ctx.fillStyle = "rgba(255,247,214," + (0.35 + 0.15 * Math.sin(time * 2)).toFixed(2) + ")";
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+      const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4);
+      for (let k = 0; k <= n; k++) ctx.fillRect(Math.round(lerp(x0, x1, k / n)), Math.round(lerp(y0, y1, k / n)), 1, 1);
+    }
+    pts.forEach(([x, y]) => { ctx.fillStyle = "#fff7d6"; ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 3, 3); });
   }
 
   // ---------- 파티클 ----------
@@ -612,6 +871,9 @@
     });
     stepBirds(dt, time);
     stepCat(dt, time);
+    stepCritters(dt, time);
+    stepEmotes(dt);
+    stepWalk(dt, time);
   }
 
   function addSnow(x, amt) {
@@ -740,6 +1002,7 @@
         }
       }
     }
+    drawConstellation(ctx, time);
     // 번개
     if (S.w.kind === "thunder" && Math.random() < 1 / 420) flash();
   }
@@ -831,6 +1094,21 @@
     const x = ev.clientX - sr.left;
     const y = ev.clientY - sr.top;
     const H = window.HSD || {};
+    const crit = t.closest(".critter");
+    if (crit) {
+      const c = critters.find((k) => k.el === crit);
+      if (c) tapCritter(c, x, y);
+      return;
+    }
+    if (t.closest(".house")) {
+      const h = t.closest(".house");
+      play(h, "boing");
+      for (let k = 0; k < 5; k++) spawn({ t: "puff", x: x + rand(-4, 4), y: y - 10, vx: rand(-20, 20), vy: rand(-60, -30), life: 1 });
+      if (H.bubble) H.bubble(S.dark > 0.45 ? "불 켜진 집 따뜻해 보여" : "저기 살고 싶다", "her");
+      return;
+    }
+    if (t.closest(".sc-lamp")) { scene.classList.toggle("lamp-off"); play(t.closest(".sc-lamp"), "boing"); return; }
+    if (t.closest(".emote")) { burst(x, y, 4, "heart"); return; }
     if (t.closest(".cat")) {
       const c = S.cat;
       if (c) { c.t = 0; if (c.state === "leave") { c.state = "sit"; c.el.classList.add("sitting"); c.el.classList.remove("leaving"); } }
@@ -1041,6 +1319,7 @@
     back = $("fxBack");
     fctx = front.getContext("2d");
     bctx = back.getContext("2d");
+    buildVillage();
     resize();
     restore();
     update(true);
@@ -1106,6 +1385,7 @@
       if (S.phase && byPhase[S.phase.key]) out.push(byPhase[S.phase.key]);
       return out;
     },
+    emote,
     _state: S,
   };
 })();

@@ -590,6 +590,214 @@
     snow: { colors: { W: "#ffffff" }, rows: [".W.", "WWW", ".W."] },
     petal: { colors: { P: "#ffd6e3" }, rows: ["PP.", "PPP", ".PP"] },
     firefly: { colors: { Y: "#fff3a0" }, rows: ["YY", "YY"] },
+    // ---- 배경 ----
+    treeBare: {
+      colors: { T: "#8d6748", W: "#ffffff" },
+      rows: [
+        "..W..W.W..",
+        "..T.WT.T..",
+        "W.T.T..T.W",
+        "T..TT.T..T",
+        ".T.TTT..T.",
+        "..T.TTTT..",
+        "...TTT....",
+        "....TT....",
+        "....TT....",
+        "....TT....",
+        "....TT....",
+        "...TTTT...",
+      ],
+    },
+    mountains: {
+      colors: { M: "#9fb6cf", D: "#8aa3bf", S: "#ffffff" },
+      rows: [
+        "..........MM..................................",
+        ".........MMMM.....................M...........",
+        "........MMMDMM...................MMM..........",
+        ".......MMMMDDMM.................MMMMM.........",
+        "......MMMMMMDDMM.......M.......MMMMDMM........",
+        ".....MMMMMMMMDDMM.....MMM.....MMMMMMDMM.......",
+        "....MMMMMMMMMMDDMM...MMMMM...MMMMMMMMDMM......",
+        "...MMMMMMMMMMMMMDMM.MMMMMMM.MMMMMMMMMMDMM.....",
+        "..MMMMMMMMMMMMMMMDMMMMMMMMMMMMMMMMMMMMMDMMM...",
+        ".MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.",
+        "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+      ],
+    },
+    mountainsSnow: {
+      colors: { M: "#a8b8cc", D: "#93a6be", S: "#ffffff" },
+      rows: [
+        "..........SS..................................",
+        ".........SSSS.....................S...........",
+        "........SSSDSS...................SSS..........",
+        ".......MSMMDDMM.................SSSSS.........",
+        "......MMMMMMDDMM.......S.......MMSMDMM........",
+        ".....MMMMMMMMDDMM.....SSS.....MMMMMMDMM.......",
+        "....MMMMMMMMMMDDMM...MMSMM...MMMMMMMMDMM......",
+        "...MMMMMMMMMMMMMDMM.MMMMMMM.MMMMMMMMMMDMM.....",
+        "..MMMMMMMMMMMMMMMDMMMMMMMMMMMMMMMMMMMMMDMMM...",
+        ".MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM.",
+        "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+      ],
+    },
+    house: {
+      colors: { R: "#e3846a", D: "#c96a52", W: "#f3ead6", B: "#9a785a", G: "#6a7a9c", C: "#8d6748" },
+      rows: [
+        "..........CC....",
+        "....RRRRRRCCR...",
+        "...RRRRRRRRRRR..",
+        "..RRRRRRRRRRRRR.",
+        ".DDDDDDDDDDDDDDD",
+        "..WWWWWWWWWWWW..",
+        "..WGGWWWWWWGGW..",
+        "..WGGWWBBWWGGW..",
+        "..WWWWWBBWWWWW..",
+        "..WWWWWBBWWWWW..",
+      ],
+    },
+    house2: {
+      colors: { R: "#7fa3c9", D: "#6a8cb2", W: "#fff6e6", B: "#9a785a", G: "#6a7a9c", C: "#8d6748" },
+      rows: [
+        "....CC......",
+        "..RRCCRR....",
+        ".RRRRRRRR...",
+        "RRRRRRRRRR..",
+        "DDDDDDDDDDD.",
+        ".WWWWWWWWW..",
+        ".WGGWWWGGW..",
+        ".WGGWBWGGW..",
+        ".WWWWBWWWW..",
+      ],
+    },
+    lamp: {
+      colors: { L: "#5b4638", Y: "#fff3a0", G: "#e3dacb" },
+      rows: [
+        ".LLL.",
+        "LGYGL",
+        "LYYYL",
+        ".LLL.",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        "..L..",
+        ".LLL.",
+      ],
+    },
+    fence: {
+      colors: { F: "#d9b98f", D: "#b9946a" },
+      rows: [".F......F...", "FFF....FFF..", "FFFFFFFFFFFF", ".F......F...", "FFFFFFFFFFFF", ".F......F...", ".D......D..."],
+    },
+    // ---- 동물 ----
+    squirrel: {
+      colors: { S: "#c97a3c", T: "#e0a45f", E: "#5b4638", W: "#fff6ee" },
+      rows: ["TT......", "TTT.SS..", "TTT.SES.", ".TTSSSSS", "..SSSSW.", "..SSSS..", "..S..S.."],
+    },
+    owl: {
+      colors: { O: "#9a785a", D: "#6e5340", Y: "#ffd978", E: "#5b4638", B: "#f5a56b" },
+      rows: ["O.....O", "OOOOOOO", "OYEOYEO", "OOOBOOO", "ODOOODO", "ODDODDO", ".OOOOO.", "..B.B.."],
+    },
+    bat1: { colors: { B: "#3d3550" }, rows: ["B.....B", "BB.B.BB", ".BBBBB.", "...B..."] },
+    bat2: { colors: { B: "#3d3550" }, rows: [".......", "...B...", "BBBBBBB", "B..B..B"] },
+    frog: {
+      colors: { G: "#6cc07a", D: "#4e9a5c", E: "#5b4638", W: "#ffffff" },
+      rows: [".W..W.", "GEGGEG", "GGGGGG", "DGGGGD", "D.DD.D"],
+    },
+    snail: {
+      colors: { S: "#c99a6e", D: "#9a785a", B: "#e3dacb", E: "#5b4638" },
+      rows: ["..SSS..", ".SDDSS.", "E.SDSS.", "EBBBBBB"],
+    },
+    dog1: {
+      colors: { D: "#e0b07a", B: "#b9813f", E: "#5b4638", P: "#ff9ec0" },
+      rows: ["BB.........", "BDD.......D", "DEDD.....D.", "DDDDDDDDDD.", ".PDDDDDDDD.", "..DDBDDBDD.", "..D.D..D.D."],
+    },
+    dog2: {
+      colors: { D: "#e0b07a", B: "#b9813f", E: "#5b4638", P: "#ff9ec0" },
+      rows: ["BB.........", "BDD......D.", "DEDD.....D.", "DDDDDDDDDD.", ".PDDDDDDDD.", "..DDBDDBDD.", ".D.D....D.D"],
+    },
+    // ---- 할 일 소품 ----
+    book: { colors: { R: "#e86a6a", W: "#fff6ee", D: "#c9504f" }, rows: ["RRRWRRR", "RWWWWWR", "RWWWWWR", "DDDDDDD"] },
+    book2: { colors: { R: "#7fb2e5", W: "#fff6ee", D: "#5f8fc0" }, rows: ["RRRWRRR", "RWWWWWR", "RWWWWWR", "DDDDDDD"] },
+    popcorn: { colors: { W: "#fff6ee", Y: "#ffe08f", R: "#e86a6a" }, rows: [".WYW.", "WYWYW", "RWRWR", "RWRWR", ".RWR."] },
+    screen: {
+      colors: { F: "#5b4638", S: "#cfe6ff", L: "#ffffff", B: "#7fb2e5" },
+      rows: ["FFFFFFFFFFFF", "FSSSSLSSSSSF", "FSBBSSSSBBSF", "FSSSSSSSSSSF", "FSSBBBBBBSSF", "FFFFFFFFFFFF", ".....FF.....", "....FFFF...."],
+    },
+    telescope: {
+      colors: { T: "#7fb2e5", D: "#5f8fc0", L: "#5b4638" },
+      rows: ["......TT", ".....TTD", "....TTD.", "...TTD..", "..TTD...", "...L....", "..L.L...", ".L...L..", "L.....L."],
+    },
+    cafeTable: { colors: { T: "#ffffff", L: "#9a785a", C: "#ff9ec0" }, rows: ["..C...C..", "TTTTTTTTT", "....L....", "....L....", "...LLL..."] },
+    // ---- 감정 표시 ----
+    emoHeart: { colors: { P: "#ff86ad" }, rows: [".P.P.", "PPPPP", ".PPP.", "..P.."] },
+    emoNote: { colors: { N: "#5b4638" }, rows: ["..NNN", "..N.N", "..N.N", "NNN.N", "NN..."] },
+    emoSweat: { colors: { B: "#7fb2e5", W: "#dff3ff" }, rows: ["..B..", ".BWB.", "BWBBB", ".BBB."] },
+    emoQ: { colors: { Q: "#ee9453" }, rows: [".QQQ.", "Q...Q", "...Q.", "..Q..", ".....", "..Q.."] },
+    emoBang: { colors: { Q: "#e3504b" }, rows: ["Q", "Q", "Q", ".", "Q"] },
+    emoDots: { colors: { D: "#5b4638" }, rows: ["D.D.D"] },
+    emoStar: { colors: { Y: "#ffd978" }, rows: ["..Y..", "YYYYY", ".YYY.", "Y.Y.Y"] },
+    // ---- 게임 ----
+    spray: { colors: { G: "#86cc86", D: "#4e9a5c", W: "#ffffff", R: "#e3504b" }, rows: ["..RR.", ".W...", "GGGG.", "GWWG.", "GGGG.", "GDDG.", "GGGG."] },
+    fert2: { colors: { P: "#b39ddb", D: "#8e7cc3", Y: "#ffd978" }, rows: ["..PP..", "...P..", "..PPP.", ".PYYPP", "PPYYPP", "PPPPPP", ".PPPP."] },
+    basketBig: { colors: { B: "#c99a6e", D: "#9a785a", P: "#ff86ad" }, rows: ["..P..P..P..", "BDBDBDBDBDB", "BBBBBBBBBBB", ".BDBDBDBDB.", "..BBBBBBB.."] },
+    goldHeart: { colors: { Y: "#ffd978", O: "#f5b94e", W: "#fff6d6" }, rows: [".YY.YY.", "YWYYYYO", "YYYYYYO", ".YYYYO.", "..YYO..", "...O..."] },
+    stamp: { colors: { P: "#ff86ad", D: "#f06796" }, rows: [".PP.PP.", "PPPPPPD", "PPPPPPD", ".PPPPD.", "..PPD..", "...D..."] },
+    // ---- 게임: 동물 친구 ----
+    rabbit: {
+      colors: { W: "#ffffff", P: "#ffb9cf", E: "#5b4638", G: "#e3dacb" },
+      rows: [".W..W...", ".WP.WP..", ".WP.WP..", "WWWWWW..", "WEWWEW..", "WWPPWW.W", ".WWWWWWW", ".WGWWGW.", ".W..W..."],
+    },
+    hamster: {
+      colors: { O: "#f5c08a", W: "#fff6ee", E: "#5b4638", P: "#ff9ec0" },
+      rows: [".O....O.", "OOOOOOOO", "OEOOOOEO", "OOWPPWOO", "OWWWWWWO", "OWWWWWWO", ".OO..OO."],
+    },
+    petDog: {
+      colors: { D: "#e0b07a", B: "#b9813f", E: "#5b4638", P: "#ff9ec0", W: "#fff6ee" },
+      rows: ["B......B", "BDDDDDDB", "BDEDDEDB", ".DDWWDD.", ".DWEEWD.", ".DDPPDD.", ".DDDDDD.", ".D.DD.D."],
+    },
+    petCat: {
+      colors: { C: "#f5a56b", D: "#e0823f", E: "#5b4638", P: "#ff9ec0", W: "#fff6ee" },
+      rows: ["C......C", "CC....CC", "CCCCCCCC", "CECCCCEC", "CCWPPWCC", ".CCCCCC.", ".CDCCDC.", ".C.CC.C."],
+    },
+    // ---- 게임: 도구 ----
+    scissors: { colors: { S: "#c9cdd4", R: "#e86a6a", D: "#9aa1ab" }, rows: ["S.....S", ".S...S.", "..S.S..", "...D...", "..R.R..", ".R...R.", ".RR.RR."] },
+    stake: { colors: { W: "#c99a6e", D: "#9a785a", G: "#86cc86" }, rows: ["WW", "WD", "WD", "WD", "WD", "WD", "WD", "WD", ".D"] },
+    hammer: { colors: { H: "#8d9aaa", W: "#c99a6e" }, rows: ["HHHHH", "HHHHH", "..W..", "..W..", "..W..", "..W.."] },
+    bottle: { colors: { G: "#86cc86", L: "#c9f0c9", C: "#c99a6e", W: "#ffffff" }, rows: [".CC.", ".GG.", "GLWG", "GLGG", "GGGG", "GGGG"] },
+    note: { colors: { N: "#5b4638" }, rows: ["..NN", "..NN", "..N.", "..N.", "NNN.", "NN.."] },
+    tag: { colors: { T: "#ffe9ad", D: "#e0b040", S: "#a38c78" }, rows: ["S.......", ".TTTTTT.", "TTTTTTTD", "TTTTTTTD", ".DDDDDD."] },
+    letter: { colors: { W: "#fff6ee", P: "#ff86ad", L: "#e3dacb" }, rows: ["WWWWWWWWW", "WPWWWWWPW", "WWPWWWPWW", "WWWPPPWWW", "WWWWWWWWW", "LLLLLLLLL"] },
+    bowlPet: { colors: { B: "#7fb2e5", D: "#5f8fc0", F: "#c99a6e" }, rows: [".FFFFF.", "BBBBBBB", ".BDDDB.", "..BBB.."] },
+    ball: { colors: { R: "#e86a6a", W: "#ffffff" }, rows: [".RR.", "RWRR", "RRRW", ".RR."] },
+    shovel: { colors: { S: "#c9cdd4", W: "#c99a6e" }, rows: ["..W..", "..W..", "..W..", ".SSS.", "SSSSS", ".SSS.", "..S.."] },
+    // ---- 게임: 요리 ----
+    cookie: { colors: { C: "#e0b07a", D: "#9a6a3f" }, rows: [".CCCC.", "CCDCCC", "CDCCDC", "CCCDCC", ".CCCC."] },
+    jam: { colors: { G: "#ffffff", R: "#e8505b", L: "#ff9ec0", C: "#f5f0e6" }, rows: [".CCCC.", "GGGGGG", "GRRRRG", "GRLRRG", "GRRRRG", ".GGGG."] },
+    pasta: { colors: { P: "#ffe08f", R: "#e8604b", W: "#ffffff", G: "#86cc86" }, rows: ["..RGR...", ".PRPPRP.", "WPPPPPPW", "WWWWWWWW", ".WWWWWW."] },
+    tea: { colors: { W: "#ffffff", R: "#e8505b", P: "#ff9ec0" }, rows: ["..P....", "WWWWW..", "WRRRWWW", "WRRRW.W", "WWWWWWW", ".WWW..."] },
+    bouquet: { colors: { P: "#ff86ad", Y: "#ffd978", W: "#ffffff", G: "#66b46e", R: "#e8505b" }, rows: [".PYP.", "YPWPY", ".RPY.", "..G..", ".GGG.", ".GGG.", "..G.."] },
+    ricecake: { colors: { W: "#ffffff", P: "#ffc4d6", G: "#86cc86" }, rows: ["..G...", ".PPPP.", "PPWPPP", "PPPPPP", ".PPPP."] },
+    pie: { colors: { C: "#e0b07a", D: "#b9813f", R: "#e8505b" }, rows: [".CDCDC.", "CRCRCRC", "CCCCCCC", ".DDDDD."] },
+    charm: { colors: { G: "#66b46e", L: "#86cc86", Y: "#ffd978", R: "#e86a6a" }, rows: ["..R..", ".LYL.", "LLGLL", ".LGL.", "..G.."] },
+    cactusGift: { colors: { G: "#66b46e", W: "#ffffff", P: "#ff9ec0", O: "#d9875a" }, rows: ["..P..", ".GGG.", "GWGWG", ".GGG.", "OOOOO", ".OOO."] },
+    rainbowCake: { colors: { R: "#ff86ad", O: "#f5a56b", Y: "#ffd978", G: "#86cc86", B: "#7fb2e5", W: "#ffffff" }, rows: ["..W.W..", "WWWWWWW", "RRRRRRR", "OOOOOOO", "YYYYYYY", "GGGGGGG", "BBBBBBB"] },
+    seedBag: { colors: { B: "#e0b07a", D: "#b9813f", G: "#86cc86" }, rows: ["..DD..", ".BBBB.", "BBGBBB", "BGGGBB", "BBGBBB", ".BBBB."] },
+    // ---- 게임: 꾸미기 ----
+    bench: { colors: { W: "#c99a6e", D: "#9a785a" }, rows: ["WWWWWWWWWWWW", "............", "WWWWWWWWWWWW", "DDDDDDDDDDDD", ".D........D.", ".D........D."] },
+    fountain: { colors: { B: "#7fb2e5", L: "#dff3ff", S: "#c9cdd4", D: "#9aa1ab" }, rows: ["....L....", "...LBL...", "....B....", "..SSSSS..", ".SBBBBBS.", "SSSSSSSSS", ".DDDDDDD."] },
+    windmill: { colors: { W: "#fff6ee", R: "#e3846a", B: "#c99a6e", D: "#9a785a" }, rows: ["W...W", ".W.W.", "..R..", ".W.W.", "W.B.W", "..B..", ".BBB.", ".BDB.", ".BBB."] },
+    mailbox: { colors: { R: "#e86a6a", D: "#c9504f", W: "#c99a6e", Y: "#ffd978" }, rows: [".RRRR.", "RRRRRY", "RDDDRY", "RRRRR.", "..W...", "..W...", "..W..."] },
+    birdhouse: { colors: { R: "#7fb2e5", W: "#f3ead6", E: "#5b4638", P: "#c99a6e" }, rows: ["..RR..", ".RRRR.", "RRRRRR", ".WWWW.", ".WEEW.", ".WWWW.", "..P...", "..P..."] },
+    lantern: { colors: { R: "#e86a6a", Y: "#ffd978", D: "#5b4638" }, rows: ["..D..", ".RRR.", "RYYYR", "RYYYR", ".RRR.", "..D.."] },
+    swing: { colors: { W: "#c99a6e", R: "#a38c78", S: "#ff9ec0" }, rows: ["WWWWWWWWW", "W.R...R.W", "W.R...R.W", "W.R...R.W", "W.SSSSS.W", "W.......W", "W.......W"] },
+    signpost: { colors: { W: "#c99a6e", D: "#9a785a", T: "#fff6ee" }, rows: ["WWWWWWW", "WTTTTTW", "WWWWWWW", "...D...", "...D...", "...D..."] },
+    flowerbed: { colors: { P: "#ff86ad", Y: "#ffd978", B: "#b39ddb", G: "#66b46e", O: "#c99a6e" }, rows: [".P.Y.B.P.", "PGYGBGPGY", ".G.G.G.G.", "OOOOOOOOO"] },
     // ---- 풍경 소품 ----
     umbrella: {
       colors: { P: "#ff9ec0", D: "#f06796", W: "#ffe3ec", H: "#8d6748" },
@@ -831,6 +1039,11 @@
   }
 
   window.PIXEL = {
+    // 그림 원본 (색을 바꿔 다시 그릴 때 써요)
+    rows(name) {
+      const s = SPRITES[name];
+      return s ? { rows: s.rows.slice(), colors: Object.assign({}, s.colors) } : null;
+    },
     draw(rows, colors, scale, cls) {
       return toSvg(rows, colors, scale || 3, cls || "px px-sprite");
     },
@@ -846,10 +1059,10 @@
       return s ? toSvg(s.rows, s.colors, scale || 4, "px px-sprite") : "";
     },
     // CSS 배경으로 쓸 수 있는 주소로 바꿔요. (옆으로 반복되는 언덕, 잔디)
-    dataUri(name, scale) {
+    dataUri(name, scale, colors) {
       const sp = SPRITES[name];
       if (!sp) return "";
-      return `url("data:image/svg+xml,${encodeURIComponent(toSvg(sp.rows, sp.colors, scale || 3, "px"))}")`;
+      return `url("data:image/svg+xml,${encodeURIComponent(toSvg(sp.rows, Object.assign({}, sp.colors, colors || {}), scale || 3, "px"))}")`;
     },
     // data-icon / data-sprite / data-bg 속성이 있는 자리를 그림으로 채워요.
     fill(root) {

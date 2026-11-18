@@ -16,6 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="preload" href="fonts/neodgm.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
   <!-- ==================== 홈 ==================== -->
@@ -78,7 +79,7 @@
         <button class="tile" data-panel="quest" aria-expanded="false"><span data-icon="quest" data-scale="3"></span><b>질문</b><i id="tileQuest"></i></button>
         <button class="tile" data-panel="pick" aria-expanded="false"><span data-icon="dice" data-scale="3"></span><b>뽑기</b><i></i></button>
         <button class="tile" data-panel="upcoming" aria-expanded="false"><span data-icon="calendar" data-scale="3"></span><b>기념일</b><i id="tileUp"></i></button>
-        <button class="tile" data-panel="garden" aria-expanded="false"><span data-icon="leaf" data-scale="3"></span><b>나무</b><i id="tileGarden"></i></button>
+        <button class="tile" data-game="garden"><span data-icon="leaf" data-scale="3"></span><b>정원</b><i id="tileGarden"></i></button>
       </nav>
 
       <div class="peeks">
@@ -132,15 +133,6 @@
         <div class="upcoming-list" id="upcomingList"></div>
       </div></section>
 
-      <section class="panel" id="panel-garden"><div class="panel-box box">
-        <h2>나무 키우기</h2>
-        <div class="garden-tabs" id="gardenTabs">
-          <button class="chip active" data-gtab="care">돌보기</button>
-          <button class="chip" data-gtab="book">도감</button>
-          <button class="chip" data-gtab="goal">도전</button>
-        </div>
-        <div id="gardenBody"></div>
-      </div></section>
     </div>
   </section>
 
@@ -363,7 +355,10 @@
   <script src="data/questions.js"></script>
   <script src="js/pixel.js"></script>
   <script src="js/store.js"></script>
-  <script src="js/garden.js"></script>
+  <script src="js/game-data.js"></script>
+  <script src="js/game-core.js"></script>
+  <script src="js/game-mini.js"></script>
+  <script src="js/game-ui.js"></script>
   <script src="js/scene.js"></script>
   <script src="js/app.js"></script>
 </body>
