@@ -195,6 +195,10 @@
     }
     W.beauty = Math.round(W.beauty * (1 + (W.perk.beauty || 0)));
     W.mul.petal *= 1 + W.beauty / 400;
+    // 추억 나무: 두 사람이 앱에 남긴 기록만큼 자라고, 꽃잎과 저절로 자라기를 도와요
+    W.memStage = app.mem || 0;
+    W.mul.petal *= 1 + 0.04 * W.memStage;
+    W.idlePerMin *= 1 + 0.05 * W.memStage;
     W.month = new Date(now).getMonth();
     W.mkey = monthKey(now);
     W.tokens = (W.ft[W.mkey] || 0) - (W.fs[W.mkey] || 0);

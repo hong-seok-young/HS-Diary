@@ -7,6 +7,7 @@ const DIARY_CONFIG = {
   him: "석영",
   her: "예은",
   firstMet: "2026-07-10",  // 처음 만난 날
+  firstPlace: "합정 대동", // 처음 만난 곳
   startDate: "2026-07-17", // 사귀기 시작한 날 → 여기에 맞춰 D+ 가 계산돼요
   himBirthday: "1993-08-11",
   herBirthday: "1997-09-29",
