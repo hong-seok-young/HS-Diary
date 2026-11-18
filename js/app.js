@@ -1477,49 +1477,108 @@
   }
 
   // ---------- 홈 화면에 앱으로 설치 ----------
-  // 브라우저 메뉴 대신, 크롬이 이 사이트 전용으로 준비해 준 설치 창을 직접 띄워요.
+  // 웹 브라우저로 들어오면 매번 설치 안내를 띄워요. 설치한 앱으로 열면 안 떠요.
   function bindInstall() {
     const bar = $("installBar");
+    const sheet = $("installSheet");
+    const ua = navigator.userAgent || "";
     const standalone = navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
-    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    let hiddenByUser = false;
-    try { hiddenByUser = localStorage.getItem("hsd.installHide") === "1"; } catch (e) { /* 저장 공간이 막혀 있으면 매번 보여 줘요 */ }
-    let deferred = null;
+    const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const android = /Android/i.test(ua);
+    // 카카오톡, 네이버 앱 같은 앱 속 브라우저에서는 홈 화면에 추가를 못 해요.
+    const inApp = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|FB_IAB|Line\/|DaumApps/i.test(ua);
+    let deferred = null;   // 크롬이 준비해 준 설치 창
+    let installed = false; // 이미 깔려 있는지 (안드로이드 크롬만 알 수 있어요)
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
     }
     if (standalone) return;
 
-    if (ios && !hiddenByUser) {
-      $("installText").textContent = "공유 버튼을 누르고 홈 화면에 추가";
-      $("btnInstall").hidden = true;
+    function step(html) {
+      return `<li><span>${html}</span></li>`;
+    }
+    function render() {
+      let lead = "홈 화면에 하트 아이콘이 생기고, 앱처럼 바로 열려요.";
+      let steps = "";
+      let action = ""; // 버튼 글자. 비어 있으면 버튼을 숨겨요.
+      if (installed) {
+        lead = "이미 깔려 있어요. 홈 화면의 하트 아이콘으로 열어 주세요.";
+      } else if (ios && inApp) {
+        steps = step("화면의 메뉴에서 <b>Safari로 열기</b>를 눌러요") + step(`Safari 아래쪽의 공유 버튼 ${PIXEL.icon("share", 2)} 을 눌러요`) + step("<b>홈 화면에 추가</b>를 눌러요");
+      } else if (ios) {
+        steps = step(`화면 아래쪽의 공유 버튼 ${PIXEL.icon("share", 2)} 을 눌러요`) + step("목록을 내려서 <b>홈 화면에 추가</b>를 눌러요") + step("오른쪽 위 <b>추가</b>를 눌러요");
+      } else if (android && inApp) {
+        steps = step(`오른쪽 위 메뉴 ${PIXEL.icon("dots", 2)} 를 눌러요`) + step("<b>다른 브라우저로 열기</b>로 Chrome에서 열어요") + step("거기서 다시 설치 안내를 따라 해요");
+      } else if (deferred) {
+        lead = "아래 설치 버튼을 누르면 바로 깔려요.";
+        action = "설치";
+      } else if (android) {
+        steps = step(`브라우저 메뉴 ${PIXEL.icon("dots", 2)} 를 눌러요`) + step("<b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 눌러요");
+      } else {
+        steps = step("주소창 오른쪽의 설치 아이콘을 눌러요");
+      }
+      $("installLead").textContent = lead;
+      $("installSteps").innerHTML = steps;
+      $("installSteps").hidden = !steps;
+      $("btnInstallSheet").hidden = !action;
+      $("btnInstallSheet").textContent = action || "설치";
+      $("installText").textContent = installed ? "홈 화면의 하트 아이콘으로 열어요" : "앱으로 깔면 더 편해요";
+      $("btnInstall").hidden = installed;
+      $("btnInstall").textContent = deferred ? "설치" : "방법";
       bar.hidden = false;
     }
+    async function doInstall(btn) {
+      if (!deferred) {
+        openModal(sheet);
+        return;
+      }
+      play(btn, "boing");
+      const ev = deferred;
+      deferred = null;
+      ev.prompt();
+      try {
+        const choice = await ev.userChoice;
+        if (choice && choice.outcome === "accepted") {
+          closeModal(sheet);
+          bar.hidden = true;
+          return;
+        }
+      } catch (e) { /* 창이 그냥 닫힌 경우 */ }
+      render();
+    }
+
     window.addEventListener("beforeinstallprompt", (ev) => {
       ev.preventDefault();
       deferred = ev;
-      if (!hiddenByUser) bar.hidden = false;
-    });
-    $("btnInstall").addEventListener("click", async () => {
-      if (!deferred) return;
-      play($("btnInstall"), "boing");
-      deferred.prompt();
-      try {
-        const choice = await deferred.userChoice;
-        if (choice && choice.outcome === "accepted") bar.hidden = true;
-      } catch (e) { /* 창이 그냥 닫힌 경우 */ }
-      deferred = null;
-    });
-    $("btnInstallHide").addEventListener("click", () => {
-      bar.hidden = true;
-      try { localStorage.setItem("hsd.installHide", "1"); } catch (e) { /* 무시 */ }
+      render();
     });
     window.addEventListener("appinstalled", () => {
-      bar.hidden = true;
+      installed = true;
+      closeModal(sheet);
+      render();
       toast("홈 화면에 깔았어요");
       burstAt($("dday"), 10, "heart");
     });
+    $("btnInstall").addEventListener("click", () => doInstall($("btnInstall")));
+    $("btnInstallSheet").addEventListener("click", () => doInstall($("btnInstallSheet")));
+
+    render();
+    if (navigator.getInstalledRelatedApps) {
+      navigator.getInstalledRelatedApps().then((apps) => {
+        if (apps && apps.length) {
+          installed = true;
+          closeModal(sheet);
+          render();
+        }
+      }).catch(() => {});
+    }
+    // 폰에서는 들어올 때마다 안내를 띄워요.
+    if (ios || android) {
+      setTimeout(() => {
+        if (!installed && !openModalEl() && $("lightbox").hidden) openModal(sheet);
+      }, 1500);
+    }
   }
 
   // ---------- 시작 ----------

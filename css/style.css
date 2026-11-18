@@ -818,5 +818,20 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .install-bar { display: flex; align-items: center; gap: 8px; padding: 0 2px; margin-bottom: 12px; animation: pop .4s var(--ease) both; }
 .install-ico { line-height: 0; flex: 0 0 auto; animation: beat 1.8s ease-in-out infinite; }
 .install-text { flex: 1 1 auto; min-width: 0; }
-.install-x { flex: 0 0 auto; width: 36px; height: 36px; border: 0; background: none; color: var(--ink-soft); line-height: 0; }
-.install-x:active { transform: scale(.86); }
+.install-card { text-align: center; padding-top: 16px; }
+.install-app { display: block; margin: 0 auto 10px; image-rendering: pixelated; box-shadow: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink); animation: beat 1.8s ease-in-out infinite; }
+.install-card h2 { margin-bottom: 6px; }
+.install-steps { text-align: left; list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: 8px; margin: 12px 0 4px; }
+.install-steps li { counter-increment: step; display: flex; align-items: flex-start; gap: 10px; padding: 2px 4px; border: 8px solid transparent; border-image: var(--bi-soft) 4 / 8px stretch; background-color: #fdf5e2; background-clip: padding-box; }
+.install-steps li::before { content: counter(step); flex: 0 0 auto; width: 24px; text-align: center; background: var(--butter); color: var(--ink); }
+.install-steps li > span { flex: 1 1 auto; min-width: 0; }
+.install-steps li b { font-weight: normal; color: var(--orange); }
+.install-steps li svg { margin: 0 2px; color: var(--blue); }
+
+/* 사진 고르기 칸은 화면에서만 숨겨요. (아이폰은 display:none 인 칸을 못 누르는 경우가 있어요) */
+.file-pick { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; min-height: 0; }
+
+/* 아이폰은 누를 수 있다고 표시된 곳에서만 눌림 신호가 와요. 바깥을 눌러 닫기가 되도록 전체에 표시해요. */
+@supports (-webkit-touch-callout: none) {
+  body { cursor: pointer; }
+}

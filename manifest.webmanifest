@@ -1,7 +1,7 @@
 {
   "id": "hs-diary",
-  "name": "석영이와 예은이",
-  "short_name": "석영이와 예은이",
+  "name": "석영❤️예은",
+  "short_name": "석영❤️예은",
   "start_url": "./?src=app",
   "scope": "./",
   "display": "standalone",
@@ -10,8 +10,30 @@
   "background_color": "#fdf3dc",
   "theme_color": "#fdf3dc",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://hong-seok-young.github.io/HS-Diary/manifest.webmanifest"
+    }
+  ],
+  "prefer_related_applications": false
 }
