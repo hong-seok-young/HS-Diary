@@ -61,6 +61,13 @@
     <main class="container">
       <button class="sync-chip" id="syncChip"></button>
 
+      <div class="install-bar box" id="installBar" hidden>
+        <span class="install-ico" data-sprite="heartOn" data-scale="3"></span>
+        <span class="install-text" id="installText">홈 화면에 앱으로 깔기</span>
+        <button class="btn small primary" id="btnInstall">설치</button>
+        <button class="install-x" id="btnInstallHide" aria-label="닫기"><span data-icon="close"></span></button>
+      </div>
+
       <nav class="tiles" id="menu">
         <button class="tile" data-panel="mood" aria-expanded="false"><span data-icon="smile" data-scale="3"></span><b>기분</b><i id="tileMood"></i></button>
         <button class="tile" data-panel="poke" aria-expanded="false"><span data-sprite="heartOn" data-scale="3"></span><b>하트</b><i id="tilePoke"></i></button>

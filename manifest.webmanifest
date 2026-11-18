@@ -2,7 +2,7 @@
   "id": "hs-diary",
   "name": "석영이와 예은이",
   "short_name": "석영이와 예은이",
-  "start_url": "./",
+  "start_url": "./?src=app",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

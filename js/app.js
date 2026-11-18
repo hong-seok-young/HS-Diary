@@ -1476,6 +1476,52 @@
     });
   }
 
+  // ---------- 홈 화면에 앱으로 설치 ----------
+  // 브라우저 메뉴 대신, 크롬이 이 사이트 전용으로 준비해 준 설치 창을 직접 띄워요.
+  function bindInstall() {
+    const bar = $("installBar");
+    const standalone = navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    let hiddenByUser = false;
+    try { hiddenByUser = localStorage.getItem("hsd.installHide") === "1"; } catch (e) { /* 저장 공간이 막혀 있으면 매번 보여 줘요 */ }
+    let deferred = null;
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+    }
+    if (standalone) return;
+
+    if (ios && !hiddenByUser) {
+      $("installText").textContent = "공유 버튼을 누르고 홈 화면에 추가";
+      $("btnInstall").hidden = true;
+      bar.hidden = false;
+    }
+    window.addEventListener("beforeinstallprompt", (ev) => {
+      ev.preventDefault();
+      deferred = ev;
+      if (!hiddenByUser) bar.hidden = false;
+    });
+    $("btnInstall").addEventListener("click", async () => {
+      if (!deferred) return;
+      play($("btnInstall"), "boing");
+      deferred.prompt();
+      try {
+        const choice = await deferred.userChoice;
+        if (choice && choice.outcome === "accepted") bar.hidden = true;
+      } catch (e) { /* 창이 그냥 닫힌 경우 */ }
+      deferred = null;
+    });
+    $("btnInstallHide").addEventListener("click", () => {
+      bar.hidden = true;
+      try { localStorage.setItem("hsd.installHide", "1"); } catch (e) { /* 무시 */ }
+    });
+    window.addEventListener("appinstalled", () => {
+      bar.hidden = true;
+      toast("홈 화면에 깔았어요");
+      burstAt($("dday"), 10, "heart");
+    });
+  }
+
   // ---------- 시작 ----------
   // 저녁 7시부터 아침 6시까지는 밤 풍경
   const hour = new Date().getHours();
@@ -1484,6 +1530,7 @@
   PIXEL.fill(document);
   startSeason();
   bind();
+  bindInstall();
   renderView();
 
   // 다른 폰에서 고친 내용이 들어오면 다시 그려요.

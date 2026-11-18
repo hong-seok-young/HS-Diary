@@ -813,3 +813,10 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 @media (max-width: 300px) {
   .tile i { display: none; }
 }
+
+/* 홈 화면에 앱으로 설치 */
+.install-bar { display: flex; align-items: center; gap: 8px; padding: 0 2px; margin-bottom: 12px; animation: pop .4s var(--ease) both; }
+.install-ico { line-height: 0; flex: 0 0 auto; animation: beat 1.8s ease-in-out infinite; }
+.install-text { flex: 1 1 auto; min-width: 0; }
+.install-x { flex: 0 0 auto; width: 36px; height: 36px; border: 0; background: none; color: var(--ink-soft); line-height: 0; }
+.install-x:active { transform: scale(.86); }
