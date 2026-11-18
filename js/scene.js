@@ -344,7 +344,7 @@
     const cloud = { clear: 0, partly: 0.15, cloudy: 0.6, fog: 0.4 }[S.w.kind];
     const cl = cloud != null ? cloud : S.w.kind === "thunder" ? 0.9 : 0.75;
     const cols = skyColors(S.elev, S.rising, cl, S.w.kind === "fog" ? 1 : 0, d.getHours() < 4);
-    const sky = `linear-gradient(${cols[0]} 0 34%, ${cols[1]} 34% 62%, ${cols[2]} 62%)`;
+    const sky = `linear-gradient(180deg, ${cols[0]} 0%, ${cols[1]} 58%, ${cols[2]} 100%)`;
     setSky(sky);
 
     // 해와 달 위치

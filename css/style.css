@@ -982,7 +982,7 @@ body.sheet-open .panel-dim { opacity: 1; pointer-events: auto; }
 .g-main { display: grid; grid-template-columns: 136px minmax(0, 1fr); gap: 10px; align-items: stretch; }
 .g-view {
   position: relative; height: 150px; overflow: hidden;
-  background: linear-gradient(#cfeefd 0 55%, #e2f5fd 55% 78%, #b8e2b0 78%);
+  background: linear-gradient(#bfe6fb 0%, #e6f6fd 76%, #b8e2b0 76%);
   box-shadow: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink);
 }
 .g-sun { position: absolute; right: 8px; top: 8px; width: 14px; height: 14px; background: var(--butter); box-shadow: 0 0 0 3px rgba(255,217,120,.35); animation: twinkle 2s ease-in-out infinite alternate; }
