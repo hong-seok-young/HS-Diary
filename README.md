@@ -34,6 +34,7 @@ GitHub Pages를 켜면 여기서도 볼 수 있어요: https://hong-seok-young.g
   category: "food",       // date / travel / food / cafe / anniv / etc
   title: "성수동 파스타집",
   place: "서울 성수동",
+  map: "",                // 네이버 지도 링크. 비우면 장소 이름으로 검색돼요
   rating: 5,              // 별 1~5
   memo: "크림 파스타가 진짜 맛있었음",
   tags: ["파스타", "성수"],
@@ -57,3 +58,7 @@ GitHub Pages를 켜면 여기서도 볼 수 있어요: https://hong-seok-young.g
 ## 폰트
 
 도트 폰트는 Neo둥근모(NeoDunggeunmo)이고 SIL Open Font License 1.1 로 배포돼요. 라이선스 전문은 `fonts/NeoDunggeunmo-LICENSE.txt`에 있어요.
+
+## 지도
+
+기록을 펼쳐서 장소를 누르면 네이버 지도가 열려요. `map`에 네이버 지도 공유 링크를 넣으면 그 가게로 바로 가고, 비워 두면 장소 이름으로 검색한 화면이 열려요.

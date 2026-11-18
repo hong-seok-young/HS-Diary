@@ -426,7 +426,13 @@ button:focus-visible, summary:focus-visible { outline: 2px dashed var(--blue); o
 
 .card-detail { padding: 8px 4px 4px; margin-top: 6px; background: linear-gradient(90deg, var(--line) 0 6px, transparent 6px 10px) top left / 10px 2px repeat-x; }
 .card-meta { color: var(--ink-soft); }
-.card-place { margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+.card-place {
+  margin-top: 2px; display: flex; align-items: center; gap: 6px; width: fit-content; max-width: 100%; min-height: 32px;
+  color: var(--ink); text-decoration: none; transition: transform .16s var(--ease);
+}
+.card-place:active { transform: scale(.96); }
+.place-name { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 4px; }
+.map-go { flex: 0 0 auto; color: var(--ink); background: var(--mint); padding: 0 6px; margin-left: 2px; box-shadow: 0 -2px 0 0 var(--mint), 0 2px 0 0 var(--mint); }
 .card-place .px { color: var(--orange); }
 .card-rating { display: flex; gap: 4px; margin-top: 8px; line-height: 0; }
 .star { color: var(--off); line-height: 0; }
@@ -481,6 +487,11 @@ button:focus-visible, summary:focus-visible { outline: 2px dashed var(--blue); o
 .modal-card form { display: flex; flex-direction: column; gap: 10px; }
 .modal-card label { display: flex; flex-direction: column; gap: 4px; color: var(--ink-soft); min-width: 0; }
 .modal-card label input, .modal-card label select, .modal-card label textarea { width: 100%; color: var(--ink); }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field > label { color: var(--ink-soft); }
+.field-row { display: flex; gap: 8px; align-items: flex-start; }
+.field-row input { flex: 1 1 auto; width: auto; }
+a.btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; flex: 0 0 auto; }
 .rating-input { display: flex; gap: 4px; cursor: pointer; user-select: none; -webkit-user-select: none; }
 .rating-input span {
   min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center;

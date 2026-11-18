@@ -93,6 +93,14 @@
     for (let i = 1; i <= 5; i++) out += `<span class="star${i <= n ? " on" : ""}">${PIXEL.icon("star", scale || 2)}</span>`;
     return out;
   }
+  // 네이버 지도 링크: 정확한 링크(map)가 있으면 그걸 쓰고, 없으면 장소 이름으로 검색해요.
+  function naverSearchUrl(place) {
+    return "https://map.naver.com/p/search/" + encodeURIComponent(place);
+  }
+  function mapUrl(e) {
+    if (e.map && /^https?:\/\//i.test(e.map)) return e.map;
+    return naverSearchUrl((e.place || "").trim());
+  }
   function photoSrc(p) {
     if (!p) return "";
     if (/^(https?:|data:|photos\/|\.\/|\/)/.test(p)) return p;
@@ -406,7 +414,7 @@
         </button>
         <div class="card-body fold${open ? " is-open" : ""}"><div class="fold-in"><div class="card-detail">
           <p class="card-meta">${esc(CATS[cat])} · ${esc(fmtDate(e.date))}${e._local ? ' · <span class="muted">임시</span>' : ""}</p>
-          ${e.place ? `<p class="card-place">${PIXEL.icon("pin", 2)}${esc(e.place)}</p>` : ""}
+          ${e.place ? `<a class="card-place" href="${esc(mapUrl(e))}" target="_blank" rel="noopener">${PIXEL.icon("pin", 2)}<span class="place-name">${esc(e.place)}</span><span class="map-go">지도</span></a>` : ""}
           <div class="card-rating">${stars(e.rating)}</div>
           ${src ? `<img class="card-photo" src="${esc(src)}" alt="${esc(e.title)}" loading="lazy" onerror="this.remove()">` : ""}
           ${e.memo ? `<p class="card-memo">${esc(e.memo)}</p>` : ""}
@@ -485,6 +493,7 @@
       $("fCat").value = CATS[entry.category] ? entry.category : "etc";
       $("fTitle").value = entry.title || "";
       $("fPlace").value = entry.place || "";
+      $("fMap").value = entry.map || "";
       $("fMemo").value = entry.memo || "";
       $("fTags").value = (entry.tags || []).join(", ");
       $("fPhoto").value = entry.photo || "";
@@ -528,6 +537,7 @@
         category: e.category || "etc",
         title: e.title || "",
         place: e.place || "",
+        map: e.map || "",
         rating: Number(e.rating) || 0,
         memo: e.memo || "",
         tags: e.tags || [],
@@ -648,6 +658,17 @@
     $("modal").addEventListener("click", (ev) => {
       if (ev.target === $("modal")) closeModal();
     });
+    // 입력창의 "찾기": 적어 둔 장소 이름으로 네이버 지도를 열어요.
+    $("btnFindMap").addEventListener("click", (ev) => {
+      const place = $("fPlace").value.trim();
+      if (!place) {
+        ev.preventDefault();
+        toast("장소를 먼저 적어 주세요");
+        $("fPlace").focus();
+        return;
+      }
+      $("btnFindMap").href = naverSearchUrl(place);
+    });
     $("fRating").addEventListener("click", (ev) => {
       const s = ev.target.closest("span[data-v]");
       if (s) setRating(Number(s.dataset.v), true);
@@ -662,6 +683,7 @@
         category: $("fCat").value,
         title: $("fTitle").value.trim(),
         place: $("fPlace").value.trim(),
+        map: $("fMap").value.trim(),
         rating: rating,
         memo: $("fMemo").value.trim(),
         tags: $("fTags").value.split(",").map((t) => t.trim().replace(/^#/, "")).filter(Boolean),
