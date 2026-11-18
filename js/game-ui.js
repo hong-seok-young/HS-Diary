@@ -224,9 +224,12 @@
     try { localStorage.setItem("hsd.gnews", JSON.stringify(now)); } catch (e) { /* 무시 */ }
   }
 
+  // 첫 씨앗은 자동으로 심어요. 다른 폰에 이미 있으면 그쪽 기록이 이기게 soft 로 넣어요.
   function ensureSeed() {
     const s = S();
-    if (!s.hasSeed) add({ id: "seed-p1", type: "seed", plot: 0, plant: "p1", species: "sunflower" });
+    if (s.hasSeed) return;
+    H.silently(() => Store.put("garden", { id: "seed-p1", type: "seed", plot: 0, plant: "p1", species: "sunflower", who: me() || "him", at: Date.now() }, { soft: true }));
+    C.invalidate();
   }
 
   // ---------- 화면들 ----------

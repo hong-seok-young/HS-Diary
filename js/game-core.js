@@ -279,6 +279,17 @@
           logIt(ev, `${ev.label || k} 샀어요`);
           continue;
         }
+        // 예전 버전 기록: 코인 쓰기, 화분 고르기
+        case "spend": {
+          spent += Number(ev.amount) || 0;
+          if (String(ev.item || "").indexOf("pot:") === 0) ownedSkins.add(ev.item.slice(4));
+          if (ev.item === "fert") add("fert", 1);
+          continue;
+        }
+        case "pot": {
+          if (ownedSkins.has(ev.item)) plots[0].skin = ev.item;
+          continue;
+        }
         case "claim": {
           const r = G.LEVEL_REWARDS[ev.level];
           if (!r || claimed.has(ev.level)) continue;

@@ -334,9 +334,11 @@
       const r = (db[col] || {})[id];
       return r && !r.del ? r : null;
     },
-    put(col, rec) {
+    // soft: 저장소에 같은 항목이 이미 있으면 그쪽이 이기게 해요. (자동으로 만드는 기본값용)
+    put(col, rec, opts) {
       const id = rec.id || uid(col[0]);
-      db[col][id] = Object.assign({}, rec, { id, t: Date.now() });
+      if (opts && opts.soft && db[col][id]) return db[col][id];
+      db[col][id] = Object.assign({}, rec, { id, t: opts && opts.soft ? 1 : Date.now() });
       delete db[col][id].del;
       changed();
       return db[col][id];
