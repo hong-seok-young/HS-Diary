@@ -253,6 +253,7 @@
         <div class="f-world">
         <div class="f-yard"></div>
         <div class="f-fieldbg"></div>
+        <div class="f-decor" id="farmDecor"></div>
         <button class="f-obj f-house" data-act="sheet" data-k="house" data-walk="1.5,3.05" style="${at(0, 0, 3, 3)}">${A.rowsImg("house3", houseRows(), HOUSE_COL, 1)}<i class="f-tag">우리 집</i></button>
         <button class="f-obj f-tree" data-act="sheet" data-k="house" data-tab="our" data-walk="3.5,3.05" style="${at(3, 0, 1, 2)}" id="farmTree"></button>
         <button class="f-obj f-mail" data-act="mail" data-walk="3.5,3.05" style="${at(3, 2)}" id="farmMail">${spr("mailbox", 3)}<i class="f-flag"></i></button>
@@ -265,7 +266,8 @@
         <button class="f-land" id="farmLand" data-act="sheet" data-k="shop" data-tab="farm"></button>
         <button class="f-dog" id="farmDog" data-act="dog"><img class="px" alt=""></button>
         <div class="f-hens" id="farmHens"></div>
-        <div class="f-char partner" id="farmPartner" hidden><img class="px" alt=""><i class="f-ptag"></i></div>
+        <button class="f-char partner" id="farmPartner" data-act="partner" aria-label="${esc(NAME[other()])}"><img class="px" alt=""><i class="f-ptag"></i></button>
+        <div class="f-say" id="farmSay" hidden></div>
         <div class="f-char me" id="farmMe"><img class="px" alt=""><span class="f-tool" id="farmTool" hidden></span><span class="f-hold" id="farmHold" hidden></span></div>
         <div class="f-target" id="farmTarget" hidden></div>
         </div>
@@ -274,6 +276,8 @@
       </div></div>
       <div class="f-info" id="farmInfo"></div>`;
     mapEl = $("farmMap");
+    drawDecor();
+    pal.init = false;
     if (mine.pos && mine.pos.length && mine.pos[1] >= 2.6) { actor.x = mine.pos[0]; actor.y = mine.pos[1]; }
     actor.queue.length = 0; actor.busy = false; actor.pose = ""; actor.frame = 0;
     let tiles = "";
@@ -647,22 +651,140 @@
     if (sel === k) drawInfo();
     afterAct();
   }
-  function placePartner() {
+  // ---------- 함께 있는 상대 캐릭터 ----------
+  // 최근에 농장에 왔으면 마지막으로 일한 자리에서, 아니면 집 앞에서 시작해서
+  // 마당을 걷고, 마루를 쓰다듬고, 밭에 물을 주며 같이 지내요. 누르면 손을 흔들어요.
+  const pal = { init: false, x: 2.2, y: 3.05, tx: 2.2, ty: 3.05, mode: "idle", until: 0, dir: "down", flip: false, frame: 0, pose: "", expr: "", acc: 0, blinkAt: 0, blinkTo: 0, waveTo: 0, src: "", act: "" };
+  function vocative(n) { return batchim(n) ? n + "아" : n + "야"; }
+  const PAL_LINES = [
+    (m) => `${vocative(m)}, 같이 물 주자!`, () => "오늘 밭 진짜 예쁘다", () => "마루가 꼬리 엄청 흔들어", () => "다 자라면 같이 거두자",
+    () => "힘들면 조금 쉬었다 해", () => "우리 농장 최고야", (m) => `${vocative(m)}, 이거 봐! 싹 났어`, () => "출하하면 내일 아침에 돈 들어온대",
+    () => "닭 키우고 싶다", () => "여기 꽃 심으면 예쁘겠다", () => "비 오면 물 안 줘도 된대", () => "같이 하니까 재밌다",
+  ];
+  function partnerPlace() {
     const el = $("farmPartner");
     if (!el || !W) return;
     const o = W.docs[other()];
-    const recent = o && o.pos && o.pos.length && o.lastAct && Date.now() - o.lastAct < 3 * 3600000;
-    el.hidden = !recent;
-    if (!recent) return;
+    if (!pal.init) {
+      pal.init = true;
+      const recent = o && o.pos && o.pos.length && o.lastAct && Date.now() - o.lastAct < 3 * 3600000;
+      if (recent && o.pos[1] >= 2.6) { pal.x = o.pos[0]; pal.y = o.pos[1]; } else { pal.x = 2.1; pal.y = 3.05; }
+      pal.mode = "idle"; pal.until = performance.now() + 2500;
+    }
     const h = T * 1.55, w = h * 16 / 23;
     el.style.width = w + "px"; el.style.height = h + "px";
     const im = el.querySelector("img");
-    const src = S.charImg(other(), "down", 0, "", pets.partnerBlink ? "blink" : "");
+    const src = S.charImg(other(), pal.dir, pal.frame, pal.pose, pal.expr);
     if (im.__src !== src) { im.src = src; im.__src = src; }
-    el.querySelector(".f-ptag").textContent = `${NAME[other()]} · ${ago(o.lastAct)}`;
-    const px = o.pos[0] < 1.5 && o.pos[1] < 4 ? o.pos[0] + 0.5 : o.pos[0];
-    el.style.transform = `translate(${(px * T - w / 2).toFixed(1)}px, ${(o.pos[1] * T - h).toFixed(1)}px)`;
-    el.style.zIndex = String(10 + Math.round(o.pos[1] * 2));
+    el.classList.toggle("flip", pal.flip);
+    const recent = o && o.lastAct && Date.now() - o.lastAct < 3 * 3600000;
+    const tag = recent ? `${NAME[other()]} · ${ago(o.lastAct)}` : NAME[other()];
+    const tg = el.querySelector(".f-ptag");
+    if (tg.textContent !== tag) tg.textContent = tag;
+    el.style.transform = `translate(${(pal.x * T - w / 2).toFixed(1)}px, ${(pal.y * T - h).toFixed(1)}px)`;
+    el.style.zIndex = String(10 + Math.round(pal.y * 2));
+    const say = $("farmSay");
+    if (say && !say.hidden) say.style.transform = `translate(${(pal.x * T).toFixed(1)}px, ${(pal.y * T - h - 6).toFixed(1)}px) translate(-50%, -100%)`;
+  }
+  function placePartner() { partnerPlace(); }
+  function palFace(dx, dy) {
+    if (Math.abs(dx) > Math.abs(dy)) { pal.dir = "side"; pal.flip = dx < 0; }
+    else if (dy < 0) { pal.dir = "up"; pal.flip = false; }
+    else if (dy > 0) { pal.dir = "down"; pal.flip = false; }
+  }
+  function palChoose(now2) {
+    const r = Math.random();
+    const tiles = F.allTiles(W).filter((t) => t.crop && !t.dead && !t.ready);
+    if (r < 0.35 && tiles.length) {
+      const t = tiles[Math.floor(Math.random() * tiles.length)];
+      const [c, rr] = F.parseKey(t.k);
+      pal.tx = c + 0.5; pal.ty = Math.min(ROWS, rr + 1.08); pal.act = "water";
+    } else if (r < 0.55) {
+      pal.tx = Math.max(0.6, Math.min(COLS - 0.6, pets.dog.x + (pets.dog.flip ? -0.7 : 0.7))); pal.ty = Math.max(2.75, pets.dog.y + 0.45); pal.act = "pet";
+    } else if (r < 0.7 && !actor.busy) {
+      pal.tx = Math.max(0.6, Math.min(COLS - 0.6, actor.x + (Math.random() < 0.5 ? -0.9 : 0.9))); pal.ty = Math.max(2.8, actor.y); pal.act = "near";
+    } else {
+      const spots = [[2.1, 3.05], [4.3, 2.85], [6.6, 3.0], [8.3, 2.9], [3.4, 3.05]];
+      const sp = spots[Math.floor(Math.random() * spots.length)];
+      pal.tx = sp[0]; pal.ty = sp[1]; pal.act = "";
+    }
+    pal.mode = "walk";
+  }
+  function partnerTick(now2, dt) {
+    if (pal.waveTo > now2) {
+      pal.dir = "down"; pal.flip = false; pal.expr = "happy";
+      pal.pose = Math.floor((pal.waveTo - now2) / 160) % 2 ? "wave1" : "wave2";
+      partnerPlace();
+      return;
+    }
+    if (pal.pose && pal.pose.startsWith("wave")) { pal.pose = ""; pal.expr = ""; }
+    if (pal.mode === "idle" && now2 > pal.until) palChoose(now2);
+    if (pal.mode === "walk") {
+      // 가로 먼저, 그다음 세로 (마당 길을 따라)
+      const ax = Math.abs(pal.tx - pal.x) > 0.02;
+      const dx = ax ? pal.tx - pal.x : 0, dy = ax ? 0 : pal.ty - pal.y;
+      const dist = Math.abs(dx) + Math.abs(dy), mv = 2.4 * dt;
+      palFace(dx, dy);
+      pal.acc += dt;
+      const c = Math.floor(pal.acc / 0.15) % 4;
+      pal.frame = c === 1 ? 1 : c === 3 ? 2 : 0;
+      pal.pose = ""; pal.expr = "";
+      if (dist <= mv) {
+        if (ax) pal.x = pal.tx; else { pal.y = pal.ty; }
+        if (Math.abs(pal.tx - pal.x) < 0.02 && Math.abs(pal.ty - pal.y) < 0.02) {
+          pal.frame = 0; pal.mode = "act";
+          pal.until = now2 + (pal.act ? 1600 : 2500 + Math.random() * 4000);
+          if (pal.act === "water") { pal.dir = "up"; pal.flip = false; pal.pose = "act"; }
+          else if (pal.act === "pet") { palFace(pets.dog.x - pal.x, 0); pal.pose = "crouch"; pal.expr = "happy"; pets.dog.happyTo = now2 + 1600; pets.dog.mode = "sit"; pets.dog.until = now2 + 2500; }
+          else if (pal.act === "near") { palFace(actor.x - pal.x, 0); }
+          else { pal.dir = "down"; pal.flip = false; }
+        }
+      } else if (ax) pal.x += Math.sign(dx) * mv; else pal.y += Math.sign(dy) * mv;
+    } else if (pal.mode === "act") {
+      if (pal.act === "water" && Math.random() < 0.3) {
+        const el = $("farmPartner");
+        if (el) { const r = el.getBoundingClientRect(); spawn(r.left + r.width / 2, r.top - 2, "water", 2); }
+      }
+      if (pal.act === "pet" && Math.random() < 0.15) {
+        const dg = $("farmDog");
+        if (dg) { const r = dg.getBoundingClientRect(); spawn(r.left + r.width / 2, r.top, "heart", 2, { up: true }); }
+      }
+      if (now2 > pal.until) { pal.mode = "idle"; pal.pose = ""; pal.expr = ""; pal.act = ""; pal.until = now2 + 800 + Math.random() * 2000; }
+    }
+    // 깜빡임
+    if (!pal.pose || pal.pose === "act") {
+      if (now2 > pal.blinkAt) { pal.blinkTo = now2 + 140; pal.blinkAt = now2 + 2800 + Math.random() * 3000; }
+      if (pal.mode !== "walk" && pal.act !== "pet") pal.expr = pal.blinkTo > now2 ? "blink" : "";
+    }
+    partnerPlace();
+  }
+  function partnerSay() {
+    const now2 = performance.now();
+    pal.waveTo = now2 + 1300;
+    const say = $("farmSay");
+    const line = PAL_LINES[Math.floor(Math.random() * PAL_LINES.length)](NAME[who]);
+    say.textContent = line;
+    say.hidden = false;
+    partnerPlace();
+    say.animate([{ opacity: 0, translate: "0 6px" }, { opacity: 1, translate: "0 0" }], { duration: 220, easing: "ease-out" });
+    clearTimeout(partnerSay.tm);
+    partnerSay.tm = setTimeout(() => { say.hidden = true; }, 2600);
+    const el = $("farmPartner");
+    const r = el.getBoundingClientRect();
+    spawn(r.left + r.width / 2, r.top + 6, "heart", 8, { up: true });
+  }
+  // 마당 꾸밈: 밭 울타리, 돌길, 꽃밭, 풀포기
+  function drawDecor() {
+    const el = $("farmDecor");
+    if (!el) return;
+    const fence = S.decoUri("fence");
+    let h = `<span class="f-fence" style="left:0;width:calc(var(--t) * 3.2);background-image:url(${fence})"></span>`;
+    h += `<span class="f-fence" style="left:calc(var(--t) * 4.1);width:calc(var(--t) * 5.9);background-image:url(${fence})"></span>`;
+    const stones = [[3.45, 3.0], [3.75, 2.7]];
+    stones.forEach(([x, y]) => { h += `<span class="f-dc" style="left:calc(var(--t) * ${x});top:calc(var(--t) * ${y})">${S.decoImg("stone", 3)}</span>`; });
+    const flowers = [[0.05, 2.45, "rose"], [0.35, 2.5, "daisy"], [2.6, 2.48, "rose"], [2.85, 2.45, "daisy"], [9.55, 1.75, "daisy"], [6.15, 0.35, "rose"], [6.45, 0.5, "daisy"], [3.1, 1.85, "tuft"], [6.3, 1.6, "tuft"], [9.2, 0.15, "tuft"], [4.15, 1.75, "tuft"]];
+    flowers.forEach(([x, y, k]) => { h += `<span class="f-dc" style="left:calc(var(--t) * ${x});top:calc(var(--t) * ${y})">${S.decoImg(k, 2)}</span>`; });
+    el.innerHTML = h;
   }
 
   // ============================================================
@@ -1210,6 +1332,7 @@
         break;
       }
       case "mail": readMail(); break;
+      case "partner": partnerSay(); break;
       case "up": {
         const r = F.upgrade(W, mine, d.k);
         if (!r || r.fail) { nope(t, "돈이 모자라요"); break; }
@@ -1329,7 +1452,7 @@
       else if (actor.dir === "down" && actor.idleSince && now2 - actor.idleSince > 6000) actor.draw();
     }
     // 상대 캐릭터 깜빡임
-    if (now2 > pets.pBlinkAt) { pets.partnerBlink = !pets.partnerBlink; pets.pBlinkAt = now2 + (pets.partnerBlink ? 140 : 3000 + Math.random() * 3000); placePartner(); }
+    partnerTick(now2, dt);
   }
   function startTick() {
     stopTick();

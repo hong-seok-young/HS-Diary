@@ -241,3 +241,24 @@
   .tl { min-height: 48px; }
   .tl b { display: none; }
 }
+
+/* ---------- 함께 있는 두 사람, 그림자, 마당 꾸밈 ---------- */
+.f-char.partner { pointer-events: auto; border: 0; background: none; padding: 0; transition: none; opacity: 1; }
+.f-char.flip > img { transform: scaleX(-1); }
+.f-char > img, .f-dog > img, .f-hen > img { position: relative; }
+.f-char::before { content: ""; position: absolute; left: 20%; right: 20%; bottom: -3%; height: 12%; background: rgba(40, 30, 20, .28); border-radius: 50%; }
+.f-dog::before { content: ""; position: absolute; left: 12%; right: 12%; bottom: -2px; height: 7px; background: rgba(40, 30, 20, .25); border-radius: 50%; }
+.f-hen::before { content: ""; position: absolute; left: 14%; right: 14%; bottom: -2px; height: 5px; background: rgba(40, 30, 20, .22); border-radius: 50%; }
+.f-obj::before { content: ""; position: absolute; left: 10%; right: 10%; bottom: -3px; height: 8px; background: rgba(40, 30, 20, .2); border-radius: 50%; z-index: -1; }
+.f-ptag { color: #fff3dc !important; text-shadow: 1px 1px 0 #4a2c18; border-image: var(--fr-wood) 4 fill / 4px stretch !important; }
+.f-char.me .f-ptag { display: none; }
+.f-say {
+  position: absolute; left: 0; top: 0; z-index: 30; pointer-events: none; max-width: 200px; white-space: nowrap;
+  font-size: 12px; line-height: 16px; color: #3b2a20; padding: 0 4px;
+  border: 7px solid transparent; border-image: var(--fr-bubble) 4 fill / 7px stretch;
+}
+.f-say[hidden] { display: none; }
+.f-decor { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.f-fence { position: absolute; top: calc(var(--t) * 2.72); height: calc(var(--t) * .5); background-repeat: repeat-x; background-size: calc(var(--t) * 1.1) 100%; image-rendering: pixelated; }
+.f-dc { position: absolute; line-height: 0; }
+.f-dc img { height: calc(var(--t) * .42); width: auto; }
