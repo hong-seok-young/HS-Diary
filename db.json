@@ -1,0 +1,32 @@
+{
+ "diary": {},
+ "entries": {
+  "seed-0710": {
+   "category": "anniv",
+   "date": "2026-07-10",
+   "id": "seed-0710",
+   "map": "https://map.naver.com/p/entry/place/34259269",
+   "memo": "",
+   "photos": [],
+   "place": "합정 대동",
+   "t": 1,
+   "tags": ["첫만남", "합정"],
+   "title": "우리가 처음 만난 날"
+  },
+  "seed-0717": {
+   "category": "anniv",
+   "date": "2026-07-17",
+   "id": "seed-0717",
+   "map": "",
+   "memo": "",
+   "photos": [],
+   "place": "",
+   "t": 1,
+   "tags": ["1일", "시작"],
+   "title": "우리 1일"
+  }
+ },
+ "pairs": {},
+ "plans": {},
+ "v": 1
+}
