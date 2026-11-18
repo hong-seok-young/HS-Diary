@@ -48,8 +48,8 @@
             <button class="sc-plant" id="plant" aria-label="같이 키우는 나무"></button>
             <div class="sc-tint" id="tint"></div>
             <div class="couple" id="couple">
-              <button class="bob" data-who="him" aria-label="석영"><i class="mood-tag" id="moodHim"></i><i class="prop-top" id="topHim"></i><span data-sprite="him"></span></button>
-              <button class="bob b2" data-who="her" aria-label="예은"><i class="mood-tag" id="moodHer"></i><i class="prop-top" id="topHer"></i><span data-sprite="her"></span></button>
+              <button class="bob" data-who="him" aria-label="석영"><i class="mood-tag" id="moodHim"></i><i class="prop-top" id="topHim"></i><span class="ch-wrap"><img class="px ch" alt="" draggable="false"></span></button>
+              <button class="bob b2" data-who="her" aria-label="예은"><i class="mood-tag" id="moodHer"></i><i class="prop-top" id="topHer"></i><span class="ch-wrap"><img class="px ch" alt="" draggable="false"></span></button>
             </div>
             <div class="sc-props" id="props"></div>
             <canvas class="sc-fx" id="fxCanvas" aria-hidden="true"></canvas>
@@ -80,7 +80,7 @@
         <button class="tile" data-panel="quest" aria-expanded="false"><span data-icon="quest" data-scale="3"></span><b>질문</b><i id="tileQuest"></i></button>
         <button class="tile" data-panel="pick" aria-expanded="false"><span data-icon="dice" data-scale="3"></span><b>뽑기</b><i></i></button>
         <button class="tile" data-panel="upcoming" aria-expanded="false"><span data-icon="calendar" data-scale="3"></span><b>기념일</b><i id="tileUp"></i></button>
-        <button class="tile" data-game="garden"><span data-icon="leaf" data-scale="3"></span><b>정원</b><i id="tileGarden"></i></button>
+        <button class="tile" data-game="garden"><span data-icon="leaf" data-scale="3"></span><b>농장</b><i id="tileGarden"></i></button>
       </nav>
 
       <div class="home-garden box" id="homeGarden" hidden></div>
@@ -366,6 +366,7 @@
   <script src="js/f/farm.js"></script>
   <script src="js/f/sprites.js"></script>
   <script src="js/f/ui.js"></script>
+  <script src="js/charanim.js"></script>
   <script src="js/scene.js"></script>
   <script src="js/app.js"></script>
 </body>

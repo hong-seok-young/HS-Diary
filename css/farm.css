@@ -47,7 +47,7 @@
 .ftd-tip img { flex: 0 0 auto; height: 22px; width: auto; }
 .f-mapwrap { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 4px; }
 .f-map {
-  --t: 36px; --band: 0; position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none;
+  --t: 36px; --band: 0; position: relative; flex: 0 0 auto; overflow: hidden; touch-action: none; isolation: isolate; z-index: 0;
   background: var(--grass); background-size: var(--t) var(--t);
   box-shadow: 0 0 0 3px #4a2c18, 0 0 0 6px #b8743c, 0 0 0 9px #4a2c18, 0 6px 0 9px rgba(0, 0, 0, .25);
 }
@@ -113,6 +113,9 @@
 .f-tool.up { z-index: -1; left: 30%; top: 10%; }
 .f-tool.down { left: 40%; top: 38%; }
 .f-tool.flip { transform: scaleX(-1); left: -25%; }
+.f-tool.vert { left: 30%; width: 40%; top: 18%; height: 70%; }
+.f-tool.vert .f-tool-in { transform-origin: 50% 50%; }
+.f-tool.vert.up { z-index: -1; }
 .f-tool[hidden] { display: none; }
 .f-tool-in { display: block; width: 100%; height: 100%; transform-origin: 15% 85%; }
 .f-tool-in img { width: 100%; height: auto; }
@@ -123,16 +126,17 @@
 .f-target[hidden] { display: none; }
 
 /* 동물 */
-.f-dog { position: absolute; left: 0; top: 0; z-index: 9; border: 0; background: none; padding: 0; line-height: 0; transition: transform 2.4s ease-in-out; }
-.f-dog img { height: calc(var(--t) * .95); width: auto; animation: bob 1.2s ease-in-out infinite alternate; }
-.f-dog.left img { transform: scaleX(-1); }
+.f-dog { position: absolute; left: 0; top: 0; z-index: 9; border: 0; background: none; padding: 0; line-height: 0; }
+.f-dog img { display: block; height: auto; }
 .f-hens { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
-.f-hen { position: absolute; line-height: 0; animation: henPeck 2.2s ease-in-out infinite; animation-delay: calc(var(--i) * -.7s); }
-.f-hen img { height: calc(var(--t) * .55); width: auto; }
+.f-hen { position: absolute; left: 0; top: 0; line-height: 0; }
+.f-hen img { display: block; height: auto; }
 
 /* 날씨와 밤 */
 .f-rain { position: absolute; inset: 0; z-index: 20; pointer-events: none; background-image: linear-gradient(105deg, transparent 47%, rgba(160, 200, 240, .55) 48%, transparent 50%); background-size: 22px 26px; animation: fRain .5s linear infinite; }
 .f-rain[hidden] { display: none; }
+.f-rain.snow { background-image: radial-gradient(#fff 1.4px, transparent 1.8px), radial-gradient(rgba(255, 255, 255, .8) 1px, transparent 1.4px); background-size: 34px 34px, 22px 22px; background-position: 0 0, 11px 7px; animation: fSnow 3s linear infinite; }
+@keyframes fSnow { from { background-position: 0 0, 11px 7px; } to { background-position: 10px 68px, 2px 51px; } }
 .f-night { position: absolute; inset: 0; z-index: 20; pointer-events: none; background: transparent; transition: background .6s ease; }
 .f-night.dusk { background: rgba(255, 150, 90, .14); }
 .f-night.on { background: rgba(30, 30, 90, .32); }

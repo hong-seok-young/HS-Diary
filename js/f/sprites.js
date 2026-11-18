@@ -37,7 +37,7 @@
     side: ["..HHHHHHH...", ".HHHHHHHHH..", "HHHHhhHHHHH.", "HHHHHHSSSSS.", "HHHHHSSSSSSS", "HHHHSSSSSESS", "HHHHSSSSSESS", ".HHHSSSSSSCS", "..HHSSSSSSS.", "...SSSSSSS.."],
   };
   // who, dir(down/up/side), frame(0 서기, 1·2 걷기), pose('', act 도구 들기, crouch 쪼그리기, hold 들어 올리기)
-  function charRows(who, dir, frame, pose) {
+  function charRows(who, dir, frame, pose, face) {
     const g = blank(16, 23);
     const girl = who === "her";
     const oy = pose === "crouch" ? 3 : frame ? 1 : 0;
@@ -58,10 +58,11 @@
     }
     // 팔
     const swing = frame === 1 ? -1 : frame === 2 ? 1 : 0;
-    if (pose === "hold") {
-      rect(g, 3, oy - 1, 1, 4, "T"); rect(g, 12, oy - 1, 1, 4, "T");
-      put(g, 3, oy - 2, "S"); put(g, 12, oy - 2, "S");
-      rect(g, 3, by, 1, 2, "T"); rect(g, 12, by, 1, 2, "T");
+    const late = pose === "wave1" || pose === "wave2" || pose === "raise" || pose === "hold";
+    if (pose === "wave1" || pose === "wave2") {
+      rect(g, 3, by + 1, 1, 3, "T"); put(g, 3, by + 4, "S");
+    } else if (late) {
+      // 팔은 머리를 그린 뒤에 위로 올려요
     } else if (dir === "side") {
       if (pose === "act") { rect(g, 8, by + 1, 4, 1, "T"); put(g, 12, by + 1, "S"); }
       else { const ax = 8 + swing; rect(g, ax, by + 1, 1, 3, "T"); put(g, ax, by + 4, "S"); }
@@ -88,18 +89,79 @@
     }
     // 머리
     stamp(g, HEAD[dir], 2, oy);
+    // 머리 위로 올린 팔 (머리보다 앞에)
+    if (pose === "wave1") { rect(g, 13, oy + 3, 1, 8, "T"); rect(g, 13, oy + 1, 2, 2, "S"); }
+    if (pose === "wave2") { rect(g, 13, oy + 5, 1, 6, "T"); put(g, 14, oy + 4, "T"); rect(g, 14, oy + 2, 2, 2, "S"); }
+    if (pose === "raise" || pose === "hold") {
+      rect(g, 1, oy + 1, 1, by - oy, "T"); rect(g, 14, oy + 1, 1, by - oy, "T");
+      rect(g, 1, oy - 1, 2, 2, "S"); rect(g, 13, oy - 1, 2, 2, "S");
+    }
+    // 표정: 눈 감기(깜빡임, 잠), 웃는 눈
+    if (dir !== "up" && (face === "blink" || face === "happy")) {
+      const eyes = dir === "side" ? [11] : [5, 10];
+      eyes.forEach((x) => { put(g, x, oy + 5, "S"); put(g, x, oy + 6, "S"); });
+      if (face === "blink") eyes.forEach((x) => { put(g, x, oy + 6, "E"); if (dir !== "side") put(g, x - 1, oy + 6, "E"); });
+      else eyes.forEach((x) => { put(g, x, oy + 5, "E"); put(g, x - 1, oy + 6, "E"); put(g, x + 1, oy + 6, "E"); });
+      if (face === "happy" && dir === "down") { put(g, 7, oy + 8, "M"); put(g, 8, oy + 8, "M"); }
+    }
     if (girl && dir !== "up") put(g, dir === "side" ? 5 : 11, oy + 1, "R"), put(g, dir === "side" ? 6 : 12, oy + 1, "R");
     if (girl && dir === "up") { put(g, 11, oy + 1, "R"); put(g, 12, oy + 1, "R"); }
     return rows(outline(g));
   }
-  function charImg(who, dir, frame, pose) {
-    const key = `ch|${who}|${dir}|${frame}|${pose || ""}`;
-    return A.fromRows(key, charRows(who, dir, frame, pose || ""), Object.assign({ o: OUT }, PEOPLE[who] || PEOPLE.him)).uri;
+  function charImg(who, dir, frame, pose, face) {
+    const key = `ch|${who}|${dir}|${frame}|${pose || ""}|${face || ""}`;
+    return A.fromRows(key, charRows(who, dir, frame, pose || "", face || ""), Object.assign({ o: OUT, M: "#c9735f" }, PEOPLE[who] || PEOPLE.him)).uri;
+  }
+
+  // ---------- 강아지 (옆모습, 오른쪽을 봐요) ----------
+  const DOG_BASE = [
+    "...........DD.....",
+    "..........DBBD....",
+    "..........BBBBB...",
+    ".........BBEBBBK..",
+    ".........BBBBBBB..",
+    ".........WBBBB....",
+    "....BBBBBBWWBB....",
+    "...BBBBBBBBBBB....",
+    "...BBBBBBBBBBB....",
+  ];
+  // frame: stand, walk1, walk2, sit / tail: 0 위, 1 옆
+  function dogRows(frame, tail, face) {
+    const g = blank(18, 13);
+    stamp(g, DOG_BASE, 0, frame === "sit" ? 2 : 0);
+    const oy = frame === "sit" ? 2 : 0;
+    // 꼬리
+    if (tail) { put(g, 2, oy + 6, "B"); put(g, 1, oy + 6, "B"); put(g, 1, oy + 5, "B"); }
+    else { put(g, 3, oy + 5, "B"); put(g, 2, oy + 4, "B"); put(g, 2, oy + 3, "B"); }
+    // 다리
+    const legs = frame === "walk1" ? [[3, 9, 2], [5, 9, 1], [11, 9, 1], [13, 9, 2]]
+      : frame === "walk2" ? [[4, 9, 1], [6, 9, 2], [10, 9, 2], [12, 9, 1]]
+      : frame === "sit" ? [[4, 11, 1], [11, 11, 2], [12, 11, 2]]
+      : [[4, 9, 2], [5, 9, 2], [11, 9, 2], [12, 9, 2]];
+    legs.forEach(([x, y, h]) => { rect(g, x, y, 1, h + 1, "B"); put(g, x, y + h + 1, "D"); });
+    if (face === "happy") { put(g, 11, oy + 3, "B"); put(g, 11, oy + 4, "E"); put(g, 12, oy + 5, "R"); }
+    return rows(outline(g));
+  }
+  function dogImg(frame, tail, face) {
+    const key = `dog|${frame}|${tail ? 1 : 0}|${face || ""}`;
+    return A.fromRows(key, dogRows(frame, tail, face), { o: OUT, B: "#f2d1a4", D: "#c9925e", E: "#2e221c", K: "#2e221c", W: "#fff3dc", R: "#ff8ab0" }).uri;
+  }
+  // ---------- 닭 ----------
+  const HEN = {
+    stand: ["...R.....", "..RWW....", ".YWEW....", "..WWWWWWW", "..WWWWWW.", "...WWWWW.", "....Y.Y.."],
+    peck: [".........", "....WWWWW", "...WWWWWW", ".RWWWWWWW", "YWEWWWWW.", ".WW.WWW..", "....Y.Y.."],
+    walk: ["...R.....", "..RWW....", ".YWEW....", "..WWWWWWW", "..WWWWWW.", "...WWWWW.", "...Y...Y."],
+  };
+  function henImg(frame) {
+    const g = blank(11, 8);
+    stamp(g, HEN[frame] || HEN.stand, 1, 1);
+    return A.fromRows("hen|" + frame, rows(outline(g)), { o: OUT, R: "#e8504f", W: "#ffffff", E: "#2e221c", Y: "#f5b94e" }).uri;
   }
 
   // ---------- 도구와 물건 ----------
   const TOOL = {
     hoe: [["........MMM.", ".......MLMM.", "........WM..", ".......W....", "......W.....", ".....W......", "....W.......", "...W........", "..W.........", ".W.........."], { M: "#9aa1ab", L: "#dfe6ee", W: "#a97b55" }],
+    hoeV: [["MMMMM.", "MLLMM.", "MMMMM.", "..W...", "..W...", "..W...", "..W...", "..W...", "..W...", "..W...", "..W...", "..W..."], { M: "#9aa1ab", L: "#dfe6ee", W: "#a97b55" }],
     can: [["............", "..BBBB......", ".B....B.....", "BBBBBBBB...N", "BLBBBBBB..N.", "BBBBBBBBNN..", "BBBBBBBB....", ".BBBBBB....."], { B: "#5f9fd8", L: "#bfe3ff", N: "#4f86c0" }],
     sickle: [["...MMMM.....", "..M....M....", ".M......M...", ".M..........", "..M.........", "...W........", "....W.......", ".....W......", "......W....."], { M: "#6a7a8c", W: "#8a5f3f" }],
     seed: [[".KKKKKK.", "KWWWWWWK", "KWGGWWWK", "KWGRGWWK", "KWWGWWWK", "KWWWWWWK", "KKKKKKKK"], { K: "#9a785a", W: "#f3e4bc", G: "#7cc46e", R: "#ff7a6a" }],
@@ -157,5 +219,5 @@
     return o;
   }
 
-  window.FSprites = { charImg, charRows, toolImg, toolUri, decoImg, frames, PEOPLE };
+  window.FSprites = { charImg, charRows, dogImg, henImg, toolImg, toolUri, decoImg, frames, PEOPLE };
 })();

@@ -263,7 +263,7 @@
         <button class="f-obj f-well" data-act="well" data-walk="9.5,3.05" style="${at(9, 2)}">${art("well", 3)}</button>
         <div class="f-tiles" id="farmTiles"></div>
         <button class="f-land" id="farmLand" data-act="sheet" data-k="shop" data-tab="farm"></button>
-        <button class="f-dog" id="farmDog" data-act="dog">${A.critterImg("dog", 2)}</button>
+        <button class="f-dog" id="farmDog" data-act="dog"><img class="px" alt=""></button>
         <div class="f-hens" id="farmHens"></div>
         <div class="f-char partner" id="farmPartner" hidden><img class="px" alt=""><i class="f-ptag"></i></div>
         <div class="f-char me" id="farmMe"><img class="px" alt=""><span class="f-tool" id="farmTool" hidden></span><span class="f-hold" id="farmHold" hidden></span></div>
@@ -333,7 +333,11 @@
     $("farmCoop").innerHTML = W.up.coop
       ? `${A.rowsImg("coop3", houseRows(), COOP_COL, 1)}<i class="f-tag">닭장${hens.some((h) => h.eggs.length) ? " · 달걀!" : ""}</i>`
       : `<span class="f-lot">${ico("lock", 2)}<b>닭장 터</b></span>`;
-    $("farmHens").innerHTML = hens.map((h, i) => `<span class="f-hen" style="--i:${i};left:calc(var(--t) * ${7 + (i % 3) * 0.9});top:calc(var(--t) * ${1.9 + Math.floor(i / 3) * 0.4})">${art("hen", 2)}</span>`).join("");
+    const hb = $("farmHens");
+    if (hb.childElementCount !== hens.length) {
+      hb.innerHTML = hens.map(() => `<span class="f-hen"><img class="px" alt=""></span>`).join("");
+      pets.hens = hens.map((h, i) => ({ x: 7.3 + (i % 3) * 0.8, y: 2.35 + Math.floor(i / 3) * 0.3, tx: 0, ty: 0, mode: "stand", until: 0, flip: i % 2 === 1, src: "" }));
+    }
     const openR = F.openRows(W);
     const land = $("farmLand");
     if (F.FIELD0 + openR < ROWS) {
@@ -342,7 +346,8 @@
       land.innerHTML = `<span>${ico("lock", 2)} 땅 넓히기 ${fmt(CR.LAND[(W.up.land || 0) + 1].price)}G</span>`;
     } else land.hidden = true;
     const wx = window.Scene && Scene.weather ? Scene.weather() : null;
-    $("farmRain").hidden = !(wx && wx.wet);
+    $("farmRain").hidden = !(wx && (wx.wet || wx.snowy));
+    $("farmRain").classList.toggle("snow", !!(wx && wx.snowy));
     const h = new Date().getHours();
     $("farmNight").className = "f-night" + (h >= 20 || h < 5 ? " on" : h >= 18 ? " dusk" : "");
     placePartner();
@@ -434,7 +439,7 @@
   // ---------- 캐릭터: 정한 곳까지 천천히 걸어가서 동작해요 ----------
   const SPEED = 3.6; // 1초에 몇 칸
   const actor = {
-    x: 4.5, y: 3.05, dir: "down", flip: false, frame: 0, pose: "", busy: false, queue: [], raf: 0,
+    x: 4.5, y: 3.05, dir: "down", flip: false, frame: 0, pose: "", expr: "", busy: false, queue: [], raf: 0, blinkAt: 0, blinkTo: 0, idleSince: 0,
     img() { return $("farmMe") && $("farmMe").querySelector("img"); },
     draw(instant) {
       const el = $("farmMe");
@@ -444,7 +449,7 @@
       el.style.transform = `translate(${(this.x * T - w / 2).toFixed(1)}px, ${(this.y * T - h).toFixed(1)}px)`;
       el.style.zIndex = String(10 + Math.round(this.y * 2));
       const im = this.img();
-      const src = S.charImg(who, this.dir, this.frame, this.pose);
+      const src = S.charImg(who, this.dir, this.frame, this.pose, this.expr);
       if (im.__src !== src) { im.src = src; im.__src = src; }
       el.classList.toggle("flip", this.flip);
     },
@@ -537,12 +542,23 @@
   function toolAnim(name, kind) {
     const el = $("farmTool");
     if (!el) return Promise.resolve();
-    el.innerHTML = `<span class="f-tool-in">${S.toolImg(name, 3)}</span>`;
-    el.className = "f-tool " + actor.dir + (actor.flip ? " flip" : "");
+    // 앞이나 뒤를 볼 땐 세운 괭이를 머리 위로 들었다가 발 앞에 내리찍어요
+    const vertical = kind === "swing" && (actor.dir === "down" || actor.dir === "up");
+    el.innerHTML = `<span class="f-tool-in">${S.toolImg(vertical ? "hoeV" : name, 3)}</span>`;
+    el.className = "f-tool " + actor.dir + (actor.flip ? " flip" : "") + (vertical ? " vert" : "");
     el.hidden = false;
     const inner = el.firstChild;
     let frames, dur;
-    if (kind === "swing") {
+    if (vertical) {
+      const sgn = actor.dir === "down" ? 1 : -1;
+      frames = [
+        { transform: `translateY(${-60 * sgn}%) rotate(0deg)` },
+        { transform: `translateY(${-72 * sgn}%) rotate(${-6 * sgn}deg)`, offset: 0.45 },
+        { transform: `translateY(${42 * sgn}%) rotate(180deg)`, offset: 0.78 },
+        { transform: `translateY(${36 * sgn}%) rotate(180deg)` },
+      ];
+      dur = 480;
+    } else if (kind === "swing") {
       frames = [{ transform: "rotate(-150deg) translateY(-10%)" }, { transform: "rotate(-170deg) translateY(-14%)", offset: 0.45 }, { transform: "rotate(10deg)", offset: 0.8 }, { transform: "rotate(0deg)" }];
       dur = 480;
     } else if (kind === "pour") {
@@ -576,7 +592,7 @@
         save();
         updateTile(k);
         spawn(x, y, res.heart ? "heart" : "leaf", 10, { up: true });
-        actor.dir = "down"; actor.flip = false; actor.pose = "hold"; actor.draw();
+        actor.dir = "down"; actor.flip = false; actor.pose = "hold"; actor.expr = "happy"; actor.draw();
         const hold = $("farmHold");
         hold.innerHTML = cropIcon(res.crop, 2);
         hold.hidden = false;
@@ -589,8 +605,11 @@
         if (W.st.harvest === 1) firstHarvest(res);
       }
     } else if (kind === "hoe") {
+      actor.pose = "raise"; actor.draw();
       const sw = toolAnim("hoe", "swing");
-      await actor.wait(330);
+      await actor.wait(260);
+      actor.pose = "act"; actor.draw();
+      await actor.wait(70);
       const res = F.hoe(W, mine, k);
       if (res && !res.fail) { save(); updateTile(k); spawn(x, y + 6, "dirt", 10, { up: true }); }
       await sw;
@@ -624,7 +643,7 @@
       else if (res && res.fail) { toast(res.fail === "season" ? "지금 계절에는 못 심어요" : "다 떨어졌어요. 상점에서 사요"); actor.queue.length = 0; }
       await actor.wait(120);
     }
-    actor.pose = ""; actor.draw();
+    actor.pose = ""; actor.expr = ""; actor.idleSince = performance.now(); actor.draw();
     if (sel === k) drawInfo();
     afterAct();
   }
@@ -638,7 +657,7 @@
     const h = T * 1.55, w = h * 16 / 23;
     el.style.width = w + "px"; el.style.height = h + "px";
     const im = el.querySelector("img");
-    const src = S.charImg(other(), "down", 0, "");
+    const src = S.charImg(other(), "down", 0, "", pets.partnerBlink ? "blink" : "");
     if (im.__src !== src) { im.src = src; im.__src = src; }
     el.querySelector(".f-ptag").textContent = `${NAME[other()]} · ${ago(o.lastAct)}`;
     const px = o.pos[0] < 1.5 && o.pos[1] < 4 ? o.pos[0] + 0.5 : o.pos[0];
@@ -1233,31 +1252,98 @@
     }
   }
   function dogHop() {
+    pets.dog.happyTo = performance.now() + 1800;
+    pets.dog.mode = "sit"; pets.dog.until = performance.now() + 2500;
     const dg = $("farmDog");
-    if (dg) dg.animate([{ transform: dg.style.transform || "none" }, { transform: (dg.style.transform || "") + " translateY(-10px)" }, { transform: dg.style.transform || "none" }], { duration: 360 });
+    if (dg) dg.firstChild.animate([{ translate: "0 0" }, { translate: "0 -8px" }, { translate: "0 0" }], { duration: 360, easing: "ease-out" });
   }
-  // 마루와 닭이 마당을 돌아다녀요
-  function wander() {
-    const dg = $("farmDog");
-    if (!dg) return;
-    const x = 4 + Math.random() * 2.2, y = 1 + Math.random() * 1.1;
-    dg.style.transform = `translate(calc(var(--t) * ${x.toFixed(2)}), calc(var(--t) * ${y.toFixed(2)}))`;
-    dg.classList.toggle("left", Math.random() < 0.5);
+  // ---------- 살아 있는 마당: 마루, 닭, 깜빡임 ----------
+  const pets = {
+    dog: { x: 5, y: 2.2, tx: 5, ty: 2.2, mode: "sit", until: 0, flip: false, happyTo: 0, src: "" },
+    hens: [], partnerBlink: false, pBlinkAt: 0,
+  };
+  let animTimer = 0;
+  function animTick() {
+    if (!W || !mapEl || root.hidden || document.hidden) return;
+    const now2 = performance.now();
+    const dt = 0.08;
+    // 마루: 가끔 일어나 마당을 걷다가 앉아서 꼬리를 흔들어요
+    const d = pets.dog;
+    if (d.mode === "sit" && now2 > d.until) {
+      d.mode = "walk"; d.tx = 3.6 + Math.random() * 3.2; d.ty = 1.9 + Math.random() * 0.75;
+    }
+    if (d.mode === "walk") {
+      const dx = d.tx - d.x, dy = d.ty - d.y, dist = Math.hypot(dx, dy), mv = 1.3 * dt;
+      if (Math.abs(dx) > 0.02) d.flip = dx < 0;
+      if (dist <= mv) { d.x = d.tx; d.y = d.ty; d.mode = "sit"; d.until = now2 + 4000 + Math.random() * 7000; }
+      else { d.x += (dx / dist) * mv; d.y += (dy / dist) * mv; }
+    }
+    const happy = d.happyTo > now2;
+    const fr = d.mode === "walk" ? (Math.floor(now2 / 160) % 2 ? "walk1" : "walk2") : happy ? "sit" : "sit";
+    const tail = (happy || d.mode === "sit") ? Math.floor(now2 / (happy ? 110 : 420)) % 2 : 0;
+    const src = S.dogImg(fr, tail, happy ? "happy" : "");
+    const de = $("farmDog");
+    if (de) {
+      const im = de.firstChild;
+      if (d.src !== src) { im.src = src; d.src = src; }
+      const w = T * 1.05;
+      im.style.width = w + "px";
+      im.style.transform = d.flip ? "scaleX(-1)" : "";
+      de.style.transform = `translate(${(d.x * T - w / 2).toFixed(1)}px, ${(d.y * T - w * 13 / 18).toFixed(1)}px)`;
+      de.style.zIndex = String(10 + Math.round(d.y * 2));
+    }
+    // 닭: 종종걸음, 콕콕 쪼기
+    const hb = $("farmHens");
+    if (hb) pets.hens.forEach((h, i) => {
+      if (now2 > h.until) {
+        const r = Math.random();
+        if (r < 0.4) { h.mode = "walk"; h.tx = Math.max(6.9, Math.min(9.7, h.x + (Math.random() - 0.5) * 1.4)); h.ty = Math.max(2.1, Math.min(2.85, h.y + (Math.random() - 0.5) * 0.4)); }
+        else if (r < 0.75) { h.mode = "peck"; }
+        else h.mode = "stand";
+        h.until = now2 + 700 + Math.random() * 1800;
+      }
+      if (h.mode === "walk") {
+        const dx = h.tx - h.x, dy = h.ty - h.y, dist = Math.hypot(dx, dy), mv = 0.9 * dt;
+        if (Math.abs(dx) > 0.02) h.flip = dx > 0;
+        if (dist <= mv) { h.x = h.tx; h.y = h.ty; h.mode = "stand"; } else { h.x += (dx / dist) * mv; h.y += (dy / dist) * mv; }
+      }
+      const f = h.mode === "walk" ? (Math.floor(now2 / 140) % 2 ? "walk" : "stand") : h.mode === "peck" ? (Math.floor(now2 / 260) % 2 ? "peck" : "stand") : "stand";
+      const el = hb.children[i];
+      if (!el) return;
+      const im = el.firstChild, srcH = S.henImg(f);
+      if (h.src !== srcH) { im.src = srcH; h.src = srcH; }
+      const w = T * 0.62;
+      im.style.width = w + "px";
+      im.style.transform = h.flip ? "scaleX(-1)" : "";
+      el.style.transform = `translate(${(h.x * T - w / 2).toFixed(1)}px, ${(h.y * T - w * 8 / 11).toFixed(1)}px)`;
+      el.style.zIndex = String(10 + Math.round(h.y * 2));
+    });
+    // 내 캐릭터: 가만히 있으면 눈을 깜빡이고, 한참 있으면 앞을 봐요
+    if (!actor.busy && !actor.pose) {
+      if (!actor.blinkAt) actor.blinkAt = now2 + 2000;
+      let face = "";
+      if (now2 > actor.blinkAt) { actor.blinkTo = now2 + 140; actor.blinkAt = now2 + 2600 + Math.random() * 3200; }
+      if (actor.blinkTo > now2) face = "blink";
+      if (actor.idleSince && now2 - actor.idleSince > 6000 && actor.dir !== "down") { actor.dir = "down"; actor.flip = false; }
+      if (face !== actor.expr) { actor.expr = face; actor.draw(); }
+      else if (actor.dir === "down" && actor.idleSince && now2 - actor.idleSince > 6000) actor.draw();
+    }
+    // 상대 캐릭터 깜빡임
+    if (now2 > pets.pBlinkAt) { pets.partnerBlink = !pets.partnerBlink; pets.pBlinkAt = now2 + (pets.partnerBlink ? 140 : 3000 + Math.random() * 3000); placePartner(); }
   }
-
   function startTick() {
     stopTick();
-    wander();
+    clearInterval(animTimer);
+    animTimer = setInterval(animTick, 80);
     let n = 0;
     tickTimer = setInterval(() => {
       if (!W || root.hidden || document.hidden) return;
       n++;
-      if (n % 4 === 0) wander();
       if (n % 15 === 0) { now(); updateAll(); }
       else hud();
     }, 2000);
   }
-  function stopTick() { clearInterval(tickTimer); tickTimer = 0; }
+  function stopTick() { clearInterval(tickTimer); tickTimer = 0; clearInterval(animTimer); animTimer = 0; }
 
   // ============================================================
   // 홈 화면과 이어지는 곳
@@ -1299,7 +1385,7 @@
       if (tiles.some((t) => t.ready)) return "수확!";
       if (tiles.some((t) => t.thirsty)) return "물!";
       if (letters().length) return "편지!";
-      return `농사 ${W.level}`;
+      return "";
     },
     home() {
       if (!ensureW()) return null;

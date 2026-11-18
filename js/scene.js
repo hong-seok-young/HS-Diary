@@ -424,7 +424,7 @@
     let back = "";
     const L = (px) => `left:calc(50% ${px < 0 ? "-" : "+"} ${Math.abs(px)}px)`;
     // 날씨
-    if (w.wet && a !== "sleep") html += prop("umbrella", 5, `${L(4)};bottom:34px`, "umbrella");
+    if (w.wet && a !== "sleep") html += prop("umbrella", 5, `${L(4)};bottom:50px`, "umbrella");
     if ((w.snowy || avgSnow() > 3) && S.season === "winter") back += prop("snowman", 3, `${L(70)};bottom:14px`, "snowman");
     // 할 일
     if (a === "sleep") html += `<span class="zzz" style="${L(-30)}"><i>z</i><i>z</i><i>Z</i></span><span class="zzz z2" style="${L(18)}"><i>z</i><i>z</i><i>Z</i></span>`;
@@ -432,15 +432,15 @@
     if (a === "lunch") back += prop("mat", 5, `${L(-60)};bottom:2px`, "mat"), html += prop("bowl", 3, `${L(-70)};bottom:8px`) + steam(`${L(-64)};bottom:24px`) + prop("bowl", 3, `${L(56)};bottom:8px`) + steam(`${L(62)};bottom:24px`);
     if (a === "snack") {
       const snack = S.season === "winter" ? "bungeo" : S.season === "summer" ? "icecream" : "cake";
-      html += prop(snack, 3, `${L(-58)};bottom:30px`, "held") + prop(snack, 3, `${L(46)};bottom:30px`, "held b2");
+      html += prop(snack, 3, `${L(-58)};bottom:34px`, "held") + prop(snack, 3, `${L(46)};bottom:34px`, "held b2");
     }
     if (a === "dinner") back += prop("table", 3, `${L(58)};bottom:12px`) , html += prop("pot", 3, `${L(66)};bottom:27px`) + steam(`${L(74)};bottom:40px`);
     if (a === "dinner" || a === "campfire" || (S.dark > 0.55 && new Date(now()).getMonth() === 11)) html += `<span class="lights" style='background-image:${PIXEL.dataUri("lights", 2)}'></span>`;
     if (a === "campfire") back += `<span class="prop fire" style="${L(62)};bottom:10px">${PIXEL.sprite("fire1", 3)}${PIXEL.sprite("fire2", 3)}</span>`;
     if (a === "kite") html += `<span class="prop kite" id="kite" style="left:18%;top:14%">${PIXEL.sprite("kite", 3)}</span>`;
-    if (a === "read") html += prop("book", 3, `${L(-52)};bottom:30px`, "held") + prop("book2", 3, `${L(36)};bottom:30px`, "held b2");
-    if (a === "cafe") back += prop("cafeTable", 3, `${L(62)};bottom:12px`), html += prop("mug", 3, `${L(-60)};bottom:28px`, "held") + steam(`${L(-56)};bottom:46px`);
-    if (a === "movie") back += prop("screen", 3, `${L(66)};bottom:14px`, "screen"), html += prop("popcorn", 3, `${L(-56)};bottom:26px`, "held");
+    if (a === "read") html += prop("book", 3, `${L(-52)};bottom:34px`, "held") + prop("book2", 3, `${L(36)};bottom:34px`, "held b2");
+    if (a === "cafe") back += prop("cafeTable", 3, `${L(62)};bottom:12px`), html += prop("mug", 3, `${L(-60)};bottom:34px`, "held") + steam(`${L(-56)};bottom:52px`);
+    if (a === "movie") back += prop("screen", 3, `${L(66)};bottom:14px`, "screen"), html += prop("popcorn", 3, `${L(-56)};bottom:32px`, "held");
     if (a === "stargaze") back += prop("telescope", 3, `${L(64)};bottom:12px`, "scope");
     // 특별한 날
     let hat = { him: "", her: "" };
@@ -561,7 +561,11 @@
   function addCritter(kind, opts) {
     const box = scene.querySelector(".sc-critters");
     const frames = opts.frames || [kind];
-    const e = el(opts.button ? "button" : "span", "critter " + kind, frames.map((f) => PIXEL.sprite(f, opts.scale || 2)).join(""));
+    // 강아지는 농장 마루와 같은 새 걷기 그림으로 (다리를 번갈아 움직여요)
+    const html = kind === "dog" && window.FSprites
+      ? ["walk1", "walk2"].map((f) => `<img class="px" src="${FSprites.dogImg(f, f === "walk1" ? 1 : 0, "")}" width="36" height="26" alt="">`).join("")
+      : frames.map((f) => PIXEL.sprite(f, opts.scale || 2)).join("");
+    const e = el(opts.button ? "button" : "span", "critter " + kind, html);
     if (frames.length > 1) e.classList.add("anim");
     box.appendChild(e);
     const c = Object.assign({ kind, el: e, x: opts.x, y: opts.y, tx: opts.x, ty: opts.y, speed: 30, rest: 0, face: 1 }, opts);
@@ -646,7 +650,7 @@
           c.el.classList.toggle("down", down);
         }
       }
-      c.el.style.transform = `translate(${Math.round(c.x)}px, ${Math.round(c.y)}px) scaleX(${c.kind === "dog" || c.kind === "snail" ? -c.face : c.face})`;
+      c.el.style.transform = `translate(${Math.round(c.x)}px, ${Math.round(c.y)}px) scaleX(${c.kind === "snail" || (c.kind === "dog" && !window.FSprites) ? -c.face : c.face})`;
     }
   }
   function tapCritter(c, x, y) {
