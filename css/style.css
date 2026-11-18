@@ -11,6 +11,7 @@
   font-display: swap;
 }
 
+:root { --sa-t: env(safe-area-inset-top, 0px); --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px); --sa-r: env(safe-area-inset-right, 0px); }
 :root {
   --ink: #5b4638;
   --ink-soft: #a38c78;
@@ -108,8 +109,8 @@ input, select, textarea, .up-item, .dday, .month-label span {
 
 /* ---------- 머리 ---------- */
 .hero {
-  padding: 10px calc(var(--gap) + env(safe-area-inset-right)) 8px calc(var(--gap) + env(safe-area-inset-left));
-  padding-top: calc(10px + env(safe-area-inset-top));
+  padding: 10px calc(var(--gap) + var(--sa-r)) 8px calc(var(--gap) + var(--sa-l));
+  padding-top: calc(10px + var(--sa-t));
 }
 .hero-inner { position: relative; max-width: 868px; margin: 0 auto; padding: 0; height: 100%; display: flex; flex-direction: column; }
 .hero-row { display: flex; align-items: center; gap: 10px; padding: 8px 2px 2px; }
@@ -357,7 +358,7 @@ body.no-scroll { overflow: hidden; }
 /* ---------- 본문 ---------- */
 .container {
   max-width: 900px; margin: 0 auto;
-  padding: 0 calc(var(--gap) + env(safe-area-inset-right)) calc(168px + env(safe-area-inset-bottom)) calc(var(--gap) + env(safe-area-inset-left));
+  padding: 0 calc(var(--gap) + var(--sa-r)) calc(168px + var(--sa-b)) calc(var(--gap) + var(--sa-l));
 }
 
 .panel-box { padding: 4px; margin-bottom: 14px; }
@@ -448,7 +449,7 @@ button:focus-visible, summary:focus-visible { outline: 2px dashed var(--blue); o
 /* 기록 추가 버튼 */
 .fab {
   position: fixed; z-index: 40;
-  right: calc(16px + env(safe-area-inset-right)); bottom: calc(88px + env(safe-area-inset-bottom));
+  right: calc(16px + var(--sa-r)); bottom: calc(88px + var(--sa-b));
   width: 60px; height: 64px; padding: 0 0 4px; font-size: 32px; line-height: 32px; color: var(--ink);
   border-image-source: var(--bis-butter); background-color: var(--butter);
   animation: float 1.8s ease-in-out infinite alternate; will-change: transform;
@@ -457,7 +458,7 @@ button:focus-visible, summary:focus-visible { outline: 2px dashed var(--blue); o
 .fab.boing { animation: boing .5s var(--ease); }
 
 .toast {
-  position: fixed; z-index: 80; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom));
+  position: fixed; z-index: 80; left: 50%; bottom: calc(92px + var(--sa-b));
   width: max-content; max-width: calc(100% - 176px); padding: 0 6px; text-align: center;
   color: var(--panel); border-image-source: var(--bi-ink); background-color: var(--ink);
   pointer-events: none; opacity: 0; transform: translateX(-50%) translateY(20px);
@@ -575,7 +576,7 @@ button:focus-visible, summary:focus-visible { outline: 2px dashed var(--blue); o
 .modal {
   position: fixed; inset: 0; z-index: 50; background: rgba(91, 70, 56, .5);
   display: flex; align-items: center; justify-content: center;
-  padding: calc(14px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left));
+  padding: calc(14px + var(--sa-t)) calc(14px + var(--sa-r)) calc(18px + var(--sa-b)) calc(14px + var(--sa-l));
   overscroll-behavior: contain;
   animation: fade .2s ease both;
 }
@@ -629,7 +630,7 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 
 /* 가로로 눕혔을 때 */
 @media (max-height: 480px) and (orientation: landscape) {
-  .hero { padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: 12px; }
+  .hero { padding-top: calc(12px + var(--sa-t)); padding-bottom: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -642,7 +643,7 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .view { display: none; }
 .view.is-active { display: block; }
 .view.view-in { animation: viewIn .32s var(--ease) both; }
-.view-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(18px + env(safe-area-inset-top)) 0 12px; }
+.view-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: calc(18px + var(--sa-t)) 0 12px; }
 .view-head h1 { font-size: 32px; line-height: 40px; white-space: nowrap; }
 .view-head .btn { display: inline-flex; align-items: center; }
 .view-head .btn span { line-height: 0; margin-right: 6px; color: var(--orange); }
@@ -650,7 +651,7 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .nav {
   position: fixed; z-index: 45; left: 0; right: 0; bottom: 0;
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
-  padding: 6px calc(8px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
+  padding: 6px calc(8px + var(--sa-r)) calc(6px + var(--sa-b)) calc(8px + var(--sa-l));
   background: var(--panel); box-shadow: 0 -2px 0 0 var(--ink), 0 -6px 0 0 rgba(91, 70, 56, .1);
 }
 .nav-btn {
@@ -828,9 +829,9 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .lightbox { position: fixed; inset: 0; z-index: 90; background: rgba(40, 30, 24, .94); display: flex; align-items: center; animation: fade .2s ease both; }
 .lightbox .gallery-track { width: 100%; }
 .lightbox .gallery-track img { aspect-ratio: auto; height: 100vh; height: 100dvh; object-fit: contain; background: none; cursor: default; }
-.lightbox .gallery-count { top: calc(16px + env(safe-area-inset-top)); left: 16px; right: auto; }
+.lightbox .gallery-count { top: calc(16px + var(--sa-t)); left: 16px; right: auto; }
 .lightbox-close {
-  position: absolute; z-index: 2; top: calc(10px + env(safe-area-inset-top)); right: 10px; width: 44px; height: 44px;
+  position: absolute; z-index: 2; top: calc(10px + var(--sa-t)); right: 10px; width: 44px; height: 44px;
   border: 0; background: none; color: var(--panel); line-height: 0;
 }
 
@@ -900,18 +901,19 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 /* ============================================================
    홈: 한 화면 안에 다 들어오게
    ============================================================ */
-:root { --nav-h: calc(68px + env(safe-area-inset-bottom)); }
+:root { --nav-h: calc(68px + var(--sa-b)); }
 .nav { height: var(--nav-h); }
 .view[data-view="home"].is-active {
   display: flex; flex-direction: column;
   height: calc(100vh - var(--nav-h)); height: calc(100dvh - var(--nav-h));
-  min-height: 470px;
+
 }
-.view[data-view="home"] .hero { flex: 0 0 auto; min-height: 0; display: flex; flex-direction: column; }
+.view[data-view="home"].is-active { overflow: hidden; }
+.view[data-view="home"] .hero { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .view[data-view="home"] .hero-inner { flex: 1 1 auto; min-height: 0; width: 100%; padding: 4px 4px 2px; }
 /* 하늘은 적당히: 남는 자리는 정원 카드가 써요 */
-.view[data-view="home"] .scene-wrap { flex: 0 0 auto; height: 150px; height: clamp(150px, 26dvh, 226px); min-height: 0; }
-.home-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding-bottom: 8px !important; width: 100%; }
+.view[data-view="home"] .scene-wrap { flex: 0 1 auto; height: 150px; height: clamp(150px, 26dvh, 226px); min-height: 84px; }
+.home-body { flex: 1 0 auto; min-height: 0; display: flex; flex-direction: column; padding-bottom: 8px !important; width: 100%; }
 .home-body > .tiles, .home-body > .peeks, .home-body > .install-bar { flex: 0 0 auto; }
 .home-body .install-bar { margin-bottom: 8px; }
 .tiles { gap: 8px; margin-bottom: 8px; }

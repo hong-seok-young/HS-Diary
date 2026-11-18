@@ -653,13 +653,41 @@
     return r;
   }
 
+  // 글자 줄로 된 작은 그림 (닭, 우물, 출하함 같은 것)
+  function fromRows(key, rows, colors) {
+    const k = "rw|" + key;
+    let r = cache.get(k);
+    if (!r) {
+      const g = new Grid(rows[0].length, rows.length);
+      rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) if (row[x] !== ".") g.c[y * g.w + x] = row[x]; });
+      r = render(g, Object.assign({ o: OUT }, colors));
+      cache.set(k, r);
+    }
+    return r;
+  }
+  // 바닥 무늬 (풀, 흙, 젖은 흙)
+  function texture(key, size, fn) {
+    const k = "tx|" + key;
+    let r = cache.get(k);
+    if (!r) {
+      const cv = document.createElement("canvas");
+      cv.width = size; cv.height = size;
+      const ctx = cv.getContext("2d");
+      fn(ctx, size);
+      r = { uri: cv.toDataURL("image/png"), w: size, h: size };
+      cache.set(k, r);
+    }
+    return r;
+  }
+
   function img(r, scale, cls) {
     if (!r) return "";
     return `<img class="px ${cls || ""}" src="${r.uri}" width="${r.w * scale}" height="${r.h * scale}" alt="" draggable="false">`;
   }
 
   window.GArt = {
-    plant, critter, fromPixel, img, shade, hsl,
+    plant, critter, fromPixel, fromRows, texture, img, shade, hsl,
+    rowsImg(key, rows, colors, scale, cls) { return img(fromRows(key, rows, colors), scale || 3, cls); },
     plantImg(sp, stage, variant, scale, cls) { return img(plant(sp, stage, variant), scale || 3, cls); },
     critterImg(kind, scale, cls) { return img(critter(kind), scale || 3, cls); },
     pixImg(name, scale, colors, cls) { return img(fromPixel(name, colors), scale || 3, cls); },

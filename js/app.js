@@ -451,7 +451,7 @@
     const q = g.quest;
     const plants = g.plants.slice(0, 6);
     while (plants.length < 6) plants.push(undefined);
-    MORPH(el, `<button class="hg-top" data-hg="open">${g.npc}<b>${esc(g.area)}</b><i>${PIXEL.sprite("petal", 2)}${esc(g.petals)}</i></button>
+    MORPH(el, `<button class="hg-top" data-hg="open">${g.npc}<b>${esc(g.area)}</b><i>${esc(g.petals)}</i></button>
       <button class="hg-q${q && q.done ? " done" : ""}" data-hg="open"><span>${q ? (q.letter ? esc(q.text) : q.done ? "할 일 끝! 눌러서 받기" : esc(q.text)) : "모든 이야기를 끝냈어요"}</span>${q ? `<i class="g-bar q"><b style="transform:scaleX(${q.f.toFixed(3)})"></b></i>` : ""}</button>
       <div class="hg-plants">${plants.map((p, i) => p ? `<button class="hg-pl${p.ready ? " ready" : ""}" data-hg="tap" data-i="${i}" aria-label="꽃 돌보기"><span>${p.html}</span><i class="pl-bar"><b style="transform:scaleX(${p.f.toFixed(3)})"></b></i></button>` : p === null ? `<button class="hg-pl empty" data-hg="open" aria-label="씨앗 심기">${PIXEL.icon("leaf", 2)}</button>` : `<span class="hg-pl none"></span>`).join("")}</div>`);
   }
