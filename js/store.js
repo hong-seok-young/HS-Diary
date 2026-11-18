@@ -9,7 +9,7 @@
   "use strict";
 
   const KEY = { db: "hsd.db", token: "hsd.token", me: "hsd.me", old: "hs-diary-local-entries" };
-  const COLS = ["entries", "plans", "diary"];
+  const COLS = ["entries", "plans", "diary", "garden"];
   const cfg = typeof DIARY_CONFIG !== "undefined" ? DIARY_CONFIG : {};
 
   function repo() {
@@ -36,7 +36,7 @@
     return null;
   }
   function emptyDb() {
-    return { v: 1, entries: {}, plans: {}, diary: {}, pairs: {} };
+    return { v: 1, entries: {}, plans: {}, diary: {}, garden: {}, pairs: {} };
   }
   function normalize(db) {
     const out = emptyDb();

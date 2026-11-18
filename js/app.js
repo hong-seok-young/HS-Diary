@@ -360,7 +360,7 @@
     return who === "him" ? "her" : "him";
   }
   function bubbleLines(who) {
-    const lines = [];
+    const lines = window.Scene ? Scene.lines().slice(0, 3) : [];
     const days = daysTogether();
     if (days > 0) lines.push(`오늘로 ${days}일째야`);
     const sent = Number(Store.pair("p:" + todayKey(), who)) || 0;
@@ -412,74 +412,44 @@
       }
     });
   }
-  // 같이 키우는 나무: 기록, 일기, 해낸 일, 둘 다 답한 질문이 쌓이면 자라요.
-  const PLANT_STEPS = [0, 2, 5, 10, 18];
-  const PLANT_NAMES = ["씨앗", "새싹", "풀", "꽃", "꽃나무"];
-  function answeredDays() {
-    return Store.pairKeys("q:").filter((k) => Store.pair(k, "him") && Store.pair(k, "her")).length;
-  }
-  function plantScore() {
-    return Store.list("entries").length + Store.list("diary").length + Store.list("plans").filter((p) => p.done).length + answeredDays();
-  }
-  function plantLevel() {
-    const s = plantScore();
-    let lv = 0;
-    PLANT_STEPS.forEach((need, i) => { if (s >= need) lv = i; });
-    return lv;
-  }
-  function plantText() {
-    const s = plantScore();
-    const lv = plantLevel();
-    const next = PLANT_STEPS[lv + 1];
-    return next == null ? `${PLANT_NAMES[lv]} 다 컸어` : `${PLANT_NAMES[lv]}, ${next - s}번 더 하면 자라`;
-  }
-  // celebrate: 방금 내가 한 일로 자랐을 때만 축하해요. (다른 폰 내용을 받아 온 경우는 조용히)
-  function renderPlant(celebrate) {
+  // 풍경 속 화분: 같이 키우기 게임의 지금 모습
+  function renderScenePlant() {
+    if (!window.Garden) return;
     const el = $("plant");
-    const lv = plantLevel();
-    if (el.dataset.lv !== String(lv)) {
-      const grew = celebrate && el.dataset.lv !== undefined && Number(el.dataset.lv) < lv;
-      el.dataset.lv = String(lv);
-      el.innerHTML = PIXEL.sprite("plant" + lv, 3);
-      if (grew) {
-        play(el, "boing");
-        burstAt(el, 8);
-        toast(`나무가 자랐어요: ${PLANT_NAMES[lv]}`);
-      }
+    const g = Garden.sceneSvg();
+    const p = g.state.plant;
+    const key = p ? [p.species, p.stage, p.thirsty, g.state.skin, p.bugs.length, p.ready].join(":") : "none";
+    if (el.dataset.k !== key) {
+      const grew = el.dataset.k && p && el.dataset.stage && Number(el.dataset.stage) < p.stage;
+      el.dataset.k = key;
+      el.dataset.stage = p ? String(p.stage) : "0";
+      el.innerHTML = g.html + (p && p.bugs.length ? `<i class="plant-bug">${PIXEL.sprite("bug", 2)}</i>` : "") + (p && (p.thirsty || p.ready) ? `<i class="plant-alert">${p.ready ? PIXEL.icon("star", 2) : "!"}</i>` : "");
+      if (grew) { play(el, "boing"); burstAt(el, 8); }
     }
-    $("plantInfo").innerHTML = `${PIXEL.sprite("plant" + lv, 2)}<span>우리 나무는 ${esc(plantText())}</span>`;
+    el.classList.toggle("thirsty", !!(p && p.thirsty));
+    el.classList.toggle("ready", !!(p && p.ready));
+    $("tileGarden").textContent = Garden.badge();
   }
-  function waterPlant() {
-    const el = $("plant");
-    play(el, "boing");
-    if (!reduced()) {
-      const r = el.getBoundingClientRect();
-      for (let i = 0; i < 3; i++) {
-        const d = document.createElement("span");
-        d.className = "drop";
-        d.innerHTML = PIXEL.icon("drop", 2);
-        d.style.left = r.left + r.width / 2 - 14 + i * 12 + "px";
-        d.style.top = r.top - 34 + "px";
-        d.style.animationDelay = i * 90 + "ms";
-        d.addEventListener("animationend", () => d.remove());
-        fxLayer().appendChild(d);
-      }
+  // 상대가 보낸 하트가 새로 오면 풍경에서 날아와요.
+  function checkLove() {
+    const me = Store.me();
+    if (!me || !window.Scene || state.view !== "home") return;
+    const other = partnerOf(me);
+    const key = todayKey();
+    const n = Number(Store.pair("p:" + key, other)) || 0;
+    let seen = null;
+    try { seen = JSON.parse(localStorage.getItem("hsd.seenLove") || "null"); } catch (e) { seen = null; }
+    const before = seen && seen.day === key ? seen.n : 0;
+    if (n > before) {
+      setTimeout(() => {
+        Scene.loveFlight(other, n - before, () => {
+          const el = document.querySelector(`.bob[data-who="${me}"]`);
+          if (el) play(el, "jump");
+          showBubble(`${WHO[other]}가 하트 ${n - before}개 보냈어`, me);
+        });
+      }, 600);
     }
-    showBubble(plantText(), "her");
-  }
-  // 계절마다 떨어지는 것: 봄 꽃잎, 여름 반딧불, 가을 낙엽, 겨울 눈
-  function startSeason() {
-    const m = new Date().getMonth() + 1;
-    const kind = m === 12 || m <= 2 ? "snow" : m <= 5 ? "petal" : m <= 8 ? "firefly" : "leaf";
-    const box = $("fall");
-    box.className = "sc-fall " + kind;
-    let html = "";
-    for (let i = 0; i < 8; i++) {
-      const left = 4 + ((i * 37) % 92);
-      const dur = kind === "firefly" ? 5 + (i % 4) : 7 + ((i * 3) % 6);
-      html += `<i style="left:${left}%;animation-duration:${dur}s;animation-delay:-${(i * 1.7).toFixed(1)}s">${PIXEL.sprite(kind, 2)}</i>`;
-    }
-    box.innerHTML = html;
+    try { localStorage.setItem("hsd.seenLove", JSON.stringify({ day: key, n })); } catch (e) { /* 무시 */ }
   }
   function bindScene() {
     $("scene").addEventListener("click", (ev) => {
@@ -493,21 +463,8 @@
         return;
       }
       if (ev.target.closest("#plant")) {
-        waterPlant();
-        return;
-      }
-      const t = ev.target.closest(".tap");
-      if (!t) return;
-      if (t.classList.contains("sc-sun") || t.classList.contains("sc-moon")) {
-        document.body.classList.toggle("night");
-        burstAt(t, 8);
-      } else if (t.classList.contains("sc-tree")) {
-        play(t, "shake");
-        burstAt(t, 4);
-      } else if (t.classList.contains("sc-flower")) {
-        play(t, "boing");
-      } else if (t.classList.contains("sc-cloud")) {
-        play(t, "puff");
+        play($("plant"), "boing");
+        setPanel("garden");
       }
     });
   }
@@ -526,6 +483,7 @@
     setPanel(null);
     hideBubble();
     window.scrollTo(0, 0);
+    if (window.Scene) Scene.setActive(view === "home");
     renderView();
   }
 
@@ -538,8 +496,8 @@
       b.setAttribute("aria-expanded", String(on));
     });
     document.querySelectorAll(".panel").forEach((p) => setOpen(p, p.id === "panel-" + name));
-    if (name === "stats") renderStats(true);
-    else setPlaces(false);
+    document.body.classList.toggle("sheet-open", !!name);
+    if (name === "garden" && window.Garden) Garden.render();
     if (name === "mood") renderMood();
     if (name === "poke") renderPoke();
     if (name === "quest") renderQuest();
@@ -559,7 +517,7 @@
     $("tileQuest").textContent = `${ans}/2`;
     const ev = upcomingEvents()[0];
     $("tileUp").textContent = ev ? (ev.left === 0 ? "오늘" : "D-" + ev.left) : "";
-    $("tileStats").textContent = String(Store.list("entries").length);
+    if (window.Garden) $("tileGarden").textContent = Garden.badge();
   }
 
   function renderMood() {
@@ -597,6 +555,7 @@
     silently(() => Store.setPair(key, me, n));
     play($("btnPoke"), "boing");
     burstAt($("btnPoke"), 7, "heart");
+    if (window.Scene) Scene.loveFlight(me, 1);
     const other = document.querySelector(`.bob[data-who="${partnerOf(me)}"]`);
     if (other) play(other, "jump");
     renderPoke();
@@ -703,57 +662,11 @@
       </div>`).join("");
   }
 
-  function countUp(el, to) {
-    if (to <= 1 || reduced()) { el.textContent = to; return; }
-    const dur = 500;
-    let t0 = null;
-    el.textContent = 0;
-    function tick(now) {
-      if (t0 === null) t0 = now;
-      const k = Math.min(1, (now - t0) / dur);
-      el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3)));
-      if (k < 1) requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-  }
-  function placeList() {
-    const counts = new Map();
-    Store.list("entries").forEach((e) => {
-      const p = (e.place || "").trim();
-      if (p) counts.set(p, (counts.get(p) || 0) + 1);
-    });
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }
-  function renderStats(animate) {
-    const vals = {
-      statTotal: Store.list("entries").length,
-      statDiary: Store.list("diary").length,
-      statPlans: Store.list("plans").filter((p) => !p.done).length,
-      statPlaces: placeList().length,
-    };
-    Object.keys(vals).forEach((id) => {
-      if (animate) countUp($(id), vals[id]);
-      else $(id).textContent = vals[id];
-    });
-  }
-  function setPlaces(open) {
-    const btn = document.querySelector('.stat[data-stat="places"]');
-    if (open) {
-      const places = placeList();
-      $("placesList").innerHTML = places.length
-        ? places.map(([p, n]) => `<button class="place" data-place="${esc(p)}">${PIXEL.icon("pin", 2)}${esc(p)}<i>${n}</i></button>`).join("")
-        : `<span class="muted">아직 장소가 없어요</span>`;
-    }
-    setOpen($("places"), open);
-    btn.classList.toggle("active", open);
-    btn.setAttribute("aria-expanded", String(open));
-  }
-
   function renderPeeks() {
     const todo = Store.list("plans").filter((p) => !p.done).sort((a, b) => (b.t || 0) - (a.t || 0));
     $("peekPlansCount").textContent = todo.length ? `${todo.length}개` : "";
     $("peekPlans").innerHTML = todo.length
-      ? todo.slice(0, 3).map((p) => `<p class="peek-line"><span class="cat-ico ${esc(p.category)}">${PIXEL.icon(p.category, 2)}</span><span>${esc(p.title)}</span></p>`).join("")
+      ? todo.slice(0, 2).map((p) => `<p class="peek-line"><span class="cat-ico ${esc(p.category)}">${PIXEL.icon(p.category, 2)}</span><span>${esc(p.title)}</span></p>`).join("")
       : `<p class="muted">하고 싶은 걸 적어 봐요</p>`;
     const posts = sortedPosts();
     $("peekDiaryCount").textContent = posts.length ? `${posts.length}개` : "";
@@ -777,21 +690,24 @@
     if (pend && Store.token() && st.state !== "syncing") text += ` · 사진 ${pend}장 대기`;
     chip.textContent = text;
     chip.className = "sync-chip " + cls;
+    $("syncDot").className = "sync-dot " + cls;
   }
 
   function renderHome() {
     renderHeader();
     renderMoodTags();
-    renderPlant();
+    renderScenePlant();
     renderTiles();
     renderUpcoming();
-    renderStats(false);
     renderPeeks();
     renderSync();
+    checkLove();
+    const qk = "q:" + todayKey();
+    $("couple").classList.toggle("blessed", !!(Store.pair(qk, "him") && Store.pair(qk, "her")));
     if (state.openPanel === "mood") renderMood();
     if (state.openPanel === "poke") renderPoke();
     if (state.openPanel === "quest" && !questEditing && !(document.activeElement && document.activeElement.id === "questInput")) renderQuest();
-    if (isOpen($("places"))) setPlaces(true);
+    if (state.openPanel === "garden" && window.Garden && !quiet) Garden.render();
   }
 
   // ---------- 기록 ----------
@@ -1045,7 +961,7 @@
     const card = document.querySelector(".view.is-active .card.open");
     if (card) burstAt(card.querySelector(".cat-ico"), 8);
     toast(id ? "고쳤어요" : "기록을 남겼어요");
-    renderPlant(true);
+    renderScenePlant();
   }
 
   // 할 거
@@ -1214,23 +1130,6 @@
       const pc = t.closest("[data-pick-cat]");
       if (pc) { state.pickCat = pc.dataset.pickCat; renderPick(); return; }
       if (t.closest("#btnPick")) { play($("btnPick"), "boing"); runPick(); return; }
-      const place = t.closest(".place");
-      if (place) {
-        state.cat = "all";
-        state.q = place.dataset.place;
-        go("log");
-        toast(`"${place.dataset.place}" 기록만 보는 중`);
-        return;
-      }
-      const s = t.closest(".stat");
-      if (s) {
-        play(s, "boing");
-        const kind = s.dataset.stat;
-        if (kind === "places") setPlaces(!isOpen($("places")));
-        else if (kind === "diary") go("diary");
-        else if (kind === "plans") go("plans");
-        else { state.cat = "all"; state.q = ""; go("log"); }
-      }
     });
     $("panels").addEventListener("submit", (ev) => {
       if (ev.target.id !== "questForm") return;
@@ -1241,7 +1140,7 @@
       silently(() => Store.setPair("q:" + todayKey(), Store.me(), text));
       renderQuest();
       renderTiles();
-      renderPlant(true);
+      renderScenePlant();
       burstAt($("questText"), 8);
       toast("답했어요");
     });
@@ -1322,7 +1221,7 @@
           burstAt(check, 10);
           toast("해냈어요");
         }
-        renderPlant(true);
+        renderScenePlant();
         return;
       }
       if (ev.target.closest("[data-plan-edit]")) { openPlan(p); return; }
@@ -1385,7 +1284,7 @@
       const first = document.querySelector("#postList .post");
       if (first && !id) burstAt(first.querySelector(".who"), 8, "heart");
       toast(id ? "고쳤어요" : "일기를 썼어요");
-      renderPlant(true);
+      renderScenePlant();
     });
     $("btnPostDelete").addEventListener("click", () => {
       if (!confirm("이 일기를 지울까요?")) return;
@@ -1582,14 +1481,18 @@
   }
 
   // ---------- 시작 ----------
-  // 저녁 7시부터 아침 6시까지는 밤 풍경
-  const hour = new Date().getHours();
-  if (hour >= 19 || hour < 6) document.body.classList.add("night");
-
+  // 풍경과 게임이 쓰는 공용 도구
+  window.HSD = { toast, burst, bubble: showBubble };
   PIXEL.fill(document);
-  startSeason();
   bind();
   bindInstall();
+  if (window.Garden) {
+    Garden.bind({
+      toast, burstAt, play, silently, whoAsk, esc,
+      onChanged() { renderTiles(); renderScenePlant(); },
+    });
+  }
+  if (window.Scene) Scene.init();
   renderView();
 
   // 다른 폰에서 고친 내용이 들어오면 다시 그려요.
@@ -1597,7 +1500,7 @@
     if (quiet) return;
     if (openModalEl()) { renderSync(); return; }
     renderView();
-    if (state.view !== "home") { renderMoodTags(); renderPlant(); }
+    if (state.view !== "home") { renderMoodTags(); renderScenePlant(); }
   });
   Store.onStatus(() => {
     renderSync();

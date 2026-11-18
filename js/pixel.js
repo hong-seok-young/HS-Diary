@@ -257,6 +257,124 @@
       "XX",
       "XX",
     ],
+    leaf: [
+      "....XXX",
+      "..XXXXX",
+      ".XXX.XX",
+      "XXX.XXX",
+      "XX.XXX.",
+      "X.XXX..",
+      ".X.....",
+    ],
+    coin: [
+      ".XXXX.",
+      "XX..XX",
+      "X.XX.X",
+      "X.XX.X",
+      "XX..XX",
+      ".XXXX.",
+    ],
+    hand: [
+      "..X.X.X.",
+      "..X.X.X.",
+      ".XX.X.X.",
+      "XXXXXXX.",
+      "XXXXXXX.",
+      ".XXXXX..",
+      "..XXX...",
+    ],
+    sack: [
+      "..XXXX..",
+      "...XX...",
+      "..XXXX..",
+      ".XXXXXX.",
+      "XXX..XXX",
+      "XX.XX.XX",
+      "XXXXXXXX",
+      ".XXXXXX.",
+    ],
+    basket: [
+      "..XXXX..",
+      ".X....X.",
+      "XXXXXXXX",
+      "X.X.X.XX",
+      "XX.X.X.X",
+      ".XXXXXX.",
+    ],
+    trophy: [
+      "XXXXXXXX",
+      "XXXXXXXX",
+      ".XXXXXX.",
+      "..XXXX..",
+      "...XX...",
+      "..XXXX..",
+    ],
+    lock: [
+      "..XXX..",
+      ".X...X.",
+      ".X...X.",
+      "XXXXXXX",
+      "XXX.XXX",
+      "XXX.XXX",
+      "XXXXXXX",
+    ],
+    wsun: [
+      "...X...",
+      ".X...X.",
+      "..XXX..",
+      "X.XXX.X",
+      "..XXX..",
+      ".X...X.",
+      "...X...",
+    ],
+    wmoon: [
+      "..XXX..",
+      ".XX....",
+      "XX.....",
+      "XX.....",
+      "XX....X",
+      ".XX..XX",
+      "..XXXX.",
+    ],
+    wcloud: [
+      "...XX...",
+      ".XXXXXX.",
+      "XXXXXXXX",
+      "XXXXXXXX",
+    ],
+    wrain: [
+      "...XX...",
+      ".XXXXXX.",
+      "XXXXXXXX",
+      "........",
+      ".X..X..X",
+      "X..X..X.",
+    ],
+    wsnow: [
+      "...XX...",
+      ".XXXXXX.",
+      "XXXXXXXX",
+      "........",
+      ".X..X..X",
+      "........",
+      "X..X..X.",
+    ],
+    wthunder: [
+      "...XX...",
+      ".XXXXXX.",
+      "XXXXXXXX",
+      "....X...",
+      "...XX...",
+      "..XX....",
+      "..X.....",
+    ],
+    wfog: [
+      "XXXXXX..",
+      "........",
+      "..XXXXXX",
+      "........",
+      "XXXXXX..",
+    ],
     spark: [
       ".X.",
       "XXX",
@@ -472,6 +590,199 @@
     snow: { colors: { W: "#ffffff" }, rows: [".W.", "WWW", ".W."] },
     petal: { colors: { P: "#ffd6e3" }, rows: ["PP.", "PPP", ".PP"] },
     firefly: { colors: { Y: "#fff3a0" }, rows: ["YY", "YY"] },
+    // ---- 풍경 소품 ----
+    umbrella: {
+      colors: { P: "#ff9ec0", D: "#f06796", W: "#ffe3ec", H: "#8d6748" },
+      rows: [
+        "......PPPP......",
+        "...PPPPPPPPPP...",
+        "..PWWPPPPPPPPP..",
+        ".PWPPPPPPPPPPPD.",
+        "PPPPPPPPPPPPPPDD",
+        "D.DD.DDD.DDD.DD.",
+        ".......H........",
+        ".......H........",
+        ".......H........",
+        ".......H........",
+        ".......H........",
+        "......HH........",
+      ],
+    },
+    bowl: {
+      colors: { W: "#ffffff", R: "#e86a6a", D: "#c9504f" },
+      rows: ["..WWWW..", ".WWWWWW.", "RRRRRRRR", ".RRRRRR.", "..DDDD.."],
+    },
+    mug: {
+      colors: { M: "#ffffff", C: "#9a785a", S: "#e3dacb" },
+      rows: ["MCCCM..", "MMMMMMM", "MMMMM.M", "MMMMMMM", "MMMMM..", ".SSS..."],
+    },
+    mat: {
+      colors: { R: "#f28c8c", W: "#fff6ee" },
+      rows: ["RRWWRRWWRRWWRRWWRRWWRRWW", "WWRRWWRRWWRRWWRRWWRRWWRR", "RRWWRRWWRRWWRRWWRRWWRRWW"],
+    },
+    table: {
+      colors: { T: "#c99a6e", L: "#9a785a" },
+      rows: [
+        "TTTTTTTTTTTTTTTTTTTT",
+        "LLLLLLLLLLLLLLLLLLLL",
+        ".L................L.",
+        ".L................L.",
+        ".L................L.",
+      ],
+    },
+    pot: {
+      colors: { P: "#5b4638", S: "#ee9453", W: "#ffffff" },
+      rows: ["..PPPPPP..", "PPSSWSSSPP", ".PSSSSSSP.", ".PPPPPPPP."],
+    },
+    fire1: {
+      colors: { R: "#f0603a", O: "#ffa34a", Y: "#fff07a", W: "#9a785a", D: "#6e5340" },
+      rows: [
+        "....Y.....",
+        "...YOY....",
+        "..YOOOY...",
+        "..ORRRO.Y.",
+        ".OORRROOO.",
+        ".ORRRRRRO.",
+        "WDWWDWWDWW",
+        ".WWDWWDWW.",
+      ],
+    },
+    fire2: {
+      colors: { R: "#f0603a", O: "#ffa34a", Y: "#fff07a", W: "#9a785a", D: "#6e5340" },
+      rows: [
+        ".....Y....",
+        "....YOY...",
+        "..YOOOOY..",
+        ".Y.ORRRO..",
+        ".OOORRROO.",
+        ".ORRRRRRO.",
+        "WDWWDWWDWW",
+        ".WWDWWDWW.",
+      ],
+    },
+    cake: {
+      colors: { C: "#ffffff", P: "#ff9ec0", B: "#f9c49a", Y: "#fff07a", R: "#e86a6a" },
+      rows: ["...Y..Y...", "...R..R...", ".CCCCCCCC.", ".PCPPCPPP.", ".BBBBBBBB.", ".PPPPPPPP.", ".BBBBBBBB."],
+    },
+    balloonP: {
+      colors: { B: "#ff86ad", W: "#ffd6e3", S: "#a38c78" },
+      rows: [".BBB.", "BWBBB", "BBBBB", "BBBBB", ".BBB.", "..B..", "..S..", "...S.", "..S..", ".S...", "..S..", "..S.."],
+    },
+    balloonB: {
+      colors: { B: "#7fb2e5", W: "#d6ecff", S: "#a38c78" },
+      rows: [".BBB.", "BWBBB", "BBBBB", "BBBBB", ".BBB.", "..B..", "..S..", ".S...", "..S..", "...S.", "..S..", "..S.."],
+    },
+    balloonY: {
+      colors: { B: "#ffd978", W: "#fff6d6", S: "#a38c78" },
+      rows: [".BBB.", "BWBBB", "BBBBB", "BBBBB", ".BBB.", "..B..", "..S..", "...S.", "..S..", "..S..", ".S...", "..S.."],
+    },
+    partyHat: {
+      colors: { Y: "#ffd978", P: "#ff86ad", W: "#ffffff" },
+      rows: ["..W..", "..Y..", ".YPY.", ".PYY.", "YYPYP"],
+    },
+    santaHat: {
+      colors: { R: "#e3504b", W: "#ffffff" },
+      rows: [".....WW", "...RRRW", "..RRRR.", ".RRRRR.", "WWWWWWW"],
+    },
+    nightCap: {
+      colors: { B: "#7fb2e5", W: "#ffffff" },
+      rows: ["......W", "....BBB", "..BBBB.", ".BBBBB.", "WWWWWWW"],
+    },
+    xtree: {
+      colors: { G: "#4e9a5c", Y: "#ffd978", R: "#e3504b", B: "#7fb2e5", T: "#8d6748" },
+      rows: [
+        "....Y....",
+        "...GGG...",
+        "..GRGGG..",
+        "...GGG...",
+        "..GGBGG..",
+        ".GGGGGGG.",
+        "..GGGYG..",
+        ".GRGGGGG.",
+        "GGGGGGBGG",
+        "....T....",
+        "...TTT...",
+      ],
+    },
+    pumpkin: {
+      colors: { O: "#f5a56b", D: "#e0823f", G: "#66b46e", E: "#5b4638" },
+      rows: ["....G...", "..OODOO.", ".OEODOEO", "OOOODOOO", "OOEEEEOO", ".OOOOOO.", "..OOOO.."],
+    },
+    gift: {
+      colors: { R: "#ff86ad", Y: "#ffd978" },
+      rows: ["..Y.Y..", "...Y...", "RRRYRRR", "RRRYRRR", "YYYYYYY", "RRRYRRR", "RRRYRRR"],
+    },
+    snowman: {
+      colors: { W: "#ffffff", S: "#dfe9f3", E: "#5b4638", O: "#f5a56b", R: "#e3504b" },
+      rows: [
+        "...WWW...",
+        "..WEWEW..",
+        "..WWOWW..",
+        "...WWW...",
+        "..RRRRR..",
+        ".WWWEWWW.",
+        "WWWWWWWWW",
+        "WWWWEWWWS",
+        "WWWWWWWWS",
+        ".SWWWWWS.",
+      ],
+    },
+    kite: {
+      colors: { P: "#ff86ad", Y: "#ffd978" },
+      rows: ["...P...", "..PPP..", ".PPYPP.", "PPYYYPP", ".PPYPP.", "..PPP..", "...P...", "..Y.Y..", "...Y..."],
+    },
+    icecream: {
+      colors: { P: "#ffb9cf", W: "#fff6ee", C: "#e0b07a", D: "#c99a6e" },
+      rows: [".PPP.", "PPWPP", "PPPPP", "CDCDC", ".CDC.", ".DCD.", "..C.."],
+    },
+    bungeo: {
+      colors: { B: "#e0a45f", D: "#b9813f" },
+      rows: ["..BBBB..B", ".BDBBBBBB", "BBBBDBBB.", ".BBBBBBBB", "..BBBB..B"],
+    },
+    lights: {
+      colors: { L: "#8d6748", R: "#ff86ad", Y: "#ffd978", B: "#7fb2e5", G: "#86cc86" },
+      rows: [
+        "LL......................LL",
+        "..LL..................LL..",
+        "..R.LLL..............LLY..",
+        ".....Y.LLLL....LLLLB......",
+        "...........LLLL.....G.....",
+        "........B.......R.........",
+      ],
+    },
+    cat1: {
+      colors: { C: "#f5a56b", D: "#e0823f", E: "#5b4638", P: "#ff9ec0" },
+      rows: ["C...C.......", "CC.CC.......", "CECEC......C", "CCPCC.....C.", ".CCCCCCCCCC.", ".CDCCDCCDCC.", ".C.C....C.C."],
+    },
+    cat2: {
+      colors: { C: "#f5a56b", D: "#e0823f", E: "#5b4638", P: "#ff9ec0" },
+      rows: ["C...C.......", "CC.CC......C", "CECEC.....C.", "CCPCC.....C.", ".CCCCCCCCCC.", ".CDCCDCCDCC.", "..C.C..C.C.."],
+    },
+    catSit: {
+      colors: { C: "#f5a56b", D: "#e0823f", E: "#5b4638", P: "#ff9ec0" },
+      rows: ["C...C...", "CC.CC...", "CECEC...", "CCPCC...", ".CCCC...", ".CDCCC.C", ".CCCCCC.", ".C.C.CC."],
+    },
+    bird1: { colors: { X: "#5b4638" }, rows: ["X...X", ".X.X.", "..X.."] },
+    bird2: { colors: { X: "#5b4638" }, rows: [".....", "XX.XX", "..X.."] },
+    fly1: { colors: { P: "#ffb9cf", B: "#5b4638" }, rows: ["P.B.P", "PPBPP", ".PBP."] },
+    fly2: { colors: { P: "#ffb9cf", B: "#5b4638" }, rows: ["..B..", ".PBP.", ".PBP."] },
+    dfly: { colors: { R: "#e3504b", W: "#dff3ff" }, rows: ["W.W.W", ".RRRR", "W.W.."] },
+    bug: { colors: { G: "#86cc86", D: "#4e9a5c", E: "#5b4638" }, rows: ["....GE", "GDGDGG", ".G.G.."] },
+    weed: { colors: { G: "#66b46e", L: "#9bd68f" }, rows: ["L.L.L", ".LGL.", "L.G.L", "..G.."] },
+    can: {
+      colors: { B: "#7fb2e5", D: "#5f8fc0", W: "#ffffff" },
+      rows: [
+        "..BBB.......",
+        ".B...B......",
+        "BBBBBBB....B",
+        "BWBBBBBB..B.",
+        "BBBBBBBBBB..",
+        "BDBBBBBB....",
+        ".BBBBBB.....",
+      ],
+    },
+    zzz: { colors: { Z: "#ffffff" }, rows: ["ZZZ", "..Z", ".Z.", "Z..", "ZZZ"] },
+    puff: { colors: { W: "#ffffff" }, rows: [".W.", "WWW", ".W."] },
     flowerA: { colors: { P: "#ffffff", O: "#ffc65c", S: "#66b46e" }, rows: [".P.", "POP", ".P.", ".S.", ".S."] },
     flowerB: { colors: { P: "#ffe08f", O: "#f5a56b", S: "#66b46e" }, rows: [".P.", "POP", ".P.", ".S.", ".S."] },
     flowerC: { colors: { P: "#cdbdee", O: "#ffffff", S: "#66b46e" }, rows: [".P.", "POP", ".P.", ".S.", ".S."] },
@@ -497,7 +808,35 @@
     return `<svg class="${cls || "px"}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" shape-rendering="crispEdges" aria-hidden="true">${rects}</svg>`;
   }
 
+  // 달 모양: 0 ~ 1 (0, 1 은 그믐, 0.5 는 보름)
+  function moonRows(phase) {
+    const n = 11, r = 5, c = 5;
+    const lit = Math.cos(phase * 2 * Math.PI); // 1 → 어두움, -1 → 밝음
+    const rows = [];
+    for (let y = 0; y < n; y++) {
+      let row = "";
+      for (let x = 0; x < n; x++) {
+        const dx = x - c, dy = y - c;
+        if (dx * dx + dy * dy > r * r + 2) { row += "."; continue; }
+        const half = Math.sqrt(Math.max(0, r * r - dy * dy)) || 1;
+        const k = dx / half; // -1 ~ 1
+        const waxing = phase < 0.5;
+        const edge = lit; // 그림자 경계
+        const bright = waxing ? k > edge : k < -edge;
+        row += bright ? "M" : "S";
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
   window.PIXEL = {
+    draw(rows, colors, scale, cls) {
+      return toSvg(rows, colors, scale || 3, cls || "px px-sprite");
+    },
+    moon(phase, scale) {
+      return toSvg(moonRows(phase), { M: "#fff3c4", S: "rgba(255,243,196,.16)" }, scale || 3, "px px-sprite");
+    },
     icon(name, scale) {
       const rows = ICONS[name] || ICONS.etc;
       return toSvg(rows, null, scale || 2, "px px-icon");
