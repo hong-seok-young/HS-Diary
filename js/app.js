@@ -516,9 +516,14 @@
   }
 
   // ---------- 화면 넘기기 ----------
+  // 홈에 있는 동안은 화면 자체를 잠가서 어떤 폰에서도 스크롤이나 튕김이 없게 해요.
+  function lockScroll() {
+    document.documentElement.classList.toggle("lock", state.view === "home");
+  }
   function go(view) {
     if (!document.querySelector(`.view[data-view="${view}"]`)) return;
     state.view = view;
+    lockScroll();
     document.querySelectorAll(".view").forEach((v) => {
       const on = v.dataset.view === view;
       v.classList.toggle("is-active", on);
@@ -1544,6 +1549,7 @@
     Garden.attend();
   }
   if (window.Scene) Scene.init();
+  lockScroll();
   renderView();
 
   // 다른 폰에서 고친 내용이 들어오면 다시 그려요.

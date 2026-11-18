@@ -1059,3 +1059,8 @@ button.critter::after { content: ""; position: absolute; inset: -10px; }
 @keyframes shiver { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-1px); } 40% { transform: translateX(1px); } 60% { transform: translateX(-1px); } 80% { transform: translateX(1px); } }
 @keyframes treeSway { from { transform: rotate(-1.5deg); } to { transform: rotate(1.5deg); } }
 @keyframes treeSwayHard { from { transform: rotate(-5deg) skewX(-3deg); } to { transform: rotate(3deg) skewX(2deg); } }
+
+/* 홈 화면은 잠가요: 문서 자체가 움직이지 않게 */
+html.lock, html.lock body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html.lock body { position: fixed; inset: 0; width: 100%; min-height: 0; }
+html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h)); touch-action: manipulation; }
