@@ -78,12 +78,23 @@
       ["him", "her"].forEach((who) => {
         const p = x[who];
         const q = y[who];
-        const pick = !p ? q : !q ? p : (q[1] || 0) > (p[1] || 0) ? q : p;
+        const pick = !p ? q : !q ? p : newer(p, q);
         if (pick) o[who] = pick;
       });
       out.pairs[k] = o;
     });
     return out;
+  }
+  // 게임 기록처럼 계속 쌓이기만 하는 값은 "더 많이 진행된 쪽"이 이겨요.
+  // 새 폰에서 빈 기록이 먼저 저장돼도 서버의 진행 상황을 덮어쓰지 않게.
+  function progress(v) {
+    if (!v || typeof v !== "object" || typeof v.tp !== "number") return -1;
+    return (v.tp || 0) + (v.hvn || 0) + (v.od || 0) + Object.keys(v.q || {}).length + ((v.pe || 0) + (v.ps || 0)) / 1e12;
+  }
+  function newer(p, q) {
+    const a = progress(p[0]), b = progress(q[0]);
+    if (a >= 0 && b >= 0 && a !== b) return b > a ? q : p;
+    return (q[1] || 0) > (p[1] || 0) ? q : p;
   }
   function uid(prefix) {
     return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -310,10 +321,37 @@
     timer = setTimeout(sync, ms == null ? 1500 : ms);
   }
   function changed() {
+    clearTimeout(saveTimer);
     saveLocal();
     emit();
     schedule();
   }
+  // 게임처럼 아주 자주 바뀌는 값: 화면은 바로, 폰 저장은 잠깐 모았다가, 올리기는 가끔.
+  let saveTimer = 0;
+  let fastSyncAt = 0;
+  function changedFast() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveLocal, 400);
+    const now = Date.now();
+    if (!fastSyncAt || fastSyncAt < now) {
+      fastSyncAt = now + 20000;
+      clearTimeout(timer);
+      timer = setTimeout(sync, 20000);
+    }
+  }
+  function flushFast() {
+    if (!saveTimer) return;
+    clearTimeout(saveTimer);
+    saveTimer = 0;
+    saveLocal();
+  }
+  window.addEventListener("pagehide", () => { flushFast(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      flushFast();
+      if (token() && fastSyncAt > Date.now()) schedule(0);
+    }
+  });
 
   // 화면에 다시 돌아왔거나 인터넷이 다시 붙으면 맞춰 봐요.
   document.addEventListener("visibilitychange", () => {
@@ -356,6 +394,16 @@
       if (!db.pairs[key]) db.pairs[key] = {};
       db.pairs[key][who] = [value, Date.now()];
       changed();
+    },
+    // 화면을 다시 그리지 않고 조용히 저장해요. (게임 손놀림용)
+    setPairFast(key, who, value) {
+      if (!db.pairs[key]) db.pairs[key] = {};
+      db.pairs[key][who] = [value, Date.now()];
+      changedFast();
+    },
+    pairTime(key, who) {
+      const p = (db.pairs[key] || {})[who];
+      return p ? p[1] : 0;
     },
     pairKeys(prefix) {
       return Object.keys(db.pairs).filter((k) => k.indexOf(prefix) === 0);
@@ -429,6 +477,7 @@
       schedule(0);
     },
     _merge: merge, // 테스트용
+    progress,
   };
 
   setStatus(token() ? "idle" : "local");

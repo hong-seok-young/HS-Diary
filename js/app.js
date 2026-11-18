@@ -172,7 +172,7 @@
   }
   const draftHearts = { him: 0, her: 0 }; // 입력창 안의 하트
   function renderDraftHearts() {
-    $("fHearts").innerHTML = ["him", "her"].map((w) => heartsRow(w, draftHearts[w], "data-draft")).join("");
+    MORPH($("fHearts"), ["him", "her"].map((w) => heartsRow(w, draftHearts[w], "data-draft")).join(""));
   }
   function paintHearts(row, value) {
     row.querySelectorAll(".heart").forEach((b) => {
@@ -205,7 +205,7 @@
   }
   function paintMiniHeart(card) {
     const el = card.querySelector(".mini-heart");
-    if (el) el.innerHTML = miniHeartHtml(card.dataset.id);
+    if (el) MORPH(el, miniHeartHtml(card.dataset.id));
   }
 
   // ---------- 사진 ----------
@@ -441,6 +441,40 @@
     });
     $("tileGarden").textContent = Garden.badge();
   }
+  // 홈 화면 정원 카드: 하늘을 줄이고 남은 자리에서 바로 돌봐요
+  function renderHomeGarden() {
+    const el = $("homeGarden");
+    if (!el || !window.Garden || !Garden.home) return;
+    const g = Garden.home();
+    if (!g) { el.hidden = true; return; }
+    el.hidden = false;
+    const q = g.quest;
+    const plants = g.plants.slice(0, 6);
+    while (plants.length < 6) plants.push(undefined);
+    MORPH(el, `<button class="hg-top" data-hg="open">${g.npc}<b>${esc(g.area)}</b><i>${PIXEL.sprite("petal", 2)}${esc(g.petals)}</i></button>
+      <button class="hg-q${q && q.done ? " done" : ""}" data-hg="open"><span>${q ? (q.done ? "할 일 끝! 눌러서 받기" : esc(q.text)) : "모든 이야기를 끝냈어요"}</span>${q ? `<i class="g-bar q"><b style="transform:scaleX(${q.f.toFixed(3)})"></b></i>` : ""}</button>
+      <div class="hg-plants">${plants.map((p, i) => p ? `<button class="hg-pl${p.ready ? " ready" : ""}" data-hg="tap" data-i="${i}" aria-label="꽃 돌보기"><span>${p.html}</span><i class="pl-bar"><b style="transform:scaleX(${p.f.toFixed(3)})"></b></i></button>` : p === null ? `<button class="hg-pl empty" data-hg="open" aria-label="씨앗 심기">${PIXEL.icon("leaf", 2)}</button>` : `<span class="hg-pl none"></span>`).join("")}</div>`);
+  }
+  function bindHomeGarden() {
+    const el = $("homeGarden");
+    if (!el) return;
+    el.addEventListener("pointerdown", (ev) => {
+      const b = ev.target.closest('[data-hg="tap"]');
+      if (!b || !window.Garden) return;
+      const r = Garden.quickTap(Number(b.dataset.i));
+      if (!r) return;
+      const img = b.querySelector("img");
+      if (img) img.animate([{ transform: "scale(1.15, .85)" }, { transform: "scale(.95, 1.08)" }, { transform: "none" }], { duration: 220, easing: "ease-out" });
+      if (r.harvest) { burstAt(b, 10, "spark"); toast(`${r.harvest.sp.name} 한 송이! 꽃잎 +${r.petals}`); }
+      else if (r.match) burstAt(b, 3, "heart");
+      renderHomeGarden();
+      renderScenePlant();
+    });
+    el.addEventListener("click", (ev) => {
+      if (ev.target.closest('[data-hg="open"]') && window.Garden) Garden.open("garden");
+    });
+  }
+
   // 상대가 보낸 하트가 새로 오면 풍경에서 날아와요.
   function checkLove() {
     const me = Store.me();
@@ -533,26 +567,26 @@
 
   function renderMood() {
     const key = "m:" + todayKey();
-    $("moodNow").innerHTML = ["him", "her"].map((w) => {
+    MORPH($("moodNow"), ["him", "her"].map((w) => {
       const m = Number(Store.pair(key, w)) || 0;
       return `<div class="mood-card"><span class="mood-face">${m ? PIXEL.sprite("mood" + m, 5) : '<i class="mood-none">?</i>'}</span><b>${esc(WHO[w])}</b><i>${m ? MOODS[m] : "아직"}</i></div>`;
-    }).join("");
+    }).join(""));
     const me = Store.me();
     if (!me) {
-      $("moodPick").innerHTML = whoAsk();
+      MORPH($("moodPick"), whoAsk());
       return;
     }
     const mine = Number(Store.pair(key, me)) || 0;
-    $("moodPick").innerHTML = `<div class="mood-pick">${[1, 2, 3, 4, 5].map((n) => `<button class="mood-btn${mine === n ? " active" : ""}" data-mood="${n}" aria-label="${MOODS[n]}">${PIXEL.sprite("mood" + n, 4)}<b>${MOODS[n]}</b></button>`).join("")}</div>`;
+    MORPH($("moodPick"), `<div class="mood-pick">${[1, 2, 3, 4, 5].map((n) => `<button class="mood-btn${mine === n ? " active" : ""}" data-mood="${n}" aria-label="${MOODS[n]}">${PIXEL.sprite("mood" + n, 4)}<b>${MOODS[n]}</b></button>`).join("")}</div>`);
   }
 
   function renderPoke() {
     const key = "p:" + todayKey();
     const a = Number(Store.pair(key, "him")) || 0;
     const b = Number(Store.pair(key, "her")) || 0;
-    $("pokeCount").innerHTML = Store.me()
+    MORPH($("pokeCount"), Store.me()
       ? `<span>오늘 <b class="who him">${esc(WHO.him)}</b> ${a} · <b class="who her">${esc(WHO.her)}</b> ${b}</span>`
-      : whoAsk();
+      : whoAsk());
   }
   function sendHeart() {
     const me = Store.me();
@@ -598,7 +632,7 @@
     $("streak").textContent = streak ? `${streak}일째` : "";
     const me = Store.me();
     if (!me) {
-      $("questBody").innerHTML = whoAsk();
+      MORPH($("questBody"), whoAsk());
       return;
     }
     const mine = Store.pair(key, me) || "";
@@ -610,7 +644,7 @@
     const theirBox = !mine
       ? `<div class="answer locked"><b class="who ${other}">${esc(WHO[other])}</b><p>내가 답하면 보여요</p></div>`
       : `<div class="answer"><b class="who ${other}">${esc(WHO[other])}</b><p>${theirs ? esc(theirs) : "아직 답하지 않았어요"}</p></div>`;
-    $("questBody").innerHTML = myBox + theirBox;
+    MORPH($("questBody"), myBox + theirBox);
   }
 
   function pickPool() {
@@ -621,7 +655,7 @@
     return cats.flatMap((c) => (IDEAS[c] || []).map((t) => ({ title: t })));
   }
   function renderPick() {
-    $("pickCats").innerHTML = ["all"].concat(PLAN_CATS).map((c) => `<button class="chip${state.pickCat === c ? " active" : ""}" data-pick-cat="${c}">${c === "all" ? "전체" : PIXEL.icon(c, 2) + CATS[c]}</button>`).join("");
+    MORPH($("pickCats"), ["all"].concat(PLAN_CATS).map((c) => `<button class="chip${state.pickCat === c ? " active" : ""}" data-pick-cat="${c}">${c === "all" ? "전체" : PIXEL.icon(c, 2) + CATS[c]}</button>`).join(""));
   }
   let picking = false;
   function runPick() {
@@ -665,25 +699,25 @@
     const rows = [];
     if (parseDate(cfg.firstMet)) rows.push(["처음 만난 날", fmtDate(cfg.firstMet)]);
     if (parseDate(cfg.startDate)) rows.push(["사귄 날", fmtDate(cfg.startDate)]);
-    $("sinceBox").innerHTML = rows.map((r) => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join("");
-    $("upcomingList").innerHTML = upcomingEvents().map((ev) => `<div class="up-item">
+    MORPH($("sinceBox"), rows.map((r) => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join(""));
+    MORPH($("upcomingList"), upcomingEvents().map((ev) => `<div class="up-item">
         <span class="up-icon">${PIXEL.icon(ev.icon, 2)}</span>
         <span class="up-text"><div class="up-name">${esc(ev.name)}</div><div class="up-date">${fmt(ev.date)}</div></span>
         <span class="up-dday${ev.left === 0 ? " today" : ""}">${ev.left === 0 ? "오늘" : "D-" + ev.left}</span>
-      </div>`).join("");
+      </div>`).join(""));
   }
 
   function renderPeeks() {
     const todo = Store.list("plans").filter((p) => !p.done).sort((a, b) => (b.t || 0) - (a.t || 0));
     $("peekPlansCount").textContent = todo.length ? `${todo.length}개` : "";
-    $("peekPlans").innerHTML = todo.length
+    MORPH($("peekPlans"), todo.length
       ? todo.slice(0, 2).map((p) => `<p class="peek-line"><span class="cat-ico ${esc(p.category)}">${PIXEL.icon(p.category, 2)}</span><span>${esc(p.title)}</span></p>`).join("")
-      : `<p class="muted">하고 싶은 걸 적어 봐요</p>`;
+      : `<p class="muted">하고 싶은 걸 적어 봐요</p>`);
     const posts = sortedPosts();
     $("peekDiaryCount").textContent = posts.length ? `${posts.length}개` : "";
-    $("peekDiary").innerHTML = posts.length
+    MORPH($("peekDiary"), posts.length
       ? `<p class="peek-line"><span class="who ${esc(posts[0].author)}">${esc(WHO[posts[0].author] || "")}</span><span>${esc((posts[0].text || "사진").split("\n")[0])}</span></p>`
-      : `<p class="muted">첫 일기를 써 봐요</p>`;
+      : `<p class="muted">첫 일기를 써 봐요</p>`);
   }
 
   function renderSync() {
@@ -708,6 +742,7 @@
     renderHeader();
     renderMoodTags();
     renderScenePlant();
+    renderHomeGarden();
     renderTiles();
     renderUpcoming();
     renderPeeks();
@@ -1500,10 +1535,11 @@
   PIXEL.fill(document);
   bind();
   bindInstall();
+  bindHomeGarden();
   if (window.Garden) {
     Garden.bind({
       toast, burst, burstAt, play, silently, whoAsk, esc,
-      onChanged() { renderTiles(); renderScenePlant(); },
+      onChanged() { renderTiles(); renderScenePlant(); renderHomeGarden(); },
     });
     Garden.attend();
   }
