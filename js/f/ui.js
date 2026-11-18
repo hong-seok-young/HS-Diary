@@ -11,6 +11,7 @@
   const CR = window.FCrops;
   const ST = window.GStory;
   const A = window.GArt;
+  const S = window.FSprites;
   const M = window.GMemory;
   const cfg = typeof DIARY_CONFIG !== "undefined" ? DIARY_CONFIG : {};
   const NAME = { him: cfg.him || "석영", her: cfg.her || "예은" };
@@ -144,6 +145,8 @@
     root = document.createElement("div");
     root.id = "game";
     root.className = "game farm";
+    const fr = S.frames();
+    for (const k in fr) root.style.setProperty(k, fr[k]);
     root.hidden = true;
     root.innerHTML = `
       <header class="f-head">
@@ -205,17 +208,39 @@
   }
 
   // ---------- 농장 그리기 ----------
-  let T = 36;
+  let T = 36, BAND = 0;
   function layout() {
     if (!mapEl) return;
     const wrap = main.querySelector(".f-mapwrap");
-    const avW = main.clientWidth - 8;
+    const avW = wrap.clientWidth - 4;
     const avH = wrap.clientHeight - 4;
     T = Math.max(22, Math.floor(Math.min(avW / COLS, avH / ROWS)));
+    // 남는 높이는 숲 가장자리로 채워서 빈자리가 없게
+    BAND = Math.max(0, Math.min(6, Math.floor(avH / T) - ROWS));
     mapEl.style.setProperty("--t", T + "px");
+    mapEl.style.setProperty("--band", BAND);
     mapEl.style.width = T * COLS + "px";
-    mapEl.style.height = T * ROWS + "px";
-    placeChars(true);
+    mapEl.style.height = T * (ROWS + BAND) + "px";
+    drawBand();
+    actor.draw(true);
+    placePartner();
+  }
+  function drawBand() {
+    const el = $("farmBand");
+    if (!el) return;
+    if (!BAND) { el.innerHTML = ""; return; }
+    let h = "";
+    const n = COLS + 2;
+    for (let i = 0; i < n; i++) {
+      const kind = i % 3 === 1 ? "oak" : "pine";
+      const y = BAND - 1.6 - ((i * 7) % 3) * 0.35;
+      h += `<span class="fb-tree" style="left:calc(var(--t) * ${(i - 0.8).toFixed(2)});top:calc(var(--t) * ${y.toFixed(2)})">${S.decoImg(kind, 3)}</span>`;
+    }
+    for (let r = 0; r < BAND - 2; r++) for (let i = 0; i < n; i++) {
+      h += `<span class="fb-tree back" style="left:calc(var(--t) * ${(i - 0.3 + (r % 2) * 0.5).toFixed(2)});top:calc(var(--t) * ${(r * 1.1 - 0.6).toFixed(2)})">${S.decoImg(i % 2 ? "pine" : "oak", 3)}</span>`;
+    }
+    for (let i = 0; i < 6; i++) h += `<span class="fb-flower" style="left:calc(var(--t) * ${(i * 1.7 + 0.4).toFixed(2)});top:calc(var(--t) * ${(BAND - 0.5).toFixed(2)})">${S.decoImg(i % 2 ? "flower" : "bush", 2)}</span>`;
+    el.innerHTML = h;
   }
   function at(c, r, w, h) { return `left:calc(var(--t) * ${c});top:calc(var(--t) * ${r});width:calc(var(--t) * ${w || 1});height:calc(var(--t) * ${h || 1})`; }
   function build() {
@@ -224,32 +249,45 @@
     main.innerHTML = `
       <div class="f-today" id="farmToday"></div>
       <div class="f-mapwrap"><div class="f-map s${s}" id="farmMap" style="--grass:url(${tex("grass", s)});--soil:url(${tex("soil", 0)});--wet:url(${tex("wet", 0)});--path:url(${tex("path", 0)})">
+        <div class="f-band" id="farmBand"></div>
+        <div class="f-world">
         <div class="f-yard"></div>
         <div class="f-fieldbg"></div>
-        <button class="f-obj f-house" data-act="sheet" data-k="house" style="${at(0, 0, 3, 3)}">${A.rowsImg("house3", houseRows(), HOUSE_COL, 1)}<i class="f-tag">우리 집</i></button>
-        <button class="f-obj f-tree" data-act="sheet" data-k="house" data-tab="our" style="${at(3, 0, 1, 2)}" id="farmTree"></button>
-        <button class="f-obj f-mail" data-act="mail" style="${at(3, 2)}" id="farmMail">${spr("mailbox", 3)}<i class="f-flag"></i></button>
-        <button class="f-obj f-shop" data-act="sheet" data-k="shop" style="${at(4, 0, 2, 1)}">${spr("signpost", 3)}<i class="f-tag">상점</i></button>
-        <button class="f-obj f-bowl" data-act="bowl" style="${at(5, 2)}" id="farmBowl"></button>
-        <button class="f-obj f-bin" data-act="sheet" data-k="bin" style="${at(6, 2)}">${art("bin", 3)}<i class="f-tag">출하</i></button>
-        <button class="f-obj f-coop" data-act="sheet" data-k="coop" style="${at(7, 0, 3, 2)}" id="farmCoop"></button>
-        <button class="f-obj f-well" data-act="well" style="${at(9, 2)}">${art("well", 3)}</button>
+        <button class="f-obj f-house" data-act="sheet" data-k="house" data-walk="1.5,3.05" style="${at(0, 0, 3, 3)}">${A.rowsImg("house3", houseRows(), HOUSE_COL, 1)}<i class="f-tag">우리 집</i></button>
+        <button class="f-obj f-tree" data-act="sheet" data-k="house" data-tab="our" data-walk="3.5,3.05" style="${at(3, 0, 1, 2)}" id="farmTree"></button>
+        <button class="f-obj f-mail" data-act="mail" data-walk="3.5,3.05" style="${at(3, 2)}" id="farmMail">${spr("mailbox", 3)}<i class="f-flag"></i></button>
+        <button class="f-obj f-shop" data-act="sheet" data-k="shop" data-walk="5,2.75" style="${at(4, 0.6, 2, 1.4)}">${spr("signpost", 3)}<i class="f-tag">상점</i></button>
+        <button class="f-obj f-bowl" data-act="bowl" data-walk="5.5,3.05" style="${at(5, 2)}" id="farmBowl"></button>
+        <button class="f-obj f-bin" data-act="sheet" data-k="bin" data-walk="6.5,3.05" style="${at(6, 2)}">${art("bin", 3)}<i class="f-tag">출하</i></button>
+        <button class="f-obj f-coop" data-act="sheet" data-k="coop" data-walk="8,2.75" style="${at(7, 0, 3, 2)}" id="farmCoop"></button>
+        <button class="f-obj f-well" data-act="well" data-walk="9.5,3.05" style="${at(9, 2)}">${art("well", 3)}</button>
         <div class="f-tiles" id="farmTiles"></div>
         <button class="f-land" id="farmLand" data-act="sheet" data-k="shop" data-tab="farm"></button>
         <button class="f-dog" id="farmDog" data-act="dog">${A.critterImg("dog", 2)}</button>
         <div class="f-hens" id="farmHens"></div>
-        <div class="f-char partner" id="farmPartner" hidden></div>
-        <div class="f-char me" id="farmMe">${A.pixImg(who, 2)}</div>
+        <div class="f-char partner" id="farmPartner" hidden><img class="px" alt=""><i class="f-ptag"></i></div>
+        <div class="f-char me" id="farmMe"><img class="px" alt=""><span class="f-tool" id="farmTool" hidden></span><span class="f-hold" id="farmHold" hidden></span></div>
+        <div class="f-target" id="farmTarget" hidden></div>
+        </div>
         <div class="f-rain" id="farmRain" hidden></div>
         <div class="f-night" id="farmNight"></div>
       </div></div>
       <div class="f-info" id="farmInfo"></div>`;
     mapEl = $("farmMap");
+    if (mine.pos && mine.pos.length && mine.pos[1] >= 2.6) { actor.x = mine.pos[0]; actor.y = mine.pos[1]; }
+    actor.queue.length = 0; actor.busy = false; actor.pose = ""; actor.frame = 0;
     let tiles = "";
     for (let r = F.FIELD0; r < ROWS; r++) for (let c = 0; c < COLS; c++) tiles += `<div class="ft" data-tap="tile" data-k="${F.key(c, r)}" style="${at(c, r)}"></div>`;
     $("farmTiles").innerHTML = tiles;
     drawBar();
-    requestAnimationFrame(() => { layout(); updateAll(); });
+    updateAll();
+    // 위아래 판 높이가 바뀌면 지도 크기를 다시 맞춰요
+    if (window.ResizeObserver) {
+      if (build.ro) build.ro.disconnect();
+      build.ro = new ResizeObserver(() => layout());
+      build.ro.observe(main.querySelector(".f-mapwrap"));
+    }
+    requestAnimationFrame(() => layout());
   }
   // 한 칸 그리기: 모습이 바뀐 칸만 고쳐요
   function tileSig(t) {
@@ -312,7 +350,7 @@
   function drawToday() {
     const list = F.todayList(W, who);
     const tips = tip();
-    MORPH($("farmToday"), `${list.map((x) => `<span class="ftd${x.done ? " done" : ""}">${x.done ? ico("tick", 1) : "·"}${esc(x.text)}</span>`).join("")}${tips ? `<span class="ftd tip">${esc(tips)}</span>` : ""}`);
+    MORPH($("farmToday"), `<div class="ftd-list">${list.map((x) => `<span class="ftd${x.done ? " done" : ""}">${S.toolImg(x.done ? "check" : "box", 2)}${esc(x.text)}</span>`).join("")}</div>${tips ? `<div class="ftd-tip">${A.critterImg("dog", 2)}<span>${esc(tips)}</span></div>` : ""}`);
   }
   // 마루가 알려 주는 다음 할 일 (처음엔 차근차근)
   function tip() {
@@ -346,7 +384,7 @@
     else if (t.crop) {
       const c = t.crop;
       const status = t.dead ? "죽었어요. 손으로 치워요" : t.ready ? "다 자랐어요! 눌러서 거둬요" : t.wilting ? `시들고 있어요. ${hrs(F.DEAD * 3600000 - t.dryFor)} 안에 물을 줘요` : t.wet ? `촉촉해요 · ${hrs(t.wetLeft)} 더` : "말랐어요. 물을 줘요";
-      const who2 = t.together ? `둘이 같이 키우는 중 ${spr("heartOn", 1)}` : t.byHim || t.byHer ? `${t.byHim ? NAME.him : NAME.her}가 물 줌` : "";
+      const who2 = t.together ? `둘이 같이 키우는 중 ${spr("heartOn", 1)}` : t.byHim || t.byHer ? `${callName(t.byHim ? NAME.him : NAME.her)}가 물 줌` : "";
       html = `<span class="fi-ico">${cropIcon(c, 3)}</span><span class="fi-t"><b>${esc(c.name)}${t.by ? ` <em>${esc(NAME[t.by] || "")} 심음</em>` : ""}</b>
         <i>${esc(status)}</i>${!t.dead && !t.ready ? `<i class="fi-bar"><b style="transform:scaleX(${t.frac.toFixed(3)})"></b></i><i>다 자라기까지 촉촉한 시간 ${hrs(t.left)}${c.regrow ? ` · 거둔 뒤 ${c.regrow}시간마다 또 열려요` : ""}</i>` : ""}${who2 ? `<i class="fi-love">${who2}</i>` : ""}</span>`;
     } else if (t.tilled) html = `<span class="fi-t"><b>갈아 둔 밭${t.fert ? ` · ${esc(CR.FERT[t.fert].name)}` : ""}</b><i>${t.wet ? `촉촉해요 · ${hrs(t.wetLeft)} 더` : "씨앗을 심어요"}</i></span>`;
@@ -358,23 +396,25 @@
     const d = new Date();
     const h = d.getHours(), m = d.getMinutes();
     const wx = window.Scene && Scene.weather ? Scene.weather() : null;
-    MORPH($("farmDate"), `<b>${d.getMonth() + 1}월 ${d.getDate()}일 ${DAYS[d.getDay()]} · ${CR.SEASONS[W.season]}</b><i>${h < 12 ? "오전" : "오후"} ${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")}${wx ? " · " + ({ clear: "맑음", partly: "구름 조금", cloudy: "흐림", fog: "안개", drizzle: "이슬비", rain: "비", heavy: "큰비", snow: "눈", heavysnow: "큰눈", thunder: "천둥" }[wx.kind] || "") + (wx.temp != null ? ` ${Math.round(wx.temp)}°` : "") : ""}</i>`);
+    const wk = wx ? (wx.wet ? "rain" : wx.snowy ? "snow" : ["cloudy", "fog", "partly"].includes(wx.kind) ? "cloud" : "sun") : "sun";
+    const wname = wx ? ({ clear: "맑음", partly: "구름 조금", cloudy: "흐림", fog: "안개", drizzle: "이슬비", rain: "비", heavy: "큰비", snow: "눈", heavysnow: "큰눈", thunder: "천둥" }[wx.kind] || "") + (wx.temp != null ? ` ${Math.round(wx.temp)}°` : "") : "";
+    MORPH($("farmDate"), `<span class="fd-ico">${S.toolImg(wk, 3)}</span><span class="fd-t"><b>${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS[d.getDay()]}) ${CR.SEASONS[W.season]}</b><i>${h < 12 ? "오전" : "오후"} ${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} · ${esc(wname)}</i></span>`);
     const lvNext = CR.LEVELS[W.level] || CR.LEVELS[CR.LEVELS.length - 1];
     const lvPrev = CR.LEVELS[W.level - 1] || 0;
     MORPH($("farmLv"), `<b>농사 ${W.level}</b><i class="f-xp"><b style="transform:scaleX(${W.level >= 10 ? 1 : ((W.xp - lvPrev) / (lvNext - lvPrev)).toFixed(3)})"></b></i>`);
-    MORPH($("farmGold"), `<b>${fmt(W.gold)}G</b>${W.goldWait ? `<i>내일 +${fmt(W.goldWait)}</i>` : ""}`);
+    MORPH($("farmGold"), `${S.toolImg("coin", 3)}<span><b>${fmt(W.gold)}</b>${W.goldWait ? `<i>내일 +${fmt(W.goldWait)}</i>` : ""}</span>`);
     drawBar();
   }
 
   // ---------- 도구 칸 ----------
   const TOOLS = [["hoe", "괭이"], ["can", "물뿌리개"], ["hand", "손"], ["seed", "씨앗"], ["fert", "비료"], ["obj", "놓기"]];
   function toolIcon(k) {
-    if (k === "hoe") return spr("shovel", 3);
-    if (k === "can") return spr("can", 2);
-    if (k === "hand") return `<span class="tl-hand">${ico("hand", 3)}</span>`;
-    if (k === "seed") return mine.seed && CR.BY_ID[mine.seed] ? cropIcon(CR.BY_ID[mine.seed], 1) : art("bag", 4);
-    if (k === "fert") return art("fert", 4);
-    if (k === "obj") return mine.objSel ? art(mine.objSel, 3) : art("spr1", 3);
+    if (k === "hoe") return S.toolImg("hoe", 3);
+    if (k === "can") return S.toolImg("can", 3);
+    if (k === "hand") return S.toolImg("sickle", 3);
+    if (k === "seed") return mine.seed && CR.BY_ID[mine.seed] ? cropIcon(CR.BY_ID[mine.seed], 1) : S.toolImg("seed", 3);
+    if (k === "fert") return S.toolImg("fert", 4);
+    if (k === "obj") return mine.objSel ? art(mine.objSel, 3) : S.toolImg("spr", 3);
     return "";
   }
   function drawBar() {
@@ -391,36 +431,219 @@
   }
 
   // ---------- 캐릭터 ----------
-  function placeChars(instant) {
-    const me = $("farmMe");
-    if (!me) return;
-    const p = mine.pos && mine.pos.length ? mine.pos : [4, 2.4];
-    me.style.transition = instant ? "none" : "";
-    me.style.transform = `translate(calc(var(--t) * ${p[0]}), calc(var(--t) * ${p[1] - 0.45}))`;
-    placePartner();
+  // ---------- 캐릭터: 정한 곳까지 천천히 걸어가서 동작해요 ----------
+  const SPEED = 3.6; // 1초에 몇 칸
+  const actor = {
+    x: 4.5, y: 3.05, dir: "down", flip: false, frame: 0, pose: "", busy: false, queue: [], raf: 0,
+    img() { return $("farmMe") && $("farmMe").querySelector("img"); },
+    draw(instant) {
+      const el = $("farmMe");
+      if (!el) return;
+      const h = T * 1.55, w = h * 16 / 23;
+      el.style.width = w + "px"; el.style.height = h + "px";
+      el.style.transform = `translate(${(this.x * T - w / 2).toFixed(1)}px, ${(this.y * T - h).toFixed(1)}px)`;
+      el.style.zIndex = String(10 + Math.round(this.y * 2));
+      const im = this.img();
+      const src = S.charImg(who, this.dir, this.frame, this.pose);
+      if (im.__src !== src) { im.src = src; im.__src = src; }
+      el.classList.toggle("flip", this.flip);
+    },
+    face(dx, dy) {
+      if (Math.abs(dx) > Math.abs(dy)) { this.dir = "side"; this.flip = dx < 0; }
+      else if (dy < 0) { this.dir = "up"; this.flip = false; }
+      else if (dy > 0) { this.dir = "down"; this.flip = false; }
+    },
+    // 가로 먼저, 그다음 세로로 (마당 길을 따라)
+    walk(tx, ty) {
+      return new Promise((res) => {
+        const pts = [];
+        if (Math.abs(tx - this.x) > 0.01) pts.push([tx, this.y]);
+        if (Math.abs(ty - this.y) > 0.01) pts.push([tx, ty]);
+        if (this.y < 3 && ty > 3.2 && pts.length === 2) { pts.length = 0; pts.push([this.x, 3.05], [tx, 3.05], [tx, ty]); }
+        if (!pts.length) return res();
+        let last = 0, acc = 0;
+        const step = (ts) => {
+          const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016;
+          last = ts;
+          const [px, py] = pts[0];
+          const dx = px - this.x, dy = py - this.y;
+          const d = Math.hypot(dx, dy);
+          const mv = SPEED * dt;
+          this.face(dx, dy);
+          acc += dt;
+          this.frame = Math.floor(acc / 0.14) % 4 === 1 ? 1 : Math.floor(acc / 0.14) % 4 === 3 ? 2 : 0;
+          if (d <= mv) { this.x = px; this.y = py; pts.shift(); }
+          else { this.x += (dx / d) * mv; this.y += (dy / d) * mv; }
+          this.pose = "";
+          this.draw();
+          if (pts.length) this.raf = requestAnimationFrame(step);
+          else { this.frame = 0; this.draw(); res(); }
+        };
+        this.raf = requestAnimationFrame(step);
+      });
+    },
+    wait(ms) { return new Promise((r) => setTimeout(r, ms)); },
+  };
+  // 밭 칸 앞에 설 자리: 지금 있는 곳에서 가장 가까운 옆자리
+  function standFor(c, r) {
+    const opts = [
+      [c + 0.5, r + 1.08, 0, -1], [c + 0.5, r + 0.02, 0, 1],
+      [c - 0.32, r + 0.92, 1, 0], [c + 1.32, r + 0.92, -1, 0],
+    ].filter(([x, y]) => y >= 3.0 && x >= 0.2 && x <= COLS - 0.2 && y <= ROWS + 0.05);
+    let best = opts[0], bd = 1e9;
+    opts.forEach((o) => { const d = Math.abs(o[0] - actor.x) + Math.abs(o[1] - actor.y); if (d < bd) { bd = d; best = o; } });
+    return best;
+  }
+  function enqueue(job) {
+    if (actor.queue.length > 40) return;
+    actor.queue.push(job);
+    if (job.k) { const el = mapEl.querySelector(`.ft[data-k="${job.k}"]`); if (el) el.classList.add("queued"); }
+    if (!actor.busy) runQueue();
+  }
+  async function runQueue() {
+    actor.busy = true;
+    while (actor.queue.length) {
+      const job = actor.queue.shift();
+      if (job.k) {
+        const [c, r] = F.parseKey(job.k);
+        const [sx, sy, fx, fy] = standFor(c, r);
+        showTarget(c, r);
+        await actor.walk(sx, sy);
+        actor.face(fx, fy);
+        actor.draw();
+        await doTileJob(job);
+        const el = mapEl.querySelector(`.ft[data-k="${job.k}"]`); if (el) el.classList.remove("queued");
+      } else if (job.stand) {
+        await actor.walk(job.stand[0], job.stand[1]);
+        actor.dir = "up"; actor.flip = false; actor.draw();
+        await actor.wait(120);
+        job.then();
+      }
+      mine.pos = [actor.x, actor.y];
+    }
+    hideTarget();
+    actor.busy = false;
+    save();
+  }
+  function showTarget(c, r) {
+    const t = $("farmTarget");
+    if (!t) return;
+    t.hidden = false;
+    t.style.transform = `translate(${c * T}px, ${r * T}px)`;
+    t.style.width = T + "px"; t.style.height = T + "px";
+  }
+  function hideTarget() { const t = $("farmTarget"); if (t) t.hidden = true; }
+  // 도구 동작: 들어 올렸다가 내리찍기, 기울여 붓기, 쪼그려 앉기
+  function toolAnim(name, kind) {
+    const el = $("farmTool");
+    if (!el) return Promise.resolve();
+    el.innerHTML = `<span class="f-tool-in">${S.toolImg(name, 3)}</span>`;
+    el.className = "f-tool " + actor.dir + (actor.flip ? " flip" : "");
+    el.hidden = false;
+    const inner = el.firstChild;
+    let frames, dur;
+    if (kind === "swing") {
+      frames = [{ transform: "rotate(-150deg) translateY(-10%)" }, { transform: "rotate(-170deg) translateY(-14%)", offset: 0.45 }, { transform: "rotate(10deg)", offset: 0.8 }, { transform: "rotate(0deg)" }];
+      dur = 480;
+    } else if (kind === "pour") {
+      frames = [{ transform: "rotate(0deg)" }, { transform: "rotate(38deg)", offset: 0.3 }, { transform: "rotate(42deg)", offset: 0.85 }, { transform: "rotate(0deg)" }];
+      dur = 640;
+    } else {
+      frames = [{ transform: "rotate(-60deg)" }, { transform: "rotate(70deg)" }];
+      dur = 300;
+    }
+    return new Promise((res) => {
+      inner.animate(frames, { duration: dur, easing: "ease-in-out" }).onfinish = () => { el.hidden = true; res(); };
+    });
+  }
+  function tileCenter(k) {
+    const el = mapEl.querySelector(`.ft[data-k="${k}"]`);
+    return el ? centerOf(el) : [0, 0];
+  }
+  async function doTileJob(job) {
+    now();
+    const k = job.k;
+    const t = F.tile(W, k);
+    const [x, y] = tileCenter(k);
+    const kind = t.ready ? "harvest" : job.tool;
+    actor.pose = "act";
+    actor.draw();
+    if (kind === "harvest") {
+      actor.pose = "crouch"; actor.draw();
+      await actor.wait(220);
+      const res = F.harvest(W, mine, k);
+      if (res) {
+        save();
+        updateTile(k);
+        spawn(x, y, res.heart ? "heart" : "leaf", 10, { up: true });
+        actor.dir = "down"; actor.flip = false; actor.pose = "hold"; actor.draw();
+        const hold = $("farmHold");
+        hold.innerHTML = cropIcon(res.crop, 2);
+        hold.hidden = false;
+        hold.animate([{ transform: "translate(-50%, 20%) scale(.4)", opacity: 0 }, { transform: "translate(-50%, -10%) scale(1.1)", opacity: 1, offset: 0.3 }, { transform: "translate(-50%, 0) scale(1)", opacity: 1 }], { duration: 650, easing: "cubic-bezier(.34,1.56,.64,1)" });
+        const q = ["", "은빛 ", "금빛 "][res.q];
+        floatNum(x, y - 30, `${q}${res.crop.name}${res.n > 1 ? " x" + res.n : ""}${res.heart ? " ♥" : ""}`, res.q === 2 ? "gold" : "petal");
+        if (res.levelUp) banner(`${ico("star", 4)}<b>농사 ${res.levelUp}단계!</b>`, "v2");
+        await actor.wait(650);
+        hold.hidden = true;
+        if (W.st.harvest === 1) firstHarvest(res);
+      }
+    } else if (kind === "hoe") {
+      const sw = toolAnim("hoe", "swing");
+      await actor.wait(330);
+      const res = F.hoe(W, mine, k);
+      if (res && !res.fail) { save(); updateTile(k); spawn(x, y + 6, "dirt", 10, { up: true }); }
+      await sw;
+    } else if (kind === "can") {
+      if (mine.water <= 0) { toast("물이 없어요. 우물을 눌러 채워요"); pulseEl(mapEl.querySelector(".f-well")); actor.queue.length = 0; }
+      else {
+        const pr = toolAnim("can", "pour");
+        await actor.wait(260);
+        const res = F.water(W, mine, k, who);
+        if (res && !res.fail) {
+          save(); updateTile(k);
+          for (let i = 0; i < 4; i++) setTimeout(() => spawn(x, y - 4, "water", 3), i * 70);
+          if (res.revived) floatNum(x, y - 20, "다시 살아났어요", "hit");
+        }
+        await pr;
+      }
+    } else if (kind === "hand") {
+      const sw = toolAnim("sickle", "slash");
+      await actor.wait(160);
+      const res = F.clear(W, mine, k);
+      if (res) { save(); updateTile(k); spawn(x, y, res.kind === "stone" ? "stone" : "leaf", 10, { up: true }); if (res.ok === "pickup") { W.cache = {}; updateAll(); } }
+      await sw;
+    } else if (kind === "seed" || kind === "fert" || kind === "obj") {
+      actor.pose = "crouch"; actor.draw();
+      await actor.wait(260);
+      let res = null;
+      if (kind === "seed") res = F.plant(W, mine, k, job.seed, who);
+      if (kind === "fert") res = F.fertilize(W, mine, k, job.fert);
+      if (kind === "obj") res = F.place(W, mine, k, job.obj);
+      if (res && !res.fail) { save(); updateTile(k); spawn(x, y, kind === "obj" ? "water" : kind === "fert" ? "dirt" : "leaf", 6, { up: true }); if (kind === "obj") { W.cache = {}; updateAll(); } }
+      else if (res && res.fail) { toast(res.fail === "season" ? "지금 계절에는 못 심어요" : "다 떨어졌어요. 상점에서 사요"); actor.queue.length = 0; }
+      await actor.wait(120);
+    }
+    actor.pose = ""; actor.draw();
+    if (sel === k) drawInfo();
+    afterAct();
   }
   function placePartner() {
     const el = $("farmPartner");
-    if (!el) return;
+    if (!el || !W) return;
     const o = W.docs[other()];
     const recent = o && o.pos && o.pos.length && o.lastAct && Date.now() - o.lastAct < 3 * 3600000;
     el.hidden = !recent;
     if (!recent) return;
-    if (!el.firstChild) el.innerHTML = `${A.pixImg(other(), 2)}<i class="f-ptag"></i>`;
+    const h = T * 1.55, w = h * 16 / 23;
+    el.style.width = w + "px"; el.style.height = h + "px";
+    const im = el.querySelector("img");
+    const src = S.charImg(other(), "down", 0, "");
+    if (im.__src !== src) { im.src = src; im.__src = src; }
     el.querySelector(".f-ptag").textContent = `${NAME[other()]} · ${ago(o.lastAct)}`;
-    el.style.transform = `translate(calc(var(--t) * ${o.pos[0]}), calc(var(--t) * ${o.pos[1] - 0.45}))`;
-  }
-  let lastWalk = 0;
-  function walkTo(c, r) {
-    const me = $("farmMe");
-    const prev = mine.pos && mine.pos.length ? mine.pos : [4, 2.4];
-    mine.pos = [c, r + 0.2];
-    me.classList.toggle("left", c < prev[0]);
-    const t = performance.now();
-    me.style.transition = t - lastWalk < 120 ? "transform .12s linear" : "transform .2s cubic-bezier(.22,1,.36,1)";
-    lastWalk = t;
-    me.style.transform = `translate(calc(var(--t) * ${c}), calc(var(--t) * ${r + 0.2 - 0.45}))`;
-    me.querySelector("img").animate([{ transform: "translateY(0)" }, { transform: "translateY(-3px)" }, { transform: "none" }], { duration: 200 });
+    const px = o.pos[0] < 1.5 && o.pos[1] < 4 ? o.pos[0] + 0.5 : o.pos[0];
+    el.style.transform = `translate(${(px * T - w / 2).toFixed(1)}px, ${(o.pos[1] * T - h).toFixed(1)}px)`;
+    el.style.zIndex = String(10 + Math.round(o.pos[1] * 2));
   }
 
   // ============================================================
@@ -505,62 +728,41 @@
   function act(k, el, ev, drag) {
     now();
     const t = F.tile(W, k);
-    const [c, r] = F.parseKey(k);
-    const [x, y] = ev && ev.clientX ? [ev.clientX, ev.clientY] : centerOf(el);
     const prevSel = sel;
     sel = k;
-    if (!t.open) { if (!drag) { toast("아직 못 쓰는 땅이에요. 상점에서 넓혀요"); drawInfo(); markSel(prevSel); } return; }
-    let res = null;
-    const tool = mine.sel;
-    // 다 자란 건 어떤 도구로든 거둬요
-    if (t.ready) {
-      res = F.harvest(W, mine, k);
-      if (res) {
-        walkTo(c, r);
-        const q = ["", "은빛 ", "금빛 "][res.q];
-        floatNum(x, y - 20, `${q}${res.crop.name}${res.n > 1 ? " x" + res.n : ""}`, res.q === 2 ? "gold" : "petal");
-        spawn(x, y, res.heart ? "heart" : "leaf", 10, { up: true });
-        if (res.heart && !drag) toast(`둘이 같이 키운 ${res.crop.name} ${"♥"}`);
-        if (res.levelUp) banner(`${ico("star", 4)}<b>농사 ${res.levelUp}단계!</b>`, "v2");
-        if (!(W.st.harvest > 1) && !drag) firstHarvest(res);
-      }
-    } else if (tool === "hoe") {
-      res = F.hoe(W, mine, k);
-      if (res && res.fail === "debris") { if (!drag) toast("풀이나 돌은 손으로 먼저 치워요"); res = null; }
-      if (res) { walkTo(c, r); spawn(x, y, "dirt", 8, { up: true }); }
-    } else if (tool === "can") {
-      res = F.water(W, mine, k, who);
-      if (res && res.fail === "empty") { if (!drag) { toast("물이 없어요. 우물을 눌러 채워요"); pulseEl(mapEl.querySelector(".f-well")); } res = null; }
-      if (res) { walkTo(c, r); spawn(x, y - 6, "water", 8); if (res.revived) floatNum(x, y - 20, "다시 살아났어요", "hit"); }
-      else if (!drag && !t.tilled) toast("갈아 둔 밭에만 물을 줘요");
-    } else if (tool === "hand") {
-      res = F.clear(W, mine, k);
-      if (res) { walkTo(c, r); spawn(x, y, res.kind === "stone" ? "stone" : "leaf", 8, { up: true }); if (res.ok === "pickup") toast("다시 주웠어요"); }
-    } else if (tool === "seed") {
-      if (!mine.seed) { openSheet("seeds", {}); return; }
-      res = F.plant(W, mine, k, mine.seed, who);
-      if (res && res.fail) { if (!drag) toast(res.fail === "season" ? "지금 계절에는 못 심어요" : "씨앗이 없어요. 상점에서 사요"); res = null; }
-      else if (!res && !drag) toast(t.tilled ? "이미 뭔가 있어요" : "괭이로 먼저 갈아요");
-      if (res) { walkTo(c, r); spawn(x, y, "leaf", 5, { up: true }); }
-    } else if (tool === "fert") {
-      if (!mine.fertSel) { openSheet("ferts", {}); return; }
-      res = F.fertilize(W, mine, k, mine.fertSel);
-      if (res && res.fail) { if (!drag) toast("비료가 없어요. 상점에서 사요"); res = null; }
-      if (res) { walkTo(c, r); spawn(x, y, "dirt", 6); }
-    } else if (tool === "obj") {
-      if (!mine.objSel) { openSheet("objs", {}); return; }
-      res = F.place(W, mine, k, mine.objSel);
-      if (res && res.fail) { if (!drag) toast("놓을 게 없어요. 상점에서 사요"); res = null; }
-      if (res) { walkTo(c, r); spawn(x, y, "water", 8); W.cache = {}; updateAll(); }
-    }
-    if (res) save();
-    if (res && el) el.animate([{ transform: "scale(.9)" }, { transform: "none" }], { duration: 160 });
-    updateTile(k);
     markSel(prevSel);
     drawInfo();
-    afterAct();
+    if (!t.open) { if (!drag) toast("아직 못 쓰는 땅이에요. 상점에서 넓혀요"); return; }
+    const tool = mine.sel;
+    let ok = false, msg = "";
+    if (t.ready) ok = true;
+    else if (tool === "hoe") { if (t.debris) msg = "풀이나 돌은 낫으로 먼저 치워요"; else ok = !t.tilled && !t.obj; }
+    else if (tool === "can") { if (!t.tilled) msg = "갈아 둔 밭에만 물을 줘요"; else if (mine.water <= 0) { msg = "물이 없어요. 우물을 눌러 채워요"; pulseEl(mapEl.querySelector(".f-well")); } else ok = true; }
+    else if (tool === "hand") ok = !!(t.debris || t.obj || (t.crop && t.dead));
+    else if (tool === "seed") {
+      if (!mine.seed) { openSheet("seeds", {}); return; }
+      if (!t.tilled) msg = "괭이로 먼저 갈아요";
+      else if (t.crop || t.obj) msg = "";
+      else if (!CR.BY_ID[mine.seed].seasons.includes(W.season)) msg = "지금 계절에는 못 심어요";
+      else if ((W.inv["seed:" + mine.seed] || 0) < 1) msg = "씨앗이 없어요. 상점에서 사요";
+      else ok = true;
+    } else if (tool === "fert") {
+      if (!mine.fertSel) { openSheet("ferts", {}); return; }
+      if (!t.tilled || t.fert || t.obj) msg = t.tilled ? "" : "괭이로 먼저 갈아요";
+      else if ((W.inv["fert:" + mine.fertSel] || 0) < 1) msg = "비료가 없어요. 상점에서 사요";
+      else ok = true;
+    } else if (tool === "obj") {
+      if (!mine.objSel) { openSheet("objs", {}); return; }
+      if (t.debris || t.crop || t.obj) msg = "";
+      else if ((W.inv[mine.objSel] || 0) < 1) msg = "놓을 게 없어요. 상점에서 사요";
+      else ok = true;
+    }
+    if (!ok) { if (msg && !drag) toast(msg); return; }
+    if (actor.queue.some((j) => j.k === k)) return;
+    enqueue({ k, tool, seed: mine.seed, fert: mine.fertSel, obj: mine.objSel });
   }
   function markSel(prev) {
+    if (!mapEl) return;
     if (prev && prev !== sel) { const p = mapEl.querySelector(`.ft[data-k="${prev}"]`); if (p) p.classList.remove("sel"); }
     const e = mapEl.querySelector(`.ft[data-k="${sel}"]`);
     if (e) e.classList.add("sel");
@@ -572,8 +774,8 @@
   }
   function pulseEl(el) { if (el) el.animate([{ transform: "scale(1)" }, { transform: "scale(1.2)" }, { transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: 900 }); }
   function firstHarvest(res) {
-    const by = res.byHim && res.byHer ? "둘이 같이 물 준" : res.byHim ? `${NAME.him}가 물 준` : res.byHer ? `${NAME.her}가 물 준` : "";
-    playScene([["마루", `첫 수확이다! ${res.by ? (NAME[res.by] || "") + "가 심고 " : ""}${by} ${res.crop.name}. 멍멍!`], ["마루", "거둔 건 출하함에 넣어 봐. 내일 아침이면 돈이 들어와."]]);
+    const by = res.byHim && res.byHer ? "둘이 같이 물 준" : res.byHim ? `${callName(NAME.him)}가 물 준` : res.byHer ? `${callName(NAME.her)}가 물 준` : "";
+    playScene([["마루", `첫 수확이다! ${res.by ? callName(NAME[res.by] || "") + "가 심고 " : ""}${by} ${res.crop.name}. 멍멍!`], ["마루", "거둔 건 출하함에 넣어 봐. 내일 아침이면 돈이 들어와."]]);
   }
 
   // ============================================================
@@ -938,6 +1140,13 @@
     }
     const d = t.dataset;
     now();
+    // 마당 물건은 그 앞까지 걸어가서 해요
+    if (d.walk && !t.__walked) {
+      const [wx, wy] = d.walk.split(",").map(Number);
+      const target = t;
+      enqueue({ stand: [wx, wy], then: () => { target.__walked = true; target.click(); target.__walked = false; } });
+      return;
+    }
     switch (d.act) {
       case "close": close(); break;
       case "sheet": openSheet(d.k, { tab: d.tab }); break;
@@ -1109,6 +1318,6 @@
       if (F.rain(W, mine)) save();
     },
     attend() { ensureW(); },
-    _debug() { return { W, mine, F }; },
+    _debug() { return { W, mine, F, actor }; },
   };
 })();
