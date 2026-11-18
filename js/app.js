@@ -1,79 +1,64 @@
 // ============================================================
-// 석영이와 예은이
-// - data/entries.js 의 기록 + 이 브라우저(localStorage)에 임시 저장한 기록을 합쳐서 보여줘요.
-// - 정보는 접어 두고, 누르면 펼쳐지고 다른 곳을 누르면 닫혀요.
+// 석영이와 예은이 — 화면 담당
+// 저장은 js/store.js 가 맡고, 여기서는 그리고 누르는 것만 다뤄요.
+// 정보는 접어 두고, 누르면 펼쳐지고 다른 곳을 누르면 닫혀요.
 // ============================================================
 (function () {
   "use strict";
 
-  const LS_KEY = "hs-diary-local-entries";
-  const CATS = {
-    date: "데이트",
-    travel: "여행",
-    food: "맛집",
-    cafe: "카페",
-    anniv: "기념일",
-    etc: "기타",
-  };
+  const cfg = typeof DIARY_CONFIG !== "undefined" ? DIARY_CONFIG : {};
+  const QUESTIONS = typeof DIARY_QUESTIONS !== "undefined" ? DIARY_QUESTIONS : [];
+  const WHO = { him: cfg.him || "석영", her: cfg.her || "예은" };
+  const CATS = { date: "데이트", food: "맛집", cafe: "카페", travel: "여행", anniv: "기념일", etc: "기타" };
+  const PLAN_CATS = ["date", "food", "cafe", "travel", "etc"];
+  const MOODS = ["", "최고", "좋아", "그냥", "슬퍼", "힘들어"];
   const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
-
-  const config = typeof DIARY_CONFIG !== "undefined" ? DIARY_CONFIG : {};
-  const fileEntries = (typeof DIARY_ENTRIES !== "undefined" ? DIARY_ENTRIES : []).map((e, i) => ({
-    ...e,
-    _id: "file-" + i,
-    _local: false,
-  }));
-
-  let localEntries = loadLocal();
-  const state = {
-    cat: "all",
-    q: "",
-    sort: "desc",
-    openCard: null,   // 펼쳐진 기록
-    openPanel: null,  // 펼쳐진 메뉴 칸
-    folded: new Set(), // 접어 둔 달
+  // 할 거가 비어 있을 때 뽑기에서 대신 나오는 것들
+  const IDEAS = {
+    date: ["한강 산책", "영화 보기", "보드게임 카페", "전시 보러 가기", "노래방", "자전거 타기", "사진 찍으러 가기", "서점 구경"],
+    food: ["떡볶이", "파스타", "삼겹살", "초밥", "마라탕", "칼국수", "피자", "닭갈비"],
+    cafe: ["디저트 카페", "루프탑 카페", "북카페", "빵집 투어", "빙수 먹기"],
+    travel: ["강릉 바다", "전주 한옥마을", "속초", "경주", "부산", "가평 드라이브"],
+    etc: ["같이 요리하기", "집에서 영화", "퍼즐 맞추기", "산책하기", "플레이리스트 만들기"],
   };
+
+  const state = {
+    view: "home",
+    cat: "all", q: "", sort: "desc",
+    planCat: "all",
+    pickCat: "all",
+    openCard: null,
+    openPanel: null,
+    folded: new Set(),
+    ddayMode: 0,
+  };
+  let quiet = 0; // 화면에서 직접 고친 직후에는 전체를 다시 그리지 않아요.
 
   const $ = (id) => document.getElementById(id);
 
-  // ---------- storage ----------
-  function loadLocal() {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
-    } catch (e) {
-      return [];
-    }
-  }
-  function saveLocal() {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(localEntries));
-    } catch (e) {
-      alert("브라우저 저장에 실패했어요");
-    }
-  }
-
-  // 파일 기록을 수정/삭제하면 같은 _id 의 로컬 기록이 덮어써요.
-  function allEntries() {
-    const overridden = new Set(localEntries.map((e) => e._id));
-    return fileEntries.filter((e) => !overridden.has(e._id)).concat(
-      localEntries.filter((e) => !e._deleted).map((e) => ({ ...e, _local: true }))
-    );
-  }
-
-  // ---------- helpers ----------
+  // ---------- 작은 도구 ----------
   function esc(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[c]));
   }
+  function pad(n) {
+    return String(n).padStart(2, "0");
+  }
   function parseDate(s) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || "");
     return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
   }
-  function pad(n) {
-    return String(n).padStart(2, "0");
+  function keyOf(d) {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  function today0() {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }
+  function todayKey() {
+    return keyOf(today0());
   }
   function fmt(d) {
     return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} (${DAYS[d.getDay()]})`;
@@ -82,30 +67,6 @@
     const d = parseDate(s);
     return d ? fmt(d) : s || "";
   }
-  function today0() {
-    const t = new Date();
-    t.setHours(0, 0, 0, 0);
-    return t;
-  }
-  function stars(n, scale) {
-    n = Math.max(0, Math.min(5, Number(n) || 0));
-    let out = "";
-    for (let i = 1; i <= 5; i++) out += `<span class="star${i <= n ? " on" : ""}">${PIXEL.icon("star", scale || 2)}</span>`;
-    return out;
-  }
-  // 네이버 지도 링크: 정확한 링크(map)가 있으면 그걸 쓰고, 없으면 장소 이름으로 검색해요.
-  function naverSearchUrl(place) {
-    return "https://map.naver.com/p/search/" + encodeURIComponent(place);
-  }
-  function mapUrl(e) {
-    if (e.map && /^https?:\/\//i.test(e.map)) return e.map;
-    return naverSearchUrl((e.place || "").trim());
-  }
-  function photoSrc(p) {
-    if (!p) return "";
-    if (/^(https?:|data:|photos\/|\.\/|\/)/.test(p)) return p;
-    return "photos/" + p;
-  }
   function isOpen(el) {
     return el.classList.contains("is-open");
   }
@@ -113,65 +74,35 @@
     el.classList.toggle("is-open", open);
   }
   function restart(el, cls) {
-    // 같은 움직임을 처음부터 다시 틀어요.
     el.classList.remove(cls);
     void el.offsetWidth;
     el.classList.add(cls);
   }
-
-  // ---------- 날짜 계산 ----------
-  function daysTogether() {
-    const start = parseDate(config.startDate);
-    if (!start) return null;
-    return Math.round((today0() - start) / 86400000) + 1; // 사귄 날이 1일
+  function play(el, cls) {
+    restart(el, cls);
+    el.addEventListener("animationend", function done(ev) {
+      if (ev.animationName !== cls) return; // 움직임 이름과 클래스 이름이 같아요
+      el.classList.remove(cls);
+      el.removeEventListener("animationend", done);
+    });
   }
-  function nextYearly(md, today) {
-    let d = new Date(today.getFullYear(), md.getMonth(), md.getDate());
-    if (d < today) d = new Date(today.getFullYear() + 1, md.getMonth(), md.getDate());
-    return d;
+  function silently(fn) {
+    quiet++;
+    try { return fn(); } finally { quiet--; }
   }
-  function upcomingEvents() {
-    const today = today0();
-    const events = [];
-    const start = parseDate(config.startDate);
-    if (start) {
-      const passed = Math.round((today - start) / 86400000) + 1;
-      const nextHundred = Math.max(100, Math.ceil(passed / 100) * 100);
-      const hd = new Date(start.getFullYear(), start.getMonth(), start.getDate() + nextHundred - 1);
-      events.push({ icon: "star", name: `${nextHundred}일`, date: hd });
-      const ann = nextYearly(start, today);
-      const years = ann.getFullYear() - start.getFullYear();
-      if (years > 0) events.push({ icon: "flag", name: `${years}주년`, date: ann });
-    }
-    const hb = parseDate(config.himBirthday);
-    if (hb) events.push({ icon: "anniv", name: `${config.him || "석영"} 생일`, date: nextYearly(hb, today) });
-    const sb = parseDate(config.herBirthday);
-    if (sb) events.push({ icon: "anniv", name: `${config.her || "예은"} 생일`, date: nextYearly(sb, today) });
-    events.forEach((ev) => { ev.left = Math.round((ev.date - today) / 86400000); });
-    events.sort((a, b) => a.date - b.date);
-    return events;
+  function naverSearchUrl(place) {
+    return "https://map.naver.com/p/search/" + encodeURIComponent(place);
+  }
+  function mapUrl(e) {
+    if (e.map && /^https?:\/\//i.test(e.map)) return e.map;
+    return naverSearchUrl((e.place || "").trim());
+  }
+  function reduced() {
+    return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
   // ---------- 반짝이 / 알림 ----------
   const SPARK_COLORS = ["#ffd978", "#ee9453", "#a9d8f0", "#b4e2b8", "#ffffff"];
-  function burst(x, y, n) {
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    for (let i = 0; i < (n || 6); i++) {
-      const el = document.createElement("span");
-      el.className = "spark";
-      el.innerHTML = PIXEL.icon(i % 2 ? "spark" : "star", i % 2 ? 3 : 1);
-      const ang = (Math.PI * 2 * i) / (n || 6) + Math.random() * 0.8;
-      const dist = 26 + Math.random() * 26;
-      el.style.left = x + "px";
-      el.style.top = y + "px";
-      el.style.color = SPARK_COLORS[i % SPARK_COLORS.length];
-      el.style.setProperty("--dx", Math.round(Math.cos(ang) * dist) + "px");
-      el.style.setProperty("--dy", Math.round(Math.sin(ang) * dist - 14) + "px");
-      el.addEventListener("animationend", () => el.remove());
-      fxLayer().appendChild(el);
-    }
-  }
-  // 반짝이는 화면 밖으로 넘치지 않게 전용 칸 안에서만 날려요.
   function fxLayer() {
     let fx = $("fx");
     if (!fx) {
@@ -183,9 +114,34 @@
     }
     return fx;
   }
-  function burstAt(el, n) {
+  // kind: "spark"(별 반짝이) | "heart"(핑크 하트)
+  function burst(x, y, n, kind) {
+    if (reduced()) return;
+    n = n || 6;
+    for (let i = 0; i < n; i++) {
+      const el = document.createElement("span");
+      el.className = "spark";
+      const ang = (Math.PI * 2 * i) / n + Math.random() * 0.8;
+      const dist = 26 + Math.random() * 30;
+      if (kind === "heart") {
+        el.innerHTML = PIXEL.sprite("heartOn", i % 2 ? 2 : 1);
+        el.style.setProperty("--dx", Math.round(Math.cos(ang) * dist * 0.8) + "px");
+        el.style.setProperty("--dy", Math.round(-30 - Math.random() * 46) + "px");
+      } else {
+        el.innerHTML = PIXEL.icon(i % 2 ? "spark" : "star", i % 2 ? 3 : 1);
+        el.style.color = SPARK_COLORS[i % SPARK_COLORS.length];
+        el.style.setProperty("--dx", Math.round(Math.cos(ang) * dist) + "px");
+        el.style.setProperty("--dy", Math.round(Math.sin(ang) * dist - 14) + "px");
+      }
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      el.addEventListener("animationend", () => el.remove());
+      fxLayer().appendChild(el);
+    }
+  }
+  function burstAt(el, n, kind) {
     const r = el.getBoundingClientRect();
-    burst(r.left + r.width / 2, r.top + r.height / 2, n);
+    burst(r.left + r.width / 2, r.top + r.height / 2, n, kind);
   }
   let toastTimer = null;
   function toast(msg) {
@@ -196,50 +152,238 @@
     toastTimer = setTimeout(() => setOpen(t, false), 2200);
   }
 
-  // ---------- 머리: 제목, D+ ----------
-  function renderHeader() {
-    if (config.title) {
-      document.title = config.title;
-      $("diaryTitle").textContent = config.title;
-    }
-    const days = daysTogether();
-    if (days == null) {
-      $("dday").hidden = true;
-    } else {
-      $("dday").textContent = days > 0 ? `D+${days}` : `D${days - 1}`;
-    }
-    const rows = [];
-    if (parseDate(config.firstMet)) rows.push(["처음 만난 날", fmtDate(config.firstMet)]);
-    if (parseDate(config.startDate)) rows.push(["사귄 날", fmtDate(config.startDate)]);
-    $("sinceBox").innerHTML = rows.map((r) => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join("");
+  // ---------- 하트 (석영 / 예은 따로) ----------
+  function heartVal(key, who) {
+    return Number(Store.pair(key, who)) || 0;
   }
-  function setSince(open) {
-    setOpen($("since"), open);
-    $("dday").setAttribute("aria-expanded", String(open));
+  function avgHearts(id) {
+    const vals = ["him", "her"].map((w) => heartVal("h:" + id, w)).filter((v) => v > 0);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  }
+  function heartsRow(who, value, attrs) {
+    let btns = "";
+    for (let i = 1; i <= 5; i++) {
+      btns += `<button type="button" class="heart${i <= value ? " on" : ""}" data-v="${i}" aria-label="${WHO[who]} 하트 ${i}개"><span class="h-off">${PIXEL.icon("heart", 3)}</span><span class="h-on">${PIXEL.sprite("heartOn", 3)}</span></button>`;
+    }
+    return `<div class="hearts" data-who="${who}" ${attrs}><span class="who ${who}">${esc(WHO[who])}</span>${btns}</div>`;
+  }
+  function heartsBlock(key) {
+    return ["him", "her"].map((w) => heartsRow(w, heartVal(key, w), `data-key="${esc(key)}"`)).join("");
+  }
+  const draftHearts = { him: 0, her: 0 }; // 입력창 안의 하트
+  function renderDraftHearts() {
+    $("fHearts").innerHTML = ["him", "her"].map((w) => heartsRow(w, draftHearts[w], "data-draft")).join("");
+  }
+  function paintHearts(row, value) {
+    row.querySelectorAll(".heart").forEach((b) => {
+      const on = Number(b.dataset.v) <= value;
+      if (on && !b.classList.contains("on")) play(b, "boing");
+      b.classList.toggle("on", on);
+    });
+  }
+  function onHeartTap(btn) {
+    const row = btn.closest(".hearts");
+    const who = row.dataset.who;
+    const n = Number(btn.dataset.v);
+    let value;
+    if (row.hasAttribute("data-draft")) {
+      value = draftHearts[who] === n ? 0 : n;
+      draftHearts[who] = value;
+    } else {
+      const key = row.dataset.key;
+      value = heartVal(key, who) === n ? 0 : n;
+      silently(() => Store.setPair(key, who, value));
+      const card = row.closest(".card");
+      if (card) paintMiniHeart(card);
+    }
+    paintHearts(row, value);
+    if (value) burstAt(btn, 5, "heart");
+  }
+  function miniHeartHtml(id) {
+    const avg = avgHearts(id);
+    return avg ? `${PIXEL.sprite("heartOn", 2)}${avg % 1 ? avg.toFixed(1) : avg}` : "";
+  }
+  function paintMiniHeart(card) {
+    const el = card.querySelector(".mini-heart");
+    if (el) el.innerHTML = miniHeartHtml(card.dataset.id);
   }
 
-  // ---------- 풍경: 말풍선과 장난 ----------
+  // ---------- 사진 ----------
+  async function shrink(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = url;
+      });
+      const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.naturalWidth * k));
+      c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      return await new Promise((resolve) => c.toBlob(resolve, "image/jpeg", 0.84));
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+  // 입력창 안의 사진 고르기 칸
+  let picker = null; // { el, photos }
+  function setPicker(el, photos) {
+    picker = { el, photos: (photos || []).slice() };
+    renderPicker();
+  }
+  function renderPicker() {
+    if (!picker) return;
+    picker.el.innerHTML =
+      picker.photos.map((name, i) => `<div class="thumb"><img src="${esc(Store.photoUrl(name))}" alt=""><button type="button" data-rm="${i}" aria-label="사진 빼기">${PIXEL.icon("close", 2)}</button></div>`).join("") +
+      `<button type="button" class="thumb add" data-add>${PIXEL.icon("camera", 3)}<b>추가</b></button>`;
+  }
+  async function onFiles(files) {
+    if (!picker || !files.length) return;
+    toast("사진 준비 중");
+    for (const f of Array.from(files)) {
+      try {
+        const blob = await shrink(f);
+        if (blob) picker.photos.push(await Store.addPhoto(blob));
+      } catch (e) {
+        toast("못 읽는 사진이 있어요");
+      }
+      renderPicker();
+    }
+    toast(`사진 ${picker.photos.length}장`);
+  }
+  function galleryHtml(photos, alt) {
+    photos = (photos || []).filter(Boolean);
+    if (!photos.length) return "";
+    const imgs = photos.map((name, i) => `<img src="${esc(Store.photoUrl(name))}" alt="${esc(alt || "")}" data-i="${i}" loading="lazy" onerror="this.classList.add('broken')">`).join("");
+    const many = photos.length > 1;
+    return `<div class="gallery" data-photos="${esc(JSON.stringify(photos))}">
+      <div class="gallery-track">${imgs}</div>
+      ${many ? `<span class="gallery-count">1/${photos.length}</span><div class="gallery-dots">${photos.map((_, i) => `<i${i ? "" : ' class="on"'}></i>`).join("")}</div>` : ""}
+    </div>`;
+  }
+  let galleryRaf = 0;
+  function onGalleryScroll(track) {
+    cancelAnimationFrame(galleryRaf);
+    galleryRaf = requestAnimationFrame(() => {
+      const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      const n = track.children.length;
+      const box = track.parentNode;
+      const count = box.querySelector(".gallery-count");
+      if (count) count.textContent = `${Math.min(n, i + 1)}/${n}`;
+      box.querySelectorAll(".gallery-dots i").forEach((d, k) => d.classList.toggle("on", k === i));
+    });
+  }
+  function openLightbox(photos, index) {
+    const lb = $("lightbox");
+    $("lightboxTrack").innerHTML = photos.map((name) => `<img src="${esc(Store.photoUrl(name))}" alt="">`).join("");
+    $("lightboxCount").textContent = `${index + 1}/${photos.length}`;
+    $("lightboxCount").hidden = photos.length < 2;
+    lb.hidden = false;
+    document.body.classList.add("no-scroll");
+    const track = $("lightboxTrack");
+    track.scrollLeft = track.clientWidth * index;
+  }
+  function closeLightbox() {
+    $("lightbox").hidden = true;
+    document.body.classList.remove("no-scroll");
+  }
+
+  // ---------- 날짜 계산 ----------
+  function daysTogether() {
+    const start = parseDate(cfg.startDate);
+    if (!start) return null;
+    return Math.round((today0() - start) / 86400000) + 1; // 사귄 날이 1일
+  }
+  function nextYearly(md, today) {
+    let d = new Date(today.getFullYear(), md.getMonth(), md.getDate());
+    if (d < today) d = new Date(today.getFullYear() + 1, md.getMonth(), md.getDate());
+    return d;
+  }
+  function upcomingEvents() {
+    const today = today0();
+    const events = [];
+    const start = parseDate(cfg.startDate);
+    if (start) {
+      const passed = Math.round((today - start) / 86400000) + 1;
+      const nextHundred = Math.max(100, Math.ceil(passed / 100) * 100);
+      events.push({ icon: "star", name: `${nextHundred}일`, date: new Date(start.getFullYear(), start.getMonth(), start.getDate() + nextHundred - 1) });
+      const ann = nextYearly(start, today);
+      const years = ann.getFullYear() - start.getFullYear();
+      if (years > 0) events.push({ icon: "flag", name: `${years}주년`, date: ann });
+    }
+    const hb = parseDate(cfg.himBirthday);
+    if (hb) events.push({ icon: "anniv", name: `${WHO.him} 생일`, date: nextYearly(hb, today) });
+    const sb = parseDate(cfg.herBirthday);
+    if (sb) events.push({ icon: "anniv", name: `${WHO.her} 생일`, date: nextYearly(sb, today) });
+    events.forEach((ev) => { ev.left = Math.round((ev.date - today) / 86400000); });
+    events.sort((a, b) => a.date - b.date);
+    return events;
+  }
+  // D+ 숫자를 누를 때마다 다른 단위로 보여 줘요.
+  function ddayText() {
+    const days = daysTogether();
+    if (days == null) return "";
+    if (days <= 0) return `D${days - 1}`;
+    const start = parseDate(cfg.startDate);
+    const now = today0();
+    switch (state.ddayMode % 4) {
+      case 1: return `${Math.floor(days / 7)}주 ${days % 7}일`;
+      case 2: {
+        let months = (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth();
+        if (now.getDate() < start.getDate()) months--;
+        const anchor = new Date(start.getFullYear(), start.getMonth() + months, start.getDate());
+        return `${months}개월 ${Math.round((now - anchor) / 86400000)}일`;
+      }
+      case 3: return `${(days * 24).toLocaleString("ko-KR")}시간`;
+      default: return `D+${days}`;
+    }
+  }
+
+  // ---------- 머리 ----------
+  function renderHeader() {
+    if (cfg.title) {
+      document.title = cfg.title;
+      $("diaryTitle").textContent = cfg.title;
+    }
+    const text = ddayText();
+    $("dday").hidden = !text;
+    $("dday").textContent = text;
+  }
+
+  // ---------- 풍경 ----------
   let bubbleIdx = 0;
   let bubbleTimer = null;
-  function bubbleLines() {
+  function partnerOf(who) {
+    return who === "him" ? "her" : "him";
+  }
+  function bubbleLines(who) {
     const lines = [];
     const days = daysTogether();
     if (days > 0) lines.push(`오늘로 ${days}일째야`);
+    const sent = Number(Store.pair("p:" + todayKey(), who)) || 0;
+    if (sent) lines.push(`오늘 하트 ${sent}개 보냈어`);
+    const mood = Number(Store.pair("m:" + todayKey(), who)) || 0;
+    if (mood) lines.push(`오늘 기분은 ${MOODS[mood]}`);
     const ev = upcomingEvents()[0];
     if (ev) lines.push(ev.left === 0 ? `오늘은 ${ev.name}!` : `${ev.name}까지 ${ev.left}일 남았어`);
-    const all = allEntries();
+    const todo = Store.list("plans").filter((p) => !p.done);
+    if (todo.length) {
+      const p = todo[Math.floor(Math.random() * todo.length)];
+      lines.push(`${p.title.length > 9 ? p.title.slice(0, 9) + "…" : p.title} 어때`);
+    }
+    const all = Store.list("entries");
     if (all.length) {
-      lines.push(`기록이 ${all.length}개 쌓였어`);
       const places = [...new Set(all.map((e) => (e.place || "").trim()).filter(Boolean))];
       if (places.length) {
-        const p = places[Math.floor(Math.random() * places.length)];
-        lines.push(`${p.length > 9 ? p.slice(0, 9) + "…" : p} 또 가자`);
+        const pl = places[Math.floor(Math.random() * places.length)];
+        lines.push(`${pl.length > 9 ? pl.slice(0, 9) + "…" : pl} 또 가자`);
       }
     } else {
       lines.push("첫 기록을 남겨 볼까");
     }
-    const met = parseDate(config.firstMet);
-    if (met) lines.push(`처음 만난 건 ${met.getMonth() + 1}월 ${met.getDate()}일`);
     lines.push("다음엔 어디 갈까");
     return lines;
   }
@@ -256,16 +400,86 @@
     clearTimeout(bubbleTimer);
     setOpen($("bubble"), false);
   }
-  function onAnimEnd(el, cls) {
-    el.addEventListener("animationend", function done(ev) {
-      if (ev.target !== el && ev.target.parentNode !== el) return;
-      el.classList.remove(cls);
-      el.removeEventListener("animationend", done);
+  function renderMoodTags() {
+    ["him", "her"].forEach((w) => {
+      const el = $(w === "him" ? "moodHim" : "moodHer");
+      const m = Number(Store.pair("m:" + todayKey(), w)) || 0;
+      const html = m ? PIXEL.sprite("mood" + m, 2) : "";
+      if (el.dataset.m !== String(m)) {
+        el.dataset.m = String(m);
+        el.innerHTML = html;
+        if (m) play(el, "boing");
+      }
     });
   }
-  function play(el, cls) {
-    restart(el, cls);
-    onAnimEnd(el, cls);
+  // 같이 키우는 나무: 기록, 일기, 해낸 일, 둘 다 답한 질문이 쌓이면 자라요.
+  const PLANT_STEPS = [0, 2, 5, 10, 18];
+  const PLANT_NAMES = ["씨앗", "새싹", "풀", "꽃", "꽃나무"];
+  function answeredDays() {
+    return Store.pairKeys("q:").filter((k) => Store.pair(k, "him") && Store.pair(k, "her")).length;
+  }
+  function plantScore() {
+    return Store.list("entries").length + Store.list("diary").length + Store.list("plans").filter((p) => p.done).length + answeredDays();
+  }
+  function plantLevel() {
+    const s = plantScore();
+    let lv = 0;
+    PLANT_STEPS.forEach((need, i) => { if (s >= need) lv = i; });
+    return lv;
+  }
+  function plantText() {
+    const s = plantScore();
+    const lv = plantLevel();
+    const next = PLANT_STEPS[lv + 1];
+    return next == null ? `${PLANT_NAMES[lv]} 다 컸어` : `${PLANT_NAMES[lv]}, ${next - s}번 더 하면 자라`;
+  }
+  // celebrate: 방금 내가 한 일로 자랐을 때만 축하해요. (다른 폰 내용을 받아 온 경우는 조용히)
+  function renderPlant(celebrate) {
+    const el = $("plant");
+    const lv = plantLevel();
+    if (el.dataset.lv !== String(lv)) {
+      const grew = celebrate && el.dataset.lv !== undefined && Number(el.dataset.lv) < lv;
+      el.dataset.lv = String(lv);
+      el.innerHTML = PIXEL.sprite("plant" + lv, 3);
+      if (grew) {
+        play(el, "boing");
+        burstAt(el, 8);
+        toast(`나무가 자랐어요: ${PLANT_NAMES[lv]}`);
+      }
+    }
+    $("plantInfo").innerHTML = `${PIXEL.sprite("plant" + lv, 2)}<span>우리 나무는 ${esc(plantText())}</span>`;
+  }
+  function waterPlant() {
+    const el = $("plant");
+    play(el, "boing");
+    if (!reduced()) {
+      const r = el.getBoundingClientRect();
+      for (let i = 0; i < 3; i++) {
+        const d = document.createElement("span");
+        d.className = "drop";
+        d.innerHTML = PIXEL.icon("drop", 2);
+        d.style.left = r.left + r.width / 2 - 14 + i * 12 + "px";
+        d.style.top = r.top - 34 + "px";
+        d.style.animationDelay = i * 90 + "ms";
+        d.addEventListener("animationend", () => d.remove());
+        fxLayer().appendChild(d);
+      }
+    }
+    showBubble(plantText(), "her");
+  }
+  // 계절마다 떨어지는 것: 봄 꽃잎, 여름 반딧불, 가을 낙엽, 겨울 눈
+  function startSeason() {
+    const m = new Date().getMonth() + 1;
+    const kind = m === 12 || m <= 2 ? "snow" : m <= 5 ? "petal" : m <= 8 ? "firefly" : "leaf";
+    const box = $("fall");
+    box.className = "sc-fall " + kind;
+    let html = "";
+    for (let i = 0; i < 8; i++) {
+      const left = 4 + ((i * 37) % 92);
+      const dur = kind === "firefly" ? 5 + (i % 4) : 7 + ((i * 3) % 6);
+      html += `<i style="left:${left}%;animation-duration:${dur}s;animation-delay:-${(i * 1.7).toFixed(1)}s">${PIXEL.sprite(kind, 2)}</i>`;
+    }
+    box.innerHTML = html;
   }
   function bindScene() {
     $("scene").addEventListener("click", (ev) => {
@@ -273,9 +487,13 @@
       if (who) {
         play(who, "jump");
         burstAt(who, 6);
-        const lines = bubbleLines();
+        const lines = bubbleLines(who.dataset.who);
         showBubble(lines[bubbleIdx % lines.length], who.dataset.who);
         bubbleIdx++;
+        return;
+      }
+      if (ev.target.closest("#plant")) {
+        waterPlant();
         return;
       }
       const t = ev.target.closest(".tap");
@@ -294,32 +512,199 @@
     });
   }
 
-  // ---------- 메뉴 칸 ----------
+  // ---------- 화면 넘기기 ----------
+  function go(view) {
+    if (!document.querySelector(`.view[data-view="${view}"]`)) return;
+    state.view = view;
+    document.querySelectorAll(".view").forEach((v) => {
+      const on = v.dataset.view === view;
+      v.classList.toggle("is-active", on);
+      if (on) restart(v, "view-in");
+    });
+    document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.go === view));
+    $("btnAdd").hidden = !(view === "log" || view === "diary");
+    setPanel(null);
+    hideBubble();
+    window.scrollTo(0, 0);
+    renderView();
+  }
+
+  // ---------- 홈: 타일과 칸 ----------
   function setPanel(name) {
     state.openPanel = name;
-    document.querySelectorAll(".menu-btn").forEach((b) => {
+    document.querySelectorAll(".tile").forEach((b) => {
       const on = b.dataset.panel === name;
       b.classList.toggle("active", on);
       b.setAttribute("aria-expanded", String(on));
     });
     document.querySelectorAll(".panel").forEach((p) => setOpen(p, p.id === "panel-" + name));
     if (name === "stats") renderStats(true);
-    if (name !== "stats") setPlaces(false);
+    else setPlaces(false);
+    if (name === "mood") renderMood();
+    if (name === "poke") renderPoke();
+    if (name === "quest") renderQuest();
+    if (name === "pick") renderPick();
+  }
+  function whoAsk() {
+    return `<div class="who-ask"><p>이 폰은 누구 거야?</p><div class="who-pick"><button class="chip" data-me="him">${esc(WHO.him)}</button><button class="chip" data-me="her">${esc(WHO.her)}</button></div></div>`;
+  }
+
+  function renderTiles() {
+    const key = todayKey();
+    const moods = ["him", "her"].filter((w) => Store.pair("m:" + key, w)).length;
+    $("tileMood").textContent = `${moods}/2`;
+    const pokes = (Number(Store.pair("p:" + key, "him")) || 0) + (Number(Store.pair("p:" + key, "her")) || 0);
+    $("tilePoke").textContent = pokes ? String(pokes) : "";
+    const ans = ["him", "her"].filter((w) => Store.pair("q:" + key, w)).length;
+    $("tileQuest").textContent = `${ans}/2`;
+    const ev = upcomingEvents()[0];
+    $("tileUp").textContent = ev ? (ev.left === 0 ? "오늘" : "D-" + ev.left) : "";
+    $("tileStats").textContent = String(Store.list("entries").length);
+  }
+
+  function renderMood() {
+    const key = "m:" + todayKey();
+    $("moodNow").innerHTML = ["him", "her"].map((w) => {
+      const m = Number(Store.pair(key, w)) || 0;
+      return `<div class="mood-card"><span class="mood-face">${m ? PIXEL.sprite("mood" + m, 5) : '<i class="mood-none">?</i>'}</span><b>${esc(WHO[w])}</b><i>${m ? MOODS[m] : "아직"}</i></div>`;
+    }).join("");
+    const me = Store.me();
+    if (!me) {
+      $("moodPick").innerHTML = whoAsk();
+      return;
+    }
+    const mine = Number(Store.pair(key, me)) || 0;
+    $("moodPick").innerHTML = `<div class="mood-pick">${[1, 2, 3, 4, 5].map((n) => `<button class="mood-btn${mine === n ? " active" : ""}" data-mood="${n}" aria-label="${MOODS[n]}">${PIXEL.sprite("mood" + n, 4)}<b>${MOODS[n]}</b></button>`).join("")}</div>`;
+  }
+
+  function renderPoke() {
+    const key = "p:" + todayKey();
+    const a = Number(Store.pair(key, "him")) || 0;
+    const b = Number(Store.pair(key, "her")) || 0;
+    $("pokeCount").innerHTML = Store.me()
+      ? `<span>오늘 <b class="who him">${esc(WHO.him)}</b> ${a} · <b class="who her">${esc(WHO.her)}</b> ${b}</span>`
+      : whoAsk();
+  }
+  function sendHeart() {
+    const me = Store.me();
+    if (!me) {
+      renderPoke();
+      toast("먼저 누구 폰인지 골라 줘요");
+      return;
+    }
+    const key = "p:" + todayKey();
+    const n = (Number(Store.pair(key, me)) || 0) + 1;
+    silently(() => Store.setPair(key, me, n));
+    play($("btnPoke"), "boing");
+    burstAt($("btnPoke"), 7, "heart");
+    const other = document.querySelector(`.bob[data-who="${partnerOf(me)}"]`);
+    if (other) play(other, "jump");
+    renderPoke();
+    renderTiles();
+    if (n % 10 === 0) toast(`오늘 하트 ${n}개 보냈어요`);
+  }
+
+  function questIndex() {
+    const base = parseDate(cfg.startDate) || new Date(2026, 0, 1);
+    const n = Math.round((today0() - base) / 86400000);
+    return QUESTIONS.length ? ((n % QUESTIONS.length) + QUESTIONS.length) % QUESTIONS.length : 0;
+  }
+  function questStreak() {
+    // 둘 다 답한 날이 며칠째 이어지는지
+    let n = 0;
+    const d = today0();
+    if (!(Store.pair("q:" + keyOf(d), "him") && Store.pair("q:" + keyOf(d), "her"))) d.setDate(d.getDate() - 1);
+    while (Store.pair("q:" + keyOf(d), "him") && Store.pair("q:" + keyOf(d), "her")) {
+      n++;
+      d.setDate(d.getDate() - 1);
+    }
+    return n;
+  }
+  let questEditing = false;
+  function renderQuest() {
+    const key = "q:" + todayKey();
+    $("questText").textContent = QUESTIONS[questIndex()] || "오늘은 질문이 없어요";
+    const streak = questStreak();
+    $("streak").textContent = streak ? `${streak}일째` : "";
+    const me = Store.me();
+    if (!me) {
+      $("questBody").innerHTML = whoAsk();
+      return;
+    }
+    const mine = Store.pair(key, me) || "";
+    const other = partnerOf(me);
+    const theirs = Store.pair(key, other) || "";
+    const myBox = mine && !questEditing
+      ? `<div class="answer mine"><b class="who ${me}">${esc(WHO[me])}</b><p>${esc(mine)}</p><button class="link" data-quest-edit>고치기</button></div>`
+      : `<form class="answer-form" id="questForm"><textarea id="questInput" rows="2" maxlength="200" placeholder="내 답">${esc(mine)}</textarea><button class="btn primary small" type="submit">답하기</button></form>`;
+    const theirBox = !mine
+      ? `<div class="answer locked"><b class="who ${other}">${esc(WHO[other])}</b><p>내가 답하면 보여요</p></div>`
+      : `<div class="answer"><b class="who ${other}">${esc(WHO[other])}</b><p>${theirs ? esc(theirs) : "아직 답하지 않았어요"}</p></div>`;
+    $("questBody").innerHTML = myBox + theirBox;
+  }
+
+  function pickPool() {
+    const cat = state.pickCat;
+    const plans = Store.list("plans").filter((p) => !p.done && (cat === "all" || p.category === cat));
+    if (plans.length) return plans.map((p) => ({ title: p.title, plan: p }));
+    const cats = cat === "all" ? PLAN_CATS : [cat];
+    return cats.flatMap((c) => (IDEAS[c] || []).map((t) => ({ title: t })));
+  }
+  function renderPick() {
+    $("pickCats").innerHTML = ["all"].concat(PLAN_CATS).map((c) => `<button class="chip${state.pickCat === c ? " active" : ""}" data-pick-cat="${c}">${c === "all" ? "전체" : PIXEL.icon(c, 2) + CATS[c]}</button>`).join("");
+  }
+  let picking = false;
+  function runPick() {
+    if (picking) return;
+    const pool = pickPool();
+    if (!pool.length) return;
+    picking = true;
+    $("pickMap").hidden = true;
+    const slot = $("pickSlot");
+    slot.classList.remove("done");
+    const winner = pool[Math.floor(Math.random() * pool.length)];
+    const total = reduced() ? 0 : 1500;
+    const t0 = performance.now();
+    let last = -1;
+    function tick(now) {
+      const k = total ? Math.min(1, (now - t0) / total) : 1;
+      // 처음엔 빠르게 넘기다가 점점 느려져요.
+      const step = Math.floor(22 * (1 - Math.pow(1 - k, 2.2)));
+      if (k < 1) {
+        if (step !== last) {
+          last = step;
+          slot.textContent = pool[(step * 7 + 3) % pool.length].title;
+          restart(slot, "flip");
+        }
+        requestAnimationFrame(tick);
+        return;
+      }
+      slot.textContent = winner.title;
+      slot.classList.add("done");
+      play(slot, "boing");
+      burstAt(slot, 10);
+      const place = winner.plan && (winner.plan.place || winner.plan.map) ? winner.plan : null;
+      $("pickMap").hidden = !place;
+      if (place) $("pickMap").href = mapUrl(place);
+      picking = false;
+    }
+    requestAnimationFrame(tick);
   }
 
   function renderUpcoming() {
-    const events = upcomingEvents();
-    $("upcomingList").innerHTML = events.map((ev) => `<div class="up-item">
+    const rows = [];
+    if (parseDate(cfg.firstMet)) rows.push(["처음 만난 날", fmtDate(cfg.firstMet)]);
+    if (parseDate(cfg.startDate)) rows.push(["사귄 날", fmtDate(cfg.startDate)]);
+    $("sinceBox").innerHTML = rows.map((r) => `<div><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join("");
+    $("upcomingList").innerHTML = upcomingEvents().map((ev) => `<div class="up-item">
         <span class="up-icon">${PIXEL.icon(ev.icon, 2)}</span>
         <span class="up-text"><div class="up-name">${esc(ev.name)}</div><div class="up-date">${fmt(ev.date)}</div></span>
         <span class="up-dday${ev.left === 0 ? " today" : ""}">${ev.left === 0 ? "오늘" : "D-" + ev.left}</span>
       </div>`).join("");
-    document.querySelector('.menu-btn[data-panel="upcoming"]').hidden = events.length === 0;
   }
 
   function countUp(el, to) {
-    // 화면 주사율에 맞춰 숫자가 올라가요.
-    if (to <= 1) { el.textContent = to; return; }
+    if (to <= 1 || reduced()) { el.textContent = to; return; }
     const dur = 500;
     let t0 = null;
     el.textContent = 0;
@@ -333,18 +718,17 @@
   }
   function placeList() {
     const counts = new Map();
-    allEntries().forEach((e) => {
+    Store.list("entries").forEach((e) => {
       const p = (e.place || "").trim();
       if (p) counts.set(p, (counts.get(p) || 0) + 1);
     });
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }
   function renderStats(animate) {
-    const list = allEntries();
     const vals = {
-      statTotal: list.length,
-      statTravel: list.filter((e) => e.category === "travel").length,
-      statFood: list.filter((e) => e.category === "food" || e.category === "cafe").length,
+      statTotal: Store.list("entries").length,
+      statDiary: Store.list("diary").length,
+      statPlans: Store.list("plans").filter((p) => !p.done).length,
       statPlaces: placeList().length,
     };
     Object.keys(vals).forEach((id) => {
@@ -353,11 +737,10 @@
     });
   }
   function setPlaces(open) {
-    const box = $("placesList");
     const btn = document.querySelector('.stat[data-stat="places"]');
     if (open) {
       const places = placeList();
-      box.innerHTML = places.length
+      $("placesList").innerHTML = places.length
         ? places.map(([p, n]) => `<button class="place" data-place="${esc(p)}">${PIXEL.icon("pin", 2)}${esc(p)}<i>${n}</i></button>`).join("")
         : `<span class="muted">아직 장소가 없어요</span>`;
     }
@@ -366,72 +749,116 @@
     btn.setAttribute("aria-expanded", String(open));
   }
 
-  // ---------- 필터 ----------
-  function setFilter(patch) {
-    Object.assign(state, patch);
-    document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c.dataset.cat === state.cat));
-    if ($("search").value !== state.q) $("search").value = state.q;
-    const parts = [];
-    if (state.cat !== "all") parts.push(CATS[state.cat] || state.cat);
-    if (state.q.trim()) parts.push(`"${state.q.trim()}"`);
-    $("activeFilterText").textContent = parts.join(" · ");
-    $("activeFilter").hidden = parts.length === 0;
-    renderTimeline();
+  function renderPeeks() {
+    const todo = Store.list("plans").filter((p) => !p.done).sort((a, b) => (b.t || 0) - (a.t || 0));
+    $("peekPlansCount").textContent = todo.length ? `${todo.length}개` : "";
+    $("peekPlans").innerHTML = todo.length
+      ? todo.slice(0, 3).map((p) => `<p class="peek-line"><span class="cat-ico ${esc(p.category)}">${PIXEL.icon(p.category, 2)}</span><span>${esc(p.title)}</span></p>`).join("")
+      : `<p class="muted">하고 싶은 걸 적어 봐요</p>`;
+    const posts = sortedPosts();
+    $("peekDiaryCount").textContent = posts.length ? `${posts.length}개` : "";
+    $("peekDiary").innerHTML = posts.length
+      ? `<p class="peek-line"><span class="who ${esc(posts[0].author)}">${esc(WHO[posts[0].author] || "")}</span><span>${esc((posts[0].text || "사진").split("\n")[0])}</span></p>`
+      : `<p class="muted">첫 일기를 써 봐요</p>`;
   }
 
-  function filtered() {
+  function renderSync() {
+    const st = Store.status();
+    const chip = $("syncChip");
+    const pend = Store.pendingPhotoCount();
+    let text;
+    let cls = st.state;
+    if (st.state === "syncing") text = "저장 중";
+    else if (st.state === "auth") text = "토큰을 확인해 주세요";
+    else if (st.state === "offline") text = "인터넷이 없어요 · 이 폰에 저장됨";
+    else if (st.state === "error") text = "저장 실패 · 눌러서 다시 시도";
+    else if (!Store.token()) { text = "이 폰에만 저장 중 · 눌러서 연결"; cls = "local"; }
+    else text = "모두 저장됨";
+    if (pend && Store.token() && st.state !== "syncing") text += ` · 사진 ${pend}장 대기`;
+    chip.textContent = text;
+    chip.className = "sync-chip " + cls;
+  }
+
+  function renderHome() {
+    renderHeader();
+    renderMoodTags();
+    renderPlant();
+    renderTiles();
+    renderUpcoming();
+    renderStats(false);
+    renderPeeks();
+    renderSync();
+    if (state.openPanel === "mood") renderMood();
+    if (state.openPanel === "poke") renderPoke();
+    if (state.openPanel === "quest" && !questEditing && !(document.activeElement && document.activeElement.id === "questInput")) renderQuest();
+    if (isOpen($("places"))) setPlaces(true);
+  }
+
+  // ---------- 기록 ----------
+  function catTabs(cats, active, attr) {
+    return ["all"].concat(cats).map((c) => `<button class="chip${active === c ? " active" : ""}" ${attr}="${c}">${c === "all" ? "전체" : PIXEL.icon(c, 2) + CATS[c]}</button>`).join("");
+  }
+  function setFilter(patch) {
+    Object.assign(state, patch);
+    if ($("search").value !== state.q) $("search").value = state.q;
+    renderLog();
+  }
+  function filteredEntries() {
     const q = state.q.trim().toLowerCase();
-    const list = allEntries().filter((e) => {
+    const list = Store.list("entries").filter((e) => {
       if (state.cat !== "all" && e.category !== state.cat) return false;
       if (!q) return true;
-      const hay = [e.title, e.place, e.memo, (e.tags || []).join(" ")].join(" ").toLowerCase();
-      return hay.includes(q);
+      return [e.title, e.place, e.memo, (e.tags || []).join(" ")].join(" ").toLowerCase().includes(q);
     });
     list.sort((a, b) => {
-      if (state.sort === "rating") {
-        return (b.rating || 0) - (a.rating || 0) || String(b.date).localeCompare(String(a.date));
-      }
+      if (state.sort === "rating") return avgHearts(b.id) - avgHearts(a.id) || String(b.date).localeCompare(String(a.date));
       const c = String(a.date).localeCompare(String(b.date));
       return state.sort === "asc" ? c : -c;
     });
     return list;
   }
-
-  // ---------- 기록 목록 ----------
   function cardHtml(e, i) {
     const cat = CATS[e.category] ? e.category : "etc";
     const d = parseDate(e.date);
     const day = d ? `${pad(d.getMonth() + 1)}.${pad(d.getDate())}` : "";
-    const src = photoSrc(e.photo);
-    const open = state.openCard === e._id;
+    const open = state.openCard === e.id;
     return `
-      <article class="card cat-${cat}${open ? " open" : ""}" data-id="${esc(e._id)}" style="--i:${Math.min(i || 0, 8)}">
+      <article class="card cat-${cat}${open ? " open" : ""}" data-id="${esc(e.id)}" style="--i:${Math.min(i || 0, 8)}">
         <button class="card-head" aria-expanded="${open}">
           <span class="cat-ico ${cat}">${PIXEL.icon(cat, 2)}</span>
           <span class="card-title">${esc(e.title)}</span>
+          <span class="mini-heart">${miniHeartHtml(e.id)}</span>
           <span class="card-day">${day}</span>
           <span class="chev">${PIXEL.icon("down", 2)}</span>
         </button>
-        <div class="card-body fold${open ? " is-open" : ""}"><div class="fold-in"><div class="card-detail">
-          <p class="card-meta">${esc(CATS[cat])} · ${esc(fmtDate(e.date))}${e._local ? ' · <span class="muted">임시</span>' : ""}</p>
+        <div class="card-body fold${open ? " is-open" : ""}"><div class="fold-in">${open ? entryDetail(e) : ""}</div></div>
+      </article>`;
+  }
+  // 카드 속 내용은 펼칠 때 만들어요. (기록이 많아도 목록이 가볍게 떠요)
+  function entryDetail(e) {
+    const cat = CATS[e.category] ? e.category : "etc";
+    return `<div class="card-detail">
+          <p class="card-meta">${esc(CATS[cat])} · ${esc(fmtDate(e.date))}</p>
           ${e.place ? `<a class="card-place" href="${esc(mapUrl(e))}" target="_blank" rel="noopener">${PIXEL.icon("pin", 2)}<span class="place-name">${esc(e.place)}</span><span class="map-go">지도</span></a>` : ""}
-          <div class="card-rating">${stars(e.rating)}</div>
-          ${src ? `<img class="card-photo" src="${esc(src)}" alt="${esc(e.title)}" loading="lazy" onerror="this.remove()">` : ""}
+          <div class="hearts-box">${heartsBlock("h:" + e.id)}</div>
+          ${galleryHtml(e.photos, e.title)}
           ${e.memo ? `<p class="card-memo">${esc(e.memo)}</p>` : ""}
           ${(e.tags || []).length ? `<div class="tags">${e.tags.map((t) => `<button class="tag" data-tag="${esc(t)}">#${esc(t)}</button>`).join("")}</div>` : ""}
           <div class="card-actions"><button class="btn small" data-edit>수정</button></div>
-        </div></div></div>
-      </article>`;
+        </div>`;
   }
-
-  function renderTimeline() {
-    const list = filtered();
+  function renderLog() {
+    $("logTabs").innerHTML = catTabs(Object.keys(CATS), state.cat, "data-cat");
+    const parts = [];
+    if (state.q.trim()) parts.push(`"${state.q.trim()}"`);
+    $("activeFilterText").textContent = parts.join(" · ");
+    $("activeFilter").hidden = parts.length === 0;
+    const list = filteredEntries();
     $("empty").hidden = list.length > 0;
     let html = "";
     if (state.sort === "rating") {
       html = `<div class="month-items"><div class="fold-in">${list.map(cardHtml).join("")}</div></div>`;
     } else {
-      // 달마다 묶어서, 달 이름을 누르면 접혀요.
       const groups = [];
       list.forEach((e) => {
         const d = parseDate(e.date);
@@ -450,6 +877,7 @@
     $("timeline").innerHTML = html;
   }
 
+  // 기록, 할 거 카드를 펼치고 접어요. (한 번에 하나만)
   function setOpenCard(id) {
     const prev = document.querySelector(".card.open");
     if (prev && prev.dataset.id !== id) {
@@ -459,167 +887,380 @@
     }
     state.openCard = id;
     if (!id) return;
-    const card = [...document.querySelectorAll(".card")].find((c) => c.dataset.id === id);
+    const card = [...document.querySelectorAll(".view.is-active .card")].find((c) => c.dataset.id === id);
     if (!card) return;
+    const inner = card.querySelector(".fold-in");
+    if (!inner.firstElementChild) {
+      const isPlan = card.classList.contains("plan");
+      const rec = Store.get(isPlan ? "plans" : "entries", id);
+      if (rec) inner.innerHTML = isPlan ? planDetail(rec) : entryDetail(rec);
+      void inner.offsetHeight; // 내용을 넣은 다음 프레임부터 펼쳐지게 해요.
+    }
     card.classList.add("open");
     setOpen(card.querySelector(".card-body"), true);
     card.querySelector(".card-head").setAttribute("aria-expanded", "true");
   }
 
-  function renderAll() {
-    renderStats(false);
-    renderUpcoming();
-    renderTimeline();
-    if (isOpen($("places"))) setPlaces(true);
+  // ---------- 주말에 할 거 ----------
+  function planHtml(p, i) {
+    const cat = CATS[p.category] ? p.category : "etc";
+    const open = state.openCard === p.id;
+    return `
+      <article class="card plan cat-${cat}${p.done ? " done" : ""}${open ? " open" : ""}" data-id="${esc(p.id)}" style="--i:${Math.min(i || 0, 8)}">
+        <div class="plan-row">
+          <button class="check${p.done ? " on" : ""}" data-check aria-label="${p.done ? "다시 하기" : "해냈어요"}">${PIXEL.icon("tick", 2)}</button>
+          <button class="card-head" aria-expanded="${open}">
+            <span class="cat-ico ${cat}">${PIXEL.icon(cat, 2)}</span>
+            <span class="card-title">${esc(p.title)}</span>
+            <span class="mini-heart">${miniHeartHtml(p.id)}</span>
+            <span class="chev">${PIXEL.icon("down", 2)}</span>
+          </button>
+        </div>
+        <div class="card-body fold${open ? " is-open" : ""}"><div class="fold-in">${open ? planDetail(p) : ""}</div></div>
+      </article>`;
+  }
+  function planDetail(p) {
+    const cat = CATS[p.category] ? p.category : "etc";
+    return `<div class="card-detail">
+          <p class="card-meta">${esc(CATS[cat])}</p>
+          ${p.place ? `<a class="card-place" href="${esc(mapUrl(p))}" target="_blank" rel="noopener">${PIXEL.icon("pin", 2)}<span class="place-name">${esc(p.place)}</span><span class="map-go">지도</span></a>` : ""}
+          <div class="hearts-box">${heartsBlock("h:" + p.id)}</div>
+          <div class="card-actions"><button class="btn small" data-plan-edit>고치기</button><button class="btn small primary" data-plan-log>기록으로</button></div>
+        </div>`;
+  }
+  function renderPlans() {
+    $("planTabs").innerHTML = catTabs(PLAN_CATS, state.planCat, "data-plan-cat");
+    const list = Store.list("plans")
+      .filter((p) => state.planCat === "all" || p.category === state.planCat)
+      .sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0) || (b.t || 0) - (a.t || 0));
+    $("planList").innerHTML = list.map(planHtml).join("");
+    $("planEmpty").hidden = list.length > 0;
   }
 
-  // ---------- 입력창 ----------
-  let rating = 5;
-  function setRating(n, pop) {
-    rating = n;
-    $("fRating").querySelectorAll("span").forEach((s) => {
-      s.innerHTML = PIXEL.icon("star", 3);
-      const on = Number(s.dataset.v) <= n;
-      s.classList.toggle("on", on);
-      if (pop && on) play(s, "boing");
-    });
+  // ---------- 일기장 ----------
+  function sortedPosts() {
+    return Store.list("diary").sort((a, b) => String(b.date).localeCompare(String(a.date)) || (b.t || 0) - (a.t || 0));
   }
-  function openModal(entry) {
-    $("form").reset();
-    if (entry) {
-      $("modalTitle").textContent = "기록 수정";
-      $("fId").value = entry._id;
-      $("fDate").value = entry.date || "";
-      $("fCat").value = CATS[entry.category] ? entry.category : "etc";
-      $("fTitle").value = entry.title || "";
-      $("fPlace").value = entry.place || "";
-      $("fMap").value = entry.map || "";
-      $("fMemo").value = entry.memo || "";
-      $("fTags").value = (entry.tags || []).join(", ");
-      $("fPhoto").value = entry.photo || "";
-      setRating(Number(entry.rating) || 0);
-      $("btnDelete").hidden = false;
-    } else {
-      $("modalTitle").textContent = "새 기록";
-      $("fId").value = "";
-      const t = new Date();
-      $("fDate").value = `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
-      setRating(5);
-      $("btnDelete").hidden = true;
-    }
-    $("modal").classList.remove("closing");
-    $("modal").hidden = false;
-    $("fTitle").focus();
+  function postHtml(p, i) {
+    const who = p.author === "her" ? "her" : "him";
+    const long = (p.text || "").length > 120 || (p.text || "").split("\n").length > 4;
+    return `
+      <article class="post box" data-id="${esc(p.id)}" style="--i:${Math.min(i || 0, 8)}">
+        <header class="post-head">
+          <span class="who ${who}">${esc(WHO[who])}</span>
+          <span class="post-date">${esc(fmtDate(p.date))}</span>
+          <button class="link" data-post-edit>수정</button>
+        </header>
+        ${galleryHtml(p.photos, "일기 사진")}
+        ${p.text ? `<p class="post-text${long ? " clamp" : ""}">${esc(p.text)}</p>${long ? '<button class="link more" data-more>더 보기</button>' : ""}` : ""}
+      </article>`;
   }
-  function closeModal() {
-    const m = $("modal");
-    if (m.hidden || m.classList.contains("closing")) return;
-    m.classList.add("closing");
+  function renderDiary() {
+    const list = sortedPosts();
+    $("postList").innerHTML = list.map(postHtml).join("");
+    $("postEmpty").hidden = list.length > 0;
+  }
+
+  function renderView() {
+    if (state.view === "home") renderHome();
+    else if (state.view === "log") renderLog();
+    else if (state.view === "plans") renderPlans();
+    else if (state.view === "diary") renderDiary();
+  }
+
+  // ---------- 입력창 공통 ----------
+  function openModal(el) {
+    el.classList.remove("closing");
+    el.hidden = false;
+    document.body.classList.add("no-scroll");
+  }
+  function closeModal(el) {
+    if (!el || el.hidden || el.classList.contains("closing")) return;
+    el.classList.add("closing");
     setTimeout(() => {
-      m.hidden = true;
-      m.classList.remove("closing");
+      el.hidden = true;
+      el.classList.remove("closing");
+      if (!document.querySelector(".modal:not([hidden])") && $("lightbox").hidden) document.body.classList.remove("no-scroll");
     }, 160);
   }
-  function upsertLocal(entry) {
-    const i = localEntries.findIndex((e) => e._id === entry._id);
-    if (i >= 0) localEntries[i] = entry;
-    else localEntries.push(entry);
-    saveLocal();
+  function openModalEl() {
+    return document.querySelector(".modal:not([hidden]):not(.closing)");
+  }
+  function fillCatSelect(sel, cats) {
+    sel.innerHTML = cats.map((c) => `<option value="${c}">${CATS[c]}</option>`).join("");
+  }
+  function todayInput() {
+    return todayKey();
   }
 
-  // ---------- 내보내기 ----------
-  function exportCode() {
-    const list = allEntries()
-      .slice()
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)))
-      .map((e) => ({
-        date: e.date || "",
-        category: e.category || "etc",
-        title: e.title || "",
-        place: e.place || "",
-        map: e.map || "",
-        rating: Number(e.rating) || 0,
-        memo: e.memo || "",
-        tags: e.tags || [],
-        photo: e.photo || "",
-      }));
-    return "const DIARY_ENTRIES = " + JSON.stringify(list, null, 2) + ";\n";
+  // 기록
+  function openRecord(entry, prefill) {
+    $("form").reset();
+    fillCatSelect($("fCat"), Object.keys(CATS));
+    const src = entry || prefill || {};
+    $("modalTitle").textContent = entry ? "기록 수정" : "새 기록";
+    $("fId").value = entry ? entry.id : "";
+    $("fPlanId").value = prefill && prefill.planId ? prefill.planId : "";
+    $("fDate").value = src.date || todayInput();
+    $("fCat").value = CATS[src.category] ? src.category : state.cat !== "all" ? state.cat : "date";
+    $("fTitle").value = src.title || "";
+    $("fPlace").value = src.place || "";
+    $("fMap").value = src.map || "";
+    $("fMemo").value = src.memo || "";
+    $("fTags").value = (src.tags || []).join(", ");
+    const heartKey = entry ? "h:" + entry.id : prefill && prefill.planId ? "h:" + prefill.planId : null;
+    draftHearts.him = heartKey ? heartVal(heartKey, "him") : 0;
+    draftHearts.her = heartKey ? heartVal(heartKey, "her") : 0;
+    renderDraftHearts();
+    setPicker($("fPhotos"), src.photos);
+    $("btnDelete").hidden = !entry;
+    openModal($("modal"));
+    if (!entry) $("fTitle").focus();
   }
-  function fullFile() {
-    return (
-      "// 석영이와 예은이 일지 데이터 (사이트에서 내보낸 파일)\n" +
-      "// category: date / travel / food / cafe / anniv / etc, rating: 1~5\n\n" +
-      "const DIARY_CONFIG = " + JSON.stringify(config, null, 2) + ";\n\n" +
-      exportCode()
-    );
+  function saveRecord() {
+    const id = $("fId").value;
+    const planId = $("fPlanId").value;
+    const old = id ? Store.get("entries", id) : null;
+    const rec = silently(() => Store.put("entries", Object.assign({}, old || {}, {
+      id: id || undefined,
+      date: $("fDate").value,
+      category: $("fCat").value,
+      title: $("fTitle").value.trim(),
+      place: $("fPlace").value.trim(),
+      map: $("fMap").value.trim(),
+      memo: $("fMemo").value.trim(),
+      tags: $("fTags").value.split(",").map((t) => t.trim().replace(/^#/, "")).filter(Boolean),
+      photos: picker ? picker.photos.slice() : [],
+    })));
+    silently(() => {
+      ["him", "her"].forEach((w) => {
+        if (heartVal("h:" + rec.id, w) !== draftHearts[w]) Store.setPair("h:" + rec.id, w, draftHearts[w]);
+      });
+      if (planId) Store.remove("plans", planId);
+    });
+    closeModal($("modal"));
+    state.openCard = rec.id;
+    if (state.view !== "log") go("log");
+    else renderLog();
+    const card = document.querySelector(".view.is-active .card.open");
+    if (card) burstAt(card.querySelector(".cat-ico"), 8);
+    toast(id ? "고쳤어요" : "기록을 남겼어요");
+    renderPlant(true);
   }
 
-  // ---------- events ----------
+  // 할 거
+  function openPlan(p) {
+    fillCatSelect($("pCat"), PLAN_CATS);
+    $("pId").value = p.id;
+    $("pCat").value = PLAN_CATS.includes(p.category) ? p.category : "etc";
+    $("pTitle").value = p.title || "";
+    $("pPlace").value = p.place || "";
+    $("pMap").value = p.map || "";
+    openModal($("planModal"));
+  }
+
+  // 일기
+  let postWho = "him";
+  function setPostWho(w) {
+    postWho = w;
+    $("dWho").querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c.dataset.who === w));
+  }
+  function openPost(post) {
+    $("postForm").reset();
+    $("postModalTitle").textContent = post ? "일기 고치기" : "일기 쓰기";
+    $("dId").value = post ? post.id : "";
+    $("dDate").value = post ? post.date : todayInput();
+    $("dText").value = post ? post.text || "" : "";
+    setPostWho(post ? (post.author === "her" ? "her" : "him") : Store.me() || "him");
+    setPicker($("dPhotos"), post ? post.photos : []);
+    $("btnPostDelete").hidden = !post;
+    openModal($("postModal"));
+    if (!post) $("dText").focus();
+  }
+
+  // 설정
+  function renderSettings() {
+    const me = Store.me();
+    $("meWho").querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c.dataset.who === me));
+    const on = !!Store.token();
+    const st = Store.status();
+    $("tokenState").textContent = !on
+      ? "지금은 이 폰에만 저장돼요. 연결하면 두 폰에서 같이 보여요."
+      : st.state === "auth" ? "토큰이 맞지 않아요. 다시 넣어 주세요." : "연결됨. 고친 내용이 저장소에 올라가요.";
+    $("btnTokenOff").hidden = !on;
+    $("tokenInput").value = "";
+    $("tokenInput").placeholder = on ? "새 토큰으로 바꾸기" : "토큰 붙여 넣기";
+  }
+
+  // ---------- 누르기 ----------
   function bind() {
     // 바깥을 누르면 펼쳐진 것들이 닫혀요. (다른 처리보다 먼저 돌아요)
     document.addEventListener("click", (ev) => {
       const t = ev.target;
       if (!t.closest) return;
-      if (t.closest(".modal") || t.closest(".toast")) return;
-      if (!t.closest(".couple")) hideBubble();
-      if (!t.closest("#dday") && !t.closest("#since")) setSince(false);
+      if (t.closest(".modal") || t.closest(".toast") || t.closest(".lightbox") || t.closest(".nav")) return;
+      if (!t.closest(".couple") && !t.closest("#plant")) hideBubble();
       if (state.openPanel && !t.closest("#menu") && !t.closest("#panels")) setPanel(null);
       if (state.openCard && !t.closest(".card")) setOpenCard(null);
     }, true);
+
     document.addEventListener("keydown", (ev) => {
       if (ev.key !== "Escape") return;
-      if (!$("modal").hidden) { closeModal(); return; }
+      if (!$("lightbox").hidden) { closeLightbox(); return; }
+      const m = openModalEl();
+      if (m) { closeModal(m); return; }
       hideBubble();
-      setSince(false);
       setPanel(null);
       setOpenCard(null);
+    });
+
+    // 사진 넘길 때 몇 번째인지 표시 (scroll 은 위로 전달되지 않아서 잡아채요)
+    document.addEventListener("scroll", (ev) => {
+      const t = ev.target;
+      if (!t.classList || !t.classList.contains("gallery-track")) return;
+      if (t.id === "lightboxTrack") {
+        const i = Math.round(t.scrollLeft / Math.max(1, t.clientWidth));
+        $("lightboxCount").textContent = `${Math.min(t.children.length, i + 1)}/${t.children.length}`;
+      } else {
+        onGalleryScroll(t);
+      }
+    }, { capture: true, passive: true });
+
+    // 어디서나 통하는 누르기: 하트, 사진, 닫기, 화면 넘기기, 누구 폰인지
+    document.addEventListener("click", (ev) => {
+      const t = ev.target;
+      if (!t.closest) return;
+      const heart = t.closest(".heart");
+      if (heart) { onHeartTap(heart); return; }
+      const img = t.closest(".gallery-track img");
+      if (img && !t.closest(".lightbox")) {
+        const box = img.closest(".gallery");
+        try { openLightbox(JSON.parse(box.dataset.photos), Number(img.dataset.i) || 0); } catch (e) { /* 사진 목록이 깨졌으면 그냥 둬요 */ }
+        return;
+      }
+      const close = t.closest("[data-close]");
+      if (close) { closeModal(close.closest(".modal")); return; }
+      if (t.classList.contains("modal")) { closeModal(t); return; }
+      const goBtn = t.closest("[data-go]");
+      if (goBtn) { go(goBtn.dataset.go); return; }
+      const me = t.closest("[data-me]");
+      if (me) {
+        silently(() => Store.setMe(me.dataset.me));
+        toast(`${WHO[me.dataset.me]} 폰으로 기억할게요`);
+        renderHome();
+        if (state.openPanel) setPanel(state.openPanel);
+        return;
+      }
+      const add = t.closest("[data-add]");
+      if (add) { $("filePick").click(); return; }
+      const rm = t.closest("[data-rm]");
+      if (rm && picker) {
+        picker.photos.splice(Number(rm.dataset.rm), 1);
+        renderPicker();
+      }
+    });
+    $("filePick").addEventListener("change", (ev) => {
+      const files = ev.target.files;
+      onFiles(files).then(() => { ev.target.value = ""; });
+    });
+    $("lightboxClose").addEventListener("click", closeLightbox);
+    $("lightbox").addEventListener("click", (ev) => {
+      if (ev.target === $("lightbox")) closeLightbox();
     });
 
     bindScene();
 
     $("dday").addEventListener("click", () => {
-      const open = !isOpen($("since"));
-      setSince(open);
-      if (open) burstAt($("dday"), 8);
+      state.ddayMode++;
+      $("dday").textContent = ddayText();
+      play($("dday"), "flip");
+      burstAt($("dday"), 6);
+    });
+    $("btnSettings").addEventListener("click", () => {
+      renderSettings();
+      openModal($("settingsModal"));
+    });
+    $("syncChip").addEventListener("click", () => {
+      if (!Store.token() || Store.status().state === "auth") {
+        renderSettings();
+        openModal($("settingsModal"));
+      } else {
+        Store.sync();
+      }
     });
 
+    // 홈 타일
     $("menu").addEventListener("click", (ev) => {
-      const b = ev.target.closest(".menu-btn");
+      const b = ev.target.closest(".tile");
       if (!b) return;
       setPanel(state.openPanel === b.dataset.panel ? null : b.dataset.panel);
     });
-
-    // 통계 칸: 숫자를 누르면 그 종류만 보여요.
-    $("panel-stats").addEventListener("click", (ev) => {
-      const place = ev.target.closest(".place");
+    $("panels").addEventListener("click", (ev) => {
+      const t = ev.target;
+      const mood = t.closest("[data-mood]");
+      if (mood) {
+        const me = Store.me();
+        const n = Number(mood.dataset.mood);
+        silently(() => Store.setPair("m:" + todayKey(), me, n));
+        renderMood();
+        renderMoodTags();
+        renderTiles();
+        const face = document.querySelector(`.mood-btn[data-mood="${n}"]`);
+        if (face) { play(face, "boing"); burstAt(face, 6); }
+        return;
+      }
+      if (t.closest("#btnPoke")) { sendHeart(); return; }
+      if (t.closest("[data-quest-edit]")) { questEditing = true; renderQuest(); $("questInput").focus(); return; }
+      const pc = t.closest("[data-pick-cat]");
+      if (pc) { state.pickCat = pc.dataset.pickCat; renderPick(); return; }
+      if (t.closest("#btnPick")) { play($("btnPick"), "boing"); runPick(); return; }
+      const place = t.closest(".place");
       if (place) {
-        setFilter({ cat: "all", q: place.dataset.place });
+        state.cat = "all";
+        state.q = place.dataset.place;
+        go("log");
         toast(`"${place.dataset.place}" 기록만 보는 중`);
         return;
       }
-      const s = ev.target.closest(".stat");
-      if (!s) return;
-      play(s, "boing");
-      const kind = s.dataset.stat;
-      if (kind === "places") {
-        setPlaces(!isOpen($("places")));
-        return;
+      const s = t.closest(".stat");
+      if (s) {
+        play(s, "boing");
+        const kind = s.dataset.stat;
+        if (kind === "places") setPlaces(!isOpen($("places")));
+        else if (kind === "diary") go("diary");
+        else if (kind === "plans") go("plans");
+        else { state.cat = "all"; state.q = ""; go("log"); }
       }
-      setPlaces(false);
-      setFilter({ cat: kind, q: "" });
-      toast(kind === "all" ? "전체 기록 보는 중" : `${CATS[kind]} 기록만 보는 중`);
+    });
+    $("panels").addEventListener("submit", (ev) => {
+      if (ev.target.id !== "questForm") return;
+      ev.preventDefault();
+      const text = $("questInput").value.trim();
+      if (!text) return;
+      questEditing = false;
+      silently(() => Store.setPair("q:" + todayKey(), Store.me(), text));
+      renderQuest();
+      renderTiles();
+      renderPlant(true);
+      burstAt($("questText"), 8);
+      toast("답했어요");
     });
 
-    $("filters").addEventListener("click", (ev) => {
-      const b = ev.target.closest(".chip");
-      if (!b) return;
-      play(b, "boing");
-      setFilter({ cat: b.dataset.cat });
+    // 기록
+    $("logTabs").addEventListener("click", (ev) => {
+      const b = ev.target.closest("[data-cat]");
+      if (b) setFilter({ cat: b.dataset.cat });
+    });
+    $("btnSearch").addEventListener("click", () => {
+      const open = !isOpen($("searchFold"));
+      setOpen($("searchFold"), open);
+      $("btnSearch").setAttribute("aria-expanded", String(open));
+      $("btnSearch").classList.toggle("primary", open);
+      if (open) $("search").focus();
     });
     $("search").addEventListener("input", (ev) => setFilter({ q: ev.target.value }));
     $("sort").addEventListener("change", (ev) => setFilter({ sort: ev.target.value }));
-    $("btnClearFilter").addEventListener("click", () => setFilter({ cat: "all", q: "" }));
-
+    $("btnClearFilter").addEventListener("click", () => setFilter({ q: "" }));
     $("timeline").addEventListener("click", (ev) => {
       const month = ev.target.closest(".month-label");
       if (month) {
@@ -635,8 +1276,8 @@
       const card = ev.target.closest(".card");
       if (!card) return;
       if (ev.target.closest("[data-edit]")) {
-        const entry = allEntries().find((e) => e._id === card.dataset.id);
-        if (entry) openModal(entry);
+        const entry = Store.get("entries", card.dataset.id);
+        if (entry) openRecord(entry);
         return;
       }
       const tag = ev.target.closest(".tag");
@@ -645,115 +1286,224 @@
         toast(`#${tag.dataset.tag} 기록만 보는 중`);
         return;
       }
-      if (ev.target.closest(".card-head")) {
-        setOpenCard(state.openCard === card.dataset.id ? null : card.dataset.id);
-      }
+      if (ev.target.closest(".card-head")) setOpenCard(state.openCard === card.dataset.id ? null : card.dataset.id);
     });
 
-    $("btnAdd").addEventListener("click", () => {
-      play($("btnAdd"), "boing");
-      openModal(null);
+    // 할 거
+    $("planTabs").addEventListener("click", (ev) => {
+      const b = ev.target.closest("[data-plan-cat]");
+      if (!b) return;
+      state.planCat = b.dataset.planCat;
+      renderPlans();
     });
-    $("btnCancel").addEventListener("click", closeModal);
-    $("modal").addEventListener("click", (ev) => {
-      if (ev.target === $("modal")) closeModal();
+    $("planForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const title = $("planTitle").value.trim();
+      if (!title) { $("planTitle").focus(); return; }
+      silently(() => Store.put("plans", { title, category: state.planCat === "all" ? "date" : state.planCat, place: "", map: "", done: false }));
+      $("planTitle").value = "";
+      renderPlans();
+      const first = document.querySelector("#planList .card");
+      if (first) burstAt(first.querySelector(".cat-ico"), 6);
     });
-    // 입력창의 "찾기": 적어 둔 장소 이름으로 네이버 지도를 열어요.
-    $("btnFindMap").addEventListener("click", (ev) => {
-      const place = $("fPlace").value.trim();
-      if (!place) {
-        ev.preventDefault();
-        toast("장소를 먼저 적어 주세요");
-        $("fPlace").focus();
+    $("planList").addEventListener("click", (ev) => {
+      const card = ev.target.closest(".card");
+      if (!card) return;
+      const p = Store.get("plans", card.dataset.id);
+      if (!p) return;
+      const check = ev.target.closest("[data-check]");
+      if (check) {
+        const done = !p.done;
+        silently(() => Store.put("plans", Object.assign({}, p, { done })));
+        check.classList.toggle("on", done);
+        card.classList.toggle("done", done);
+        play(check, "boing");
+        if (done) {
+          burstAt(check, 10);
+          toast("해냈어요");
+        }
+        renderPlant(true);
         return;
       }
-      $("btnFindMap").href = naverSearchUrl(place);
-    });
-    $("fRating").addEventListener("click", (ev) => {
-      const s = ev.target.closest("span[data-v]");
-      if (s) setRating(Number(s.dataset.v), true);
-    });
-
-    $("form").addEventListener("submit", (ev) => {
-      ev.preventDefault();
-      const isNew = !$("fId").value;
-      const entry = {
-        _id: $("fId").value || "local-" + Date.now(),
-        date: $("fDate").value,
-        category: $("fCat").value,
-        title: $("fTitle").value.trim(),
-        place: $("fPlace").value.trim(),
-        map: $("fMap").value.trim(),
-        rating: rating,
-        memo: $("fMemo").value.trim(),
-        tags: $("fTags").value.split(",").map((t) => t.trim().replace(/^#/, "")).filter(Boolean),
-        photo: $("fPhoto").value.trim(),
-      };
-      upsertLocal(entry);
-      closeModal();
-      state.openCard = entry._id;
-      renderAll();
-      const card = document.querySelector(".card.open");
-      if (card) burstAt(card.querySelector(".cat-ico"), 8);
-      toast(isNew ? "기록을 남겼어요" : "고쳤어요");
-    });
-
-    $("btnDelete").addEventListener("click", () => {
-      const id = $("fId").value;
-      if (!id || !confirm("이 기록을 지울까요?")) return;
-      if (id.startsWith("file-")) {
-        // 파일에 있는 기록은 "삭제 표시"만 해 두고, 내보내기 때 빠지게 해요.
-        upsertLocal({ _id: id, _deleted: true });
-      } else {
-        localEntries = localEntries.filter((e) => e._id !== id);
-        saveLocal();
+      if (ev.target.closest("[data-plan-edit]")) { openPlan(p); return; }
+      if (ev.target.closest("[data-plan-log]")) {
+        openRecord(null, { planId: p.id, title: p.title, category: p.category, place: p.place, map: p.map });
+        return;
       }
-      closeModal();
+      if (ev.target.closest(".card-head")) setOpenCard(state.openCard === card.dataset.id ? null : card.dataset.id);
+    });
+    $("planEditForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const p = Store.get("plans", $("pId").value);
+      if (!p) return;
+      silently(() => Store.put("plans", Object.assign({}, p, {
+        category: $("pCat").value, title: $("pTitle").value.trim(), place: $("pPlace").value.trim(), map: $("pMap").value.trim(),
+      })));
+      closeModal($("planModal"));
+      renderPlans();
+      toast("고쳤어요");
+    });
+    $("btnPlanDelete").addEventListener("click", () => {
+      if (!confirm("이 할 거를 지울까요?")) return;
+      silently(() => Store.remove("plans", $("pId").value));
+      closeModal($("planModal"));
       state.openCard = null;
-      renderAll();
+      renderPlans();
       toast("지웠어요");
     });
 
-    $("btnExport").addEventListener("click", async () => {
-      const code = exportCode();
-      $("exportBox").value = code;
-      try {
-        await navigator.clipboard.writeText(code);
-        toast("코드를 복사했어요");
-      } catch (e) {
-        $("exportBox").select();
-        toast("아래 코드를 복사해 주세요");
+    // 일기
+    $("postList").addEventListener("click", (ev) => {
+      const post = ev.target.closest(".post");
+      if (!post) return;
+      if (ev.target.closest("[data-post-edit]")) {
+        const p = Store.get("diary", post.dataset.id);
+        if (p) openPost(p);
+        return;
+      }
+      const more = ev.target.closest("[data-more]");
+      if (more) {
+        const text = post.querySelector(".post-text");
+        const clamp = text.classList.toggle("clamp");
+        more.textContent = clamp ? "더 보기" : "접기";
       }
     });
-    $("btnDownload").addEventListener("click", () => {
-      const blob = new Blob([fullFile()], { type: "text/javascript;charset=utf-8" });
+    $("dWho").addEventListener("click", (ev) => {
+      const c = ev.target.closest("[data-who]");
+      if (c) setPostWho(c.dataset.who);
+    });
+    $("postForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const id = $("dId").value;
+      const photos = picker ? picker.photos.slice() : [];
+      const text = $("dText").value.trim();
+      if (!text && !photos.length) { toast("내용이나 사진을 넣어 줘요"); return; }
+      const old = id ? Store.get("diary", id) : null;
+      silently(() => Store.put("diary", Object.assign({}, old || {}, { id: id || undefined, date: $("dDate").value, author: postWho, text, photos })));
+      closeModal($("postModal"));
+      renderDiary();
+      const first = document.querySelector("#postList .post");
+      if (first && !id) burstAt(first.querySelector(".who"), 8, "heart");
+      toast(id ? "고쳤어요" : "일기를 썼어요");
+      renderPlant(true);
+    });
+    $("btnPostDelete").addEventListener("click", () => {
+      if (!confirm("이 일기를 지울까요?")) return;
+      silently(() => Store.remove("diary", $("dId").value));
+      closeModal($("postModal"));
+      renderDiary();
+      toast("지웠어요");
+    });
+
+    // 추가 버튼
+    $("btnAdd").addEventListener("click", () => {
+      play($("btnAdd"), "boing");
+      if (state.view === "diary") openPost(null);
+      else openRecord(null);
+    });
+
+    // 기록 입력창
+    function bindFind(btnId, placeId) {
+      $(btnId).addEventListener("click", (ev) => {
+        const place = $(placeId).value.trim();
+        if (!place) {
+          ev.preventDefault();
+          toast("장소를 먼저 적어 주세요");
+          $(placeId).focus();
+          return;
+        }
+        $(btnId).href = naverSearchUrl(place);
+      });
+    }
+    bindFind("btnFindMap", "fPlace");
+    bindFind("btnFindPlanMap", "pPlace");
+    $("form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      saveRecord();
+    });
+    $("btnDelete").addEventListener("click", () => {
+      const id = $("fId").value;
+      if (!id || !confirm("이 기록을 지울까요?")) return;
+      silently(() => Store.remove("entries", id));
+      closeModal($("modal"));
+      state.openCard = null;
+      renderLog();
+      toast("지웠어요");
+    });
+
+    // 설정
+    $("meWho").addEventListener("click", (ev) => {
+      const c = ev.target.closest("[data-who]");
+      if (!c) return;
+      silently(() => Store.setMe(c.dataset.who));
+      renderSettings();
+      renderHome();
+    });
+    $("btnToken").addEventListener("click", async () => {
+      const tk = $("tokenInput").value.trim();
+      if (!tk) { $("tokenInput").focus(); return; }
+      $("btnToken").disabled = true;
+      $("tokenState").textContent = "확인하는 중";
+      const res = await Store.checkToken(tk);
+      $("btnToken").disabled = false;
+      if (!res.ok) {
+        $("tokenState").textContent = res.msg;
+        toast(res.msg);
+        return;
+      }
+      Store.setToken(tk);
+      renderSettings();
+      toast("연결했어요");
+    });
+    $("btnTokenOff").addEventListener("click", () => {
+      Store.setToken("");
+      renderSettings();
+      renderSync();
+      toast("연결을 끊었어요");
+    });
+    $("btnBackup").addEventListener("click", () => {
+      const blob = new Blob([Store.exportJson()], { type: "application/json;charset=utf-8" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "entries.js";
+      a.download = `diary-backup-${todayKey()}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     });
     $("btnClearLocal").addEventListener("click", () => {
-      if (!confirm("이 브라우저에만 저장된 기록과 수정 내용을 모두 지울까요?\n(깃에 올린 data/entries.js 기록은 그대로예요)")) return;
-      localEntries = [];
-      saveLocal();
-      state.openCard = null;
-      renderAll();
-      toast("임시 기록을 비웠어요");
+      if (!confirm("이 폰에 저장된 내용을 지울까요?\n저장소에 올라간 내용은 다시 받아 와요.")) return;
+      Store.clearLocal();
+      toast("이 폰에서 지웠어요");
     });
   }
 
+  // ---------- 시작 ----------
   // 저녁 7시부터 아침 6시까지는 밤 풍경
   const hour = new Date().getHours();
   if (hour >= 19 || hour < 6) document.body.classList.add("night");
 
   PIXEL.fill(document);
-  renderHeader();
+  startSeason();
   bind();
-  renderAll();
+  renderView();
+
+  // 다른 폰에서 고친 내용이 들어오면 다시 그려요.
+  Store.onChange(() => {
+    if (quiet) return;
+    if (openModalEl()) { renderSync(); return; }
+    renderView();
+    if (state.view !== "home") { renderMoodTags(); renderPlant(); }
+  });
+  Store.onStatus(() => {
+    renderSync();
+    if (!$("settingsModal").hidden) {
+      const keep = $("tokenInput").value;
+      renderSettings();
+      $("tokenInput").value = keep;
+    }
+  });
 
   // 처음 한 번, 눌러 볼 수 있다는 걸 알려 줘요.
   setTimeout(() => {
-    if (!isOpen($("bubble")) && bubbleIdx === 0) showBubble("우리를 눌러 봐", "her");
+    if (state.view === "home" && !isOpen($("bubble")) && bubbleIdx === 0) showBubble("우리를 눌러 봐", "her");
   }, 1200);
 })();

@@ -17,130 +17,192 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header class="hero">
-    <div class="hero-inner box">
-      <div class="scene-wrap">
-        <div class="scene" id="scene">
-          <span class="sc-sun tap" data-sprite="sun" data-scale="3"></span>
-          <span class="sc-moon tap" data-sprite="moon" data-scale="3"></span>
-          <span class="sc-star s1" data-sprite="twinkle" data-scale="2"></span>
-          <span class="sc-star s2" data-sprite="twinkle" data-scale="2"></span>
-          <span class="sc-star s3" data-sprite="twinkle" data-scale="2"></span>
-          <span class="sc-star s4" data-sprite="twinkle" data-scale="2"></span>
-          <span class="sc-star s5" data-sprite="twinkle" data-scale="2"></span>
-          <span class="sc-cloud c1 tap" data-sprite="cloud" data-scale="3"></span>
-          <span class="sc-cloud c2 tap" data-sprite="cloudSmall" data-scale="3"></span>
-          <span class="sc-cloud c3 tap" data-sprite="cloud" data-scale="2"></span>
-          <div class="sc-hills" data-bg="hills" data-scale="3"></div>
-          <span class="sc-tree t1 tap" data-sprite="tree" data-scale="3"></span>
-          <span class="sc-tree t2 tap" data-sprite="tree" data-scale="2"></span>
-          <div class="sc-ground" data-bg="ground" data-scale="3"></div>
-          <span class="sc-flower f1 tap" data-sprite="flowerA" data-scale="2"></span>
-          <span class="sc-flower f2 tap" data-sprite="flowerB" data-scale="2"></span>
-          <span class="sc-flower f3 tap" data-sprite="flowerC" data-scale="2"></span>
-          <span class="sc-flower f4 tap" data-sprite="flowerB" data-scale="2"></span>
-          <span class="sc-flower f5 tap" data-sprite="flowerA" data-scale="2"></span>
-          <div class="sc-tint"></div>
-          <div class="couple">
-            <button class="bob" data-who="him" data-sprite="him" aria-label="석영"></button>
-            <button class="bob b2" data-who="her" data-sprite="her" aria-label="예은"></button>
+  <!-- ==================== 홈 ==================== -->
+  <section class="view is-active" data-view="home">
+    <header class="hero">
+      <div class="hero-inner box">
+        <button class="gear" id="btnSettings" aria-label="설정"><span data-icon="gear"></span></button>
+        <div class="scene-wrap">
+          <div class="scene" id="scene">
+            <span class="sc-sun tap" data-sprite="sun" data-scale="3"></span>
+            <span class="sc-moon tap" data-sprite="moon" data-scale="3"></span>
+            <span class="sc-star s1" data-sprite="twinkle" data-scale="2"></span>
+            <span class="sc-star s2" data-sprite="twinkle" data-scale="2"></span>
+            <span class="sc-star s3" data-sprite="twinkle" data-scale="2"></span>
+            <span class="sc-star s4" data-sprite="twinkle" data-scale="2"></span>
+            <span class="sc-star s5" data-sprite="twinkle" data-scale="2"></span>
+            <span class="sc-cloud c1 tap" data-sprite="cloud" data-scale="3"></span>
+            <span class="sc-cloud c2 tap" data-sprite="cloudSmall" data-scale="3"></span>
+            <span class="sc-cloud c3 tap" data-sprite="cloud" data-scale="2"></span>
+            <div class="sc-hills" data-bg="hills" data-scale="3"></div>
+            <span class="sc-tree t1 tap" data-sprite="tree" data-scale="3"></span>
+            <span class="sc-tree t2 tap" data-sprite="tree" data-scale="2"></span>
+            <div class="sc-ground" data-bg="ground" data-scale="3"></div>
+            <span class="sc-flower f1 tap" data-sprite="flowerA" data-scale="2"></span>
+            <span class="sc-flower f2 tap" data-sprite="flowerB" data-scale="2"></span>
+            <span class="sc-flower f3 tap" data-sprite="flowerC" data-scale="2"></span>
+            <span class="sc-flower f4 tap" data-sprite="flowerB" data-scale="2"></span>
+            <span class="sc-flower f5 tap" data-sprite="flowerA" data-scale="2"></span>
+            <button class="sc-plant" id="plant" aria-label="같이 키우는 나무"></button>
+            <div class="sc-tint"></div>
+            <div class="sc-fall" id="fall"></div>
+            <div class="couple">
+              <button class="bob" data-who="him" aria-label="석영"><i class="mood-tag" id="moodHim"></i><span data-sprite="him"></span></button>
+              <button class="bob b2" data-who="her" aria-label="예은"><i class="mood-tag" id="moodHer"></i><span data-sprite="her"></span></button>
+            </div>
           </div>
+          <div class="bubble" id="bubble" role="status"></div>
         </div>
-        <div class="bubble" id="bubble" role="status"></div>
+        <h1 id="diaryTitle">석영이와 예은이</h1>
+        <button class="dday" id="dday" aria-label="함께한 날">D+0</button>
       </div>
-      <h1 id="diaryTitle">석영이와 예은이</h1>
-      <button class="dday" id="dday" aria-expanded="false" aria-controls="since">D+0</button>
-      <div class="fold" id="since"><div class="fold-in"><div class="since" id="sinceBox"></div></div></div>
-    </div>
-  </header>
+    </header>
 
-  <main class="container">
-    <nav class="menu" id="menu">
-      <button class="menu-btn" data-panel="upcoming" aria-expanded="false"><span data-icon="calendar"></span>기념일</button>
-      <button class="menu-btn" data-panel="stats" aria-expanded="false"><span data-icon="chart"></span>통계</button>
-      <button class="menu-btn" data-panel="search" aria-expanded="false"><span data-icon="search"></span>찾기</button>
-    </nav>
+    <main class="container">
+      <button class="sync-chip" id="syncChip"></button>
 
-    <div class="panels" id="panels">
-      <section class="panel fold" id="panel-upcoming"><div class="fold-in"><div class="panel-box box">
-        <div class="upcoming-list" id="upcomingList"></div>
-      </div></div></section>
+      <nav class="tiles" id="menu">
+        <button class="tile" data-panel="mood" aria-expanded="false"><span data-icon="smile" data-scale="3"></span><b>기분</b><i id="tileMood"></i></button>
+        <button class="tile" data-panel="poke" aria-expanded="false"><span data-sprite="heartOn" data-scale="3"></span><b>하트</b><i id="tilePoke"></i></button>
+        <button class="tile" data-panel="quest" aria-expanded="false"><span data-icon="quest" data-scale="3"></span><b>질문</b><i id="tileQuest"></i></button>
+        <button class="tile" data-panel="pick" aria-expanded="false"><span data-icon="dice" data-scale="3"></span><b>뽑기</b><i></i></button>
+        <button class="tile" data-panel="upcoming" aria-expanded="false"><span data-icon="calendar" data-scale="3"></span><b>기념일</b><i id="tileUp"></i></button>
+        <button class="tile" data-panel="stats" aria-expanded="false"><span data-icon="chart" data-scale="3"></span><b>통계</b><i id="tileStats"></i></button>
+      </nav>
 
-      <section class="panel fold" id="panel-stats"><div class="fold-in"><div class="panel-box box">
-        <div class="stats">
-          <button class="stat" data-stat="all"><span class="stat-num" id="statTotal">0</span><span class="stat-label">기록</span></button>
-          <button class="stat" data-stat="travel"><span class="stat-num" id="statTravel">0</span><span class="stat-label">여행</span></button>
-          <button class="stat" data-stat="food"><span class="stat-num" id="statFood">0</span><span class="stat-label">맛집</span></button>
-          <button class="stat" data-stat="places" aria-expanded="false"><span class="stat-num" id="statPlaces">0</span><span class="stat-label">장소</span></button>
-        </div>
-        <div class="fold" id="places"><div class="fold-in"><div class="places" id="placesList"></div></div></div>
-      </div></div></section>
+      <div class="panels" id="panels">
+        <section class="panel fold" id="panel-mood"><div class="fold-in"><div class="panel-box box">
+          <h2>오늘의 기분</h2>
+          <div class="mood-now" id="moodNow"></div>
+          <div id="moodPick"></div>
+        </div></div></section>
 
-      <section class="panel fold" id="panel-search"><div class="fold-in"><div class="panel-box box">
-        <div class="search-row">
-          <input type="search" id="search" placeholder="검색">
-          <select id="sort">
-            <option value="desc">최신순</option>
-            <option value="asc">오래된순</option>
-            <option value="rating">별점순</option>
-          </select>
-        </div>
-        <div class="filters" id="filters">
-          <button class="chip active" data-cat="all">전체</button>
-          <button class="chip" data-cat="date"><span data-icon="date"></span>데이트</button>
-          <button class="chip" data-cat="travel"><span data-icon="travel"></span>여행</button>
-          <button class="chip" data-cat="food"><span data-icon="food"></span>맛집</button>
-          <button class="chip" data-cat="cafe"><span data-icon="cafe"></span>카페</button>
-          <button class="chip" data-cat="anniv"><span data-icon="anniv"></span>기념일</button>
-          <button class="chip" data-cat="etc"><span data-icon="etc"></span>기타</button>
-        </div>
-      </div></div></section>
-    </div>
-
-    <div class="active-filter" id="activeFilter" hidden>
-      <span id="activeFilterText"></span>
-      <button class="link" id="btnClearFilter">지우기</button>
-    </div>
-
-    <section class="timeline" id="timeline"></section>
-
-    <p class="empty" id="empty" hidden>아직 기록이 없어요</p>
-
-    <section class="tools">
-      <details class="box">
-        <summary>내보내기</summary>
-        <div class="tools-body">
-          <div class="tools-btns">
-            <button class="btn" id="btnExport">코드 복사</button>
-            <button class="btn" id="btnDownload">entries.js 다운로드</button>
-            <button class="btn danger" id="btnClearLocal">임시 기록 비우기</button>
+        <section class="panel fold" id="panel-poke"><div class="fold-in"><div class="panel-box box">
+          <h2>하트 보내기</h2>
+          <div class="poke-wrap">
+            <button class="poke-btn" id="btnPoke" aria-label="하트 보내기"><span data-sprite="heartOn" data-scale="8"></span></button>
           </div>
-          <textarea id="exportBox" rows="8" readonly></textarea>
-        </div>
-      </details>
-    </section>
-  </main>
+          <div class="poke-count" id="pokeCount"></div>
+        </div></div></section>
 
-  <button class="fab" id="btnAdd" aria-label="기록 추가">+</button>
+        <section class="panel fold" id="panel-quest"><div class="fold-in"><div class="panel-box box">
+          <h2>오늘의 질문 <i class="streak" id="streak"></i></h2>
+          <p class="quest-text" id="questText"></p>
+          <div id="questBody"></div>
+        </div></div></section>
+
+        <section class="panel fold" id="panel-pick"><div class="fold-in"><div class="panel-box box">
+          <h2>뭐 하지 뽑기</h2>
+          <div class="filters" id="pickCats"></div>
+          <div class="pick-slot" id="pickSlot">버튼을 눌러 봐</div>
+          <div class="pick-actions">
+            <a class="btn small" id="pickMap" target="_blank" rel="noopener" hidden>지도</a>
+            <button class="btn primary" id="btnPick">뽑기</button>
+          </div>
+        </div></div></section>
+
+        <section class="panel fold" id="panel-upcoming"><div class="fold-in"><div class="panel-box box">
+          <h2>기념일</h2>
+          <div class="since" id="sinceBox"></div>
+          <div class="upcoming-list" id="upcomingList"></div>
+        </div></div></section>
+
+        <section class="panel fold" id="panel-stats"><div class="fold-in"><div class="panel-box box">
+          <h2>통계</h2>
+          <div class="stats">
+            <button class="stat" data-stat="all"><span class="stat-num" id="statTotal">0</span><span class="stat-label">기록</span></button>
+            <button class="stat" data-stat="diary"><span class="stat-num" id="statDiary">0</span><span class="stat-label">일기</span></button>
+            <button class="stat" data-stat="plans"><span class="stat-num" id="statPlans">0</span><span class="stat-label">할 거</span></button>
+            <button class="stat" data-stat="places" aria-expanded="false"><span class="stat-num" id="statPlaces">0</span><span class="stat-label">장소</span></button>
+          </div>
+          <div class="fold" id="places"><div class="fold-in"><div class="places" id="placesList"></div></div></div>
+          <p class="plant-info" id="plantInfo"></p>
+        </div></div></section>
+      </div>
+
+      <button class="peek box" data-go="plans">
+        <h2><span data-icon="todo"></span>주말에 할 거<i id="peekPlansCount"></i></h2>
+        <div id="peekPlans"></div>
+      </button>
+      <button class="peek box" data-go="diary">
+        <h2><span data-icon="book"></span>일기장<i id="peekDiaryCount"></i></h2>
+        <div id="peekDiary"></div>
+      </button>
+    </main>
+  </section>
+
+  <!-- ==================== 기록 ==================== -->
+  <section class="view" data-view="log">
+    <main class="container">
+      <header class="view-head">
+        <h1>기록</h1>
+        <button class="btn small" id="btnSearch" aria-expanded="false"><span data-icon="search"></span>찾기</button>
+      </header>
+      <div class="filters scroll" id="logTabs"></div>
+      <div class="fold" id="searchFold"><div class="fold-in"><div class="search-row">
+        <input type="search" id="search" placeholder="검색">
+        <select id="sort">
+          <option value="desc">최신순</option>
+          <option value="asc">오래된순</option>
+          <option value="rating">하트순</option>
+        </select>
+      </div></div></div>
+      <div class="active-filter" id="activeFilter" hidden>
+        <span id="activeFilterText"></span>
+        <button class="link" id="btnClearFilter">지우기</button>
+      </div>
+      <section class="timeline" id="timeline"></section>
+      <p class="empty" id="empty" hidden>아직 기록이 없어요</p>
+    </main>
+  </section>
+
+  <!-- ==================== 주말에 할 거 ==================== -->
+  <section class="view" data-view="plans">
+    <main class="container">
+      <header class="view-head">
+        <h1>주말에 할 거</h1>
+      </header>
+      <div class="filters scroll" id="planTabs"></div>
+      <form class="quick-add" id="planForm">
+        <input type="text" id="planTitle" placeholder="하고 싶은 것" maxlength="60" autocomplete="off">
+        <button class="btn primary" type="submit">추가</button>
+      </form>
+      <div class="plan-list" id="planList"></div>
+      <p class="empty" id="planEmpty" hidden>하고 싶은 걸 적어 봐요</p>
+    </main>
+  </section>
+
+  <!-- ==================== 일기장 ==================== -->
+  <section class="view" data-view="diary">
+    <main class="container">
+      <header class="view-head">
+        <h1>일기장</h1>
+      </header>
+      <div class="post-list" id="postList"></div>
+      <p class="empty" id="postEmpty" hidden>첫 일기를 써 봐요</p>
+    </main>
+  </section>
+
+  <button class="fab" id="btnAdd" aria-label="추가" hidden>+</button>
+
+  <nav class="nav" id="nav">
+    <button class="nav-btn active" data-go="home"><span data-icon="home" data-scale="3"></span><b>홈</b></button>
+    <button class="nav-btn" data-go="log"><span data-icon="pin" data-scale="3"></span><b>기록</b></button>
+    <button class="nav-btn" data-go="plans"><span data-icon="todo" data-scale="3"></span><b>할 거</b></button>
+    <button class="nav-btn" data-go="diary"><span data-icon="book" data-scale="3"></span><b>일기</b></button>
+  </nav>
+
   <div class="toast" id="toast" role="status"></div>
 
-  <!-- 기록 추가 / 수정 모달 -->
+  <!-- 기록 추가 / 수정 -->
   <div class="modal" id="modal" hidden>
     <div class="modal-card box">
       <h2 id="modalTitle">새 기록</h2>
       <form id="form">
         <input type="hidden" id="fId">
+        <input type="hidden" id="fPlanId">
         <label>날짜 <input type="date" id="fDate" required></label>
-        <label>종류
-          <select id="fCat">
-            <option value="date">데이트</option>
-            <option value="travel">여행</option>
-            <option value="food">맛집</option>
-            <option value="cafe">카페</option>
-            <option value="anniv">기념일</option>
-            <option value="etc">기타</option>
-          </select>
-        </label>
+        <label>종류 <select id="fCat"></select></label>
         <label>제목 <input type="text" id="fTitle" required></label>
         <label>장소 <input type="text" id="fPlace"></label>
         <div class="field">
@@ -150,16 +212,18 @@
             <a class="btn small" id="btnFindMap" href="https://map.naver.com/" target="_blank" rel="noopener">찾기</a>
           </div>
         </div>
-        <label>별점
-          <div class="rating-input" id="fRating">
-            <span data-v="1"></span><span data-v="2"></span><span data-v="3"></span><span data-v="4"></span><span data-v="5"></span>
-          </div>
-        </label>
+        <div class="field">
+          <label>하트</label>
+          <div class="hearts-box" id="fHearts"></div>
+        </div>
         <label>메모 <textarea id="fMemo" rows="3"></textarea></label>
         <label>태그 <input type="text" id="fTags" placeholder="쉼표로 구분"></label>
-        <label>사진 <input type="text" id="fPhoto" placeholder="파일명 또는 URL"></label>
+        <div class="field">
+          <label>사진</label>
+          <div class="picker" id="fPhotos"></div>
+        </div>
         <div class="modal-btns">
-          <button type="button" class="btn" id="btnCancel">취소</button>
+          <button type="button" class="btn" data-close>취소</button>
           <button type="button" class="btn danger" id="btnDelete" hidden>삭제</button>
           <button type="submit" class="btn primary">저장</button>
         </div>
@@ -167,8 +231,117 @@
     </div>
   </div>
 
-  <script src="data/entries.js"></script>
+  <!-- 할 거 수정 -->
+  <div class="modal" id="planModal" hidden>
+    <div class="modal-card box">
+      <h2>할 거 고치기</h2>
+      <form id="planEditForm">
+        <input type="hidden" id="pId">
+        <label>종류 <select id="pCat"></select></label>
+        <label>하고 싶은 것 <input type="text" id="pTitle" required maxlength="60"></label>
+        <label>장소 <input type="text" id="pPlace"></label>
+        <div class="field">
+          <label for="pMap">네이버 지도 링크</label>
+          <div class="field-row">
+            <input type="url" id="pMap" inputmode="url" placeholder="비우면 장소 이름으로 검색">
+            <a class="btn small" id="btnFindPlanMap" href="https://map.naver.com/" target="_blank" rel="noopener">찾기</a>
+          </div>
+        </div>
+        <div class="modal-btns">
+          <button type="button" class="btn" data-close>취소</button>
+          <button type="button" class="btn danger" id="btnPlanDelete">삭제</button>
+          <button type="submit" class="btn primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 일기 쓰기 / 수정 -->
+  <div class="modal" id="postModal" hidden>
+    <div class="modal-card box">
+      <h2 id="postModalTitle">일기 쓰기</h2>
+      <form id="postForm">
+        <input type="hidden" id="dId">
+        <label>날짜 <input type="date" id="dDate" required></label>
+        <div class="field">
+          <label>쓴 사람</label>
+          <div class="who-pick" id="dWho">
+            <button type="button" class="chip" data-who="him">석영</button>
+            <button type="button" class="chip" data-who="her">예은</button>
+          </div>
+        </div>
+        <label>내용 <textarea id="dText" rows="6" placeholder="오늘 있었던 일"></textarea></label>
+        <div class="field">
+          <label>사진</label>
+          <div class="picker" id="dPhotos"></div>
+        </div>
+        <div class="modal-btns">
+          <button type="button" class="btn" data-close>취소</button>
+          <button type="button" class="btn danger" id="btnPostDelete" hidden>삭제</button>
+          <button type="submit" class="btn primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 설정 -->
+  <div class="modal" id="settingsModal" hidden>
+    <div class="modal-card box">
+      <h2>설정</h2>
+      <div class="settings">
+        <div class="field">
+          <label>이 폰은 누구 거야?</label>
+          <div class="who-pick" id="meWho">
+            <button type="button" class="chip" data-who="him">석영</button>
+            <button type="button" class="chip" data-who="her">예은</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="tokenInput">깃 저장 연결</label>
+          <p class="hint" id="tokenState"></p>
+          <div class="field-row">
+            <input type="password" id="tokenInput" placeholder="토큰 붙여 넣기" autocomplete="off">
+            <button type="button" class="btn small primary" id="btnToken">연결</button>
+          </div>
+          <button type="button" class="link" id="btnTokenOff" hidden>연결 끊기</button>
+          <details class="help">
+            <summary>토큰 만드는 법</summary>
+            <ol>
+              <li>깃허브 로그인 후 Settings, Developer settings, Fine-grained tokens 로 가요.</li>
+              <li>Generate new token 을 눌러요.</li>
+              <li>Repository access 에서 Only select repositories 로 HS-Diary 하나만 골라요.</li>
+              <li>Permissions 의 Contents 를 Read and write 로 바꿔요.</li>
+              <li>만들어진 토큰을 복사해서 위 칸에 붙여 넣어요. 두 폰 모두 같은 토큰을 넣으면 돼요.</li>
+            </ol>
+          </details>
+        </div>
+        <div class="field">
+          <label>이 폰의 내용</label>
+          <div class="tools-btns">
+            <button type="button" class="btn small" id="btnBackup">백업 받기</button>
+            <button type="button" class="btn small danger" id="btnClearLocal">이 폰에서 지우기</button>
+          </div>
+        </div>
+        <div class="modal-btns">
+          <button type="button" class="btn primary" data-close>닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 사진 크게 보기 -->
+  <div class="lightbox" id="lightbox" hidden>
+    <button class="lightbox-close" id="lightboxClose" aria-label="닫기"><span data-icon="close" data-scale="3"></span></button>
+    <div class="gallery-track" id="lightboxTrack"></div>
+    <span class="gallery-count" id="lightboxCount"></span>
+  </div>
+
+  <input type="file" id="filePick" accept="image/*" multiple hidden>
+
+  <script src="data/config.js"></script>
+  <script src="data/questions.js"></script>
   <script src="js/pixel.js"></script>
+  <script src="js/store.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
