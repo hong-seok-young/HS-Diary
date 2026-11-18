@@ -37,6 +37,7 @@ const DIARY_ENTRIES = [
     category: "anniv",
     title: "우리가 처음 만난 날",
     place: "합정 대동",
+    map: "https://map.naver.com/p/entry/place/34259269",
     rating: 5,
     memo: "",
     tags: ["첫만남", "합정"],
