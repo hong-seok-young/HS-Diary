@@ -1022,8 +1022,8 @@ body.sheet-open .panel-dim { opacity: 1; pointer-events: auto; }
 .sc-glow {
   right: calc(14% + 5px - 60px); bottom: -20px; width: 120px; height: 120px; z-index: 4; pointer-events: none; opacity: 0;
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 244, 180, .55) 0 6px, rgba(255, 240, 170, .32) 6px 12px, rgba(255, 236, 160, .18) 12px 20px, rgba(255, 232, 150, .09) 20px 30px, rgba(255, 230, 150, .04) 30px 42px, rgba(255, 230, 150, 0) 42px),
-    radial-gradient(ellipse 34px 8px at 50% 96px, rgba(255, 236, 160, .28) 0 60%, rgba(255, 236, 160, 0) 61%);
+    radial-gradient(circle at 50% 50%, rgba(255, 236, 150, .6) 0 5px, rgba(255, 214, 120, .3) 5px 10px, rgba(255, 200, 100, .14) 10px 16px, rgba(255, 190, 90, .06) 16px 24px, rgba(255, 190, 90, .025) 24px 32px, rgba(255, 190, 90, 0) 32px),
+    radial-gradient(ellipse 30px 7px at 50% 96px, rgba(255, 214, 120, .2) 0 60%, rgba(255, 214, 120, 0) 61%);
   mix-blend-mode: screen; transition: opacity 2s ease;
   animation: lampFlicker 4s steps(1) infinite;
 }
