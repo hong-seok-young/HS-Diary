@@ -448,7 +448,7 @@
     draw(instant) {
       const el = $("farmMe");
       if (!el) return;
-      const h = T * 1.55, w = h * 16 / 23;
+      const h = T * 1.45, w = h * S.CH_W / S.CH_H;
       el.style.width = w + "px"; el.style.height = h + "px";
       el.style.transform = `translate(${(this.x * T - w / 2).toFixed(1)}px, ${(this.y * T - h).toFixed(1)}px)`;
       el.style.zIndex = String(10 + Math.round(this.y * 2));
@@ -671,7 +671,7 @@
       if (recent && o.pos[1] >= 2.6) { pal.x = o.pos[0]; pal.y = o.pos[1]; } else { pal.x = 2.1; pal.y = 3.05; }
       pal.mode = "idle"; pal.until = performance.now() + 2500;
     }
-    const h = T * 1.55, w = h * 16 / 23;
+    const h = T * 1.45, w = h * S.CH_W / S.CH_H;
     el.style.width = w + "px"; el.style.height = h + "px";
     const im = el.querySelector("img");
     const src = S.charImg(other(), pal.dir, pal.frame, pal.pose, pal.expr);
@@ -1409,10 +1409,10 @@
     if (de) {
       const im = de.firstChild;
       if (d.src !== src) { im.src = src; d.src = src; }
-      const w = T * 1.05;
+      const w = T * 1.2;
       im.style.width = w + "px";
       im.style.transform = d.flip ? "scaleX(-1)" : "";
-      de.style.transform = `translate(${(d.x * T - w / 2).toFixed(1)}px, ${(d.y * T - w * 13 / 18).toFixed(1)}px)`;
+      de.style.transform = `translate(${(d.x * T - w / 2).toFixed(1)}px, ${(d.y * T - w * S.DOG_H / S.DOG_W).toFixed(1)}px)`;
       de.style.zIndex = String(10 + Math.round(d.y * 2));
     }
     // 닭: 종종걸음, 콕콕 쪼기

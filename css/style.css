@@ -199,7 +199,7 @@ input, select, textarea, .up-item, .dday, .month-label span {
   position: relative; display: block; border: 0; background: none; padding: 0; line-height: 0;
 }
 .bob span { display: block; }
-.bob .ch { display: block; width: 48px; height: auto; image-rendering: pixelated; }
+.bob .ch { display: block; width: 54px; height: auto; image-rendering: pixelated; }
 .bob .ch.flip { transform: scaleX(-1); }
 .bob.b2 { animation-delay: -.8s; }
 .bob.jump .ch-wrap { animation: jump .6s ease-out; }

@@ -509,7 +509,8 @@
     e.el.style.width = iw + "px";
     e.img.style.transform = `scaleX(${e.flip ? -1 : 1}) rotate(${e.rot || 0}deg) scale(${e.scale || 1})`;
     // 헤엄칠 땐 물 위로 머리만
-    const swimH = Math.round(8 * SC + (e.fx.sink ? -e.fx.sink * 8 * SC : 0));
+    const sw = SP.HIPPO_SWIM || 8;
+    const swimH = Math.round(sw * SC + (e.fx.sink ? -e.fx.sink * sw * SC : 0));
     e.clip.style.height = e.kind === "hippo" && e.swim ? Math.max(0, swimH) + "px" : "";
     e.el.classList.toggle("swim", e.kind === "hippo" && e.swim);
     e.el.style.zIndex = e.kind === "cat" && e.st === "head" ? "8" : e.b > 8 ? "4" : "6";

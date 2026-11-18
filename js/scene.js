@@ -563,7 +563,7 @@
     const frames = opts.frames || [kind];
     // 강아지는 농장 마루와 같은 새 걷기 그림으로 (다리를 번갈아 움직여요)
     const html = kind === "dog" && window.FSprites
-      ? ["walk1", "walk2"].map((f) => `<img class="px" src="${FSprites.dogImg(f, f === "walk1" ? 1 : 0, "")}" width="36" height="26" alt="">`).join("")
+      ? ["walk1", "walk2"].map((f) => `<img class="px" src="${FSprites.dogImg(f, f === "walk1" ? 1 : 0, "")}" width="44" height="30" alt="">`).join("")
       : frames.map((f) => PIXEL.sprite(f, opts.scale || 2)).join("");
     const e = el(opts.button ? "button" : "span", "critter " + kind, html);
     if (frames.length > 1) e.classList.add("anim");
