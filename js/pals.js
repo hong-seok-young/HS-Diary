@@ -1,0 +1,556 @@
+// ============================================================
+// 홈 풍경 속 친구들: 연못의 아기 하마, 아기 양, 먼치킨 고양이
+// 각자 성격대로 돌아다니고, 날씨와 밤낮에 따라 하는 일이 달라요.
+// 누르는 횟수에 따라 반응도 달라요. (한 번, 두 번, 여러 번, 아주 많이)
+// ============================================================
+(function () {
+  "use strict";
+
+  const SP = window.FSprites;
+  if (!SP) return;
+  const $ = (id) => document.getElementById(id);
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const SC = 2; // 도트 한 칸 = 2px
+
+  let scene, layer, pondEl, W = 360, H = 200;
+  let pond = { x0: 14, x1: 102, b: 2, water: 12 };
+  const ents = [];
+  let raf = 0, last = 0;
+
+  // ---------- 날씨, 시간 ----------
+  function env() {
+    const S = window.Scene;
+    const w = S && S.weather ? S.weather() : { kind: "clear" };
+    const dark = S && S.dark ? S.dark() : 0;
+    return { wet: !!w.wet, snowy: !!w.snowy, cold: w.temp != null && w.temp <= 2, hot: w.temp != null && w.temp >= 27, night: dark > 0.6, dusk: dark > 0.3 && dark <= 0.6, sunny: !w.wet && !w.snowy && (w.kind === "clear" || w.kind === "partly") && dark < 0.3, windy: (w.wind || 0) > 25 };
+  }
+
+  // ---------- 연못 그림 ----------
+  function pondImg(frozen) {
+    const w = 46, h = 11;
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    const c = cv.getContext("2d");
+    const cx = w / 2, cy = h / 2 + 0.5, rx = w / 2 - 0.5, ry = h / 2 - 0.5;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d = dx * dx + dy * dy;
+      if (d > 1) continue;
+      let col = frozen ? "#cfe6f2" : "#5fb0e0";
+      if (d > 0.78) col = "#8a7a62";
+      else if (d > 0.62) col = frozen ? "#b8d6e8" : "#4f9bd0";
+      else if (y < 4 && (x + y * 3) % 11 === 0) col = frozen ? "#ffffff" : "#bfe6ff";
+      c.fillStyle = col; c.fillRect(x, y, 1, 1);
+    }
+    // 돌과 연잎
+    [[3, 4, "#b8b2a8"], [4, 4, "#e2ddd4"], [41, 7, "#b8b2a8"], [42, 6, "#9a9284"]].forEach(([x, y, col]) => { c.fillStyle = col; c.fillRect(x, y, 1, 1); });
+    if (!frozen) { c.fillStyle = "#6fbf5f"; c.fillRect(30, 3, 3, 2); c.fillRect(31, 2, 2, 1); c.fillStyle = "#ff9ab8"; c.fillRect(31, 3, 1, 1); }
+    return cv.toDataURL();
+  }
+
+  // ---------- 만들기 ----------
+  function setup() {
+    scene = $("scene");
+    if (!scene || scene.querySelector(".sc-pals")) return !!scene;
+    layer = document.createElement("div");
+    layer.className = "sc-pals";
+    layer.innerHTML = `<span class="pal-pond"><img class="px" alt=""><i class="pal-ripple"></i><i class="pal-ripple r2"></i></span>`;
+    scene.insertBefore(layer, $("couple"));
+    pondEl = layer.querySelector(".pal-pond");
+    pondEl.firstChild.src = pondImg(false);
+    ["hippo", "sheep", "cat"].forEach((kind) => {
+      const el = document.createElement("button");
+      el.className = "pal pal-" + kind;
+      el.setAttribute("aria-label", { hippo: "아기 하마", sheep: "아기 양", cat: "고양이" }[kind]);
+      el.innerHTML = `<span class="pal-clip"><img class="px" alt="" draggable="false"></span><i class="pal-say" hidden></i>`;
+      layer.appendChild(el);
+      const e = { kind, el, img: el.querySelector("img"), clip: el.querySelector(".pal-clip"), say: el.querySelector(".pal-say"), x: 0, b: 6, flip: false, st: "", t: 0, frame: "stand", face: "", tail: 1, taps: [], src: "", fx: {}, acc: 0, blinkAt: 0, swim: false, rot: 0, lift: 0, scale: 1, tx: 0, sayT: 0 };
+      el.addEventListener("pointerdown", (ev) => { ev.stopPropagation(); tap(e); });
+      el.addEventListener("click", (ev) => ev.stopPropagation());
+      ents.push(e);
+    });
+    layout(true);
+    return true;
+  }
+  function layout(first) {
+    W = scene.clientWidth; H = scene.clientHeight;
+    const pw = 46 * SC;
+    pond = { x0: Math.max(6, Math.round(W * 0.03)), x1: Math.max(6, Math.round(W * 0.03)) + pw, b: 1, water: 13 };
+    pondEl.style.left = pond.x0 + "px";
+    pondEl.style.width = pw + "px";
+    if (first) {
+      ents.forEach((e) => {
+        if (e.kind === "hippo") { e.x = (pond.x0 + pond.x1) / 2; e.swim = true; e.st = "swim"; e.t = rand(4, 9); }
+        if (e.kind === "sheep") { e.x = W * 0.78; e.b = 8; e.st = "graze"; e.t = rand(2, 4); }
+        if (e.kind === "cat") { e.x = W * 0.66; e.b = 4; e.st = "loaf"; e.t = rand(2, 4); }
+      });
+    }
+  }
+
+  // ---------- 말풍선, 효과 ----------
+  function say(e, text, ms) {
+    e.say.textContent = text;
+    e.say.hidden = false;
+    e.sayT = (ms || 1800) / 1000;
+    e.say.animate([{ opacity: 0, translate: "-50% 4px" }, { opacity: 1, translate: "-50% 0" }], { duration: 200 });
+  }
+  function center(e) {
+    const r = e.el.getBoundingClientRect();
+    return [r.left + r.width / 2, r.top + r.height / 3];
+  }
+  function hearts(e, n, kind) {
+    if (window.HSD && HSD.burst) { const [x, y] = center(e); HSD.burst(x, y, n, kind || "heart"); }
+  }
+  // 물방울: 작은 네모 점이 포물선으로
+  function drops(x, b, n, spread, color) {
+    for (let i = 0; i < n; i++) {
+      const d = document.createElement("i");
+      d.className = "pal-drop";
+      d.style.left = x + "px"; d.style.bottom = b + "px";
+      if (color) d.style.background = color;
+      layer.appendChild(d);
+      const vx = rand(-spread, spread), up = rand(14, 34);
+      d.animate([{ transform: "translate(0,0)" }, { transform: `translate(${vx / 2}px, ${-up}px)`, offset: 0.45 }, { transform: `translate(${vx}px, 6px)`, opacity: 0 }], { duration: rand(500, 800), easing: "ease-out" }).onfinish = () => d.remove();
+    }
+  }
+  function ring(x) {
+    const r = document.createElement("i");
+    r.className = "pal-ring";
+    r.style.left = x + "px"; r.style.bottom = pond.b + 6 + "px";
+    layer.appendChild(r);
+    r.animate([{ transform: "translate(-50%, 0) scale(.3)", opacity: 1 }, { transform: "translate(-50%, 0) scale(1.4)", opacity: 0 }], { duration: 700, easing: "ease-out" }).onfinish = () => r.remove();
+  }
+  function zzz(e) {
+    const z = document.createElement("i");
+    z.className = "pal-z"; z.textContent = "z";
+    z.style.left = e.x + 8 + "px"; z.style.bottom = e.b + 24 + "px";
+    layer.appendChild(z);
+    z.animate([{ transform: "translate(0,0) scale(.6)", opacity: 0 }, { opacity: 1, offset: 0.2 }, { transform: "translate(10px,-18px) scale(1.1)", opacity: 0 }], { duration: 1800 }).onfinish = () => z.remove();
+  }
+  function setState(e, st, t) { e.st = st; e.t = t; e.acc = 0; }
+  function walkFrame(e, dt, speed) {
+    e.acc += dt * speed / 10;
+    const c = Math.floor(e.acc / 0.5) % 4;
+    return c === 1 ? "walk1" : c === 3 ? "walk2" : "stand";
+  }
+  function moveTo(e, tx, speed, dt) {
+    const dx = tx - e.x;
+    if (Math.abs(dx) < 1) { e.x = tx; return true; }
+    e.flip = dx < 0;
+    e.x += Math.sign(dx) * Math.min(Math.abs(dx), speed * dt);
+    return false;
+  }
+  function landRange(e) {
+    const left = pond.x1 + 14, right = W - 18;
+    return [left, right];
+  }
+  function blink(e, dt) {
+    e.blinkAt -= dt;
+    if (e.blinkAt < 0) { e.blinkAt = rand(2.4, 5); e.blinkT = 0.14; }
+    if (e.blinkT > 0) { e.blinkT -= dt; return true; }
+    return false;
+  }
+  function couplePos() {
+    const c = $("couple");
+    if (!c) return W / 2;
+    const r = c.getBoundingClientRect(), sr = scene.getBoundingClientRect();
+    return r.left - sr.left + r.width / 2;
+  }
+
+  // ============================================================
+  // 아기 하마: 연못에서 둥둥, 가끔 뭍으로 올라와 하품하고 낮잠
+  // ============================================================
+  function hippo(e, dt, E) {
+    e.t -= dt;
+    const mid = (pond.x0 + pond.x1) / 2;
+    if (E.night && e.st !== "sleepswim" && e.st !== "dive" && !e.busy) {
+      if (!e.swim) { e.x = mid; e.swim = true; }
+      setState(e, "sleepswim", 6);
+    }
+    switch (e.st) {
+      case "swim": {
+        e.frame = "stand";
+        e.face = blink(e, dt) ? "blink" : "";
+        if (!e.fx.target || Math.abs(e.x - e.fx.target) < 1) e.fx.target = rand(pond.x0 + 18, pond.x1 - 18);
+        moveTo(e, e.fx.target, 7, dt);
+        e.fx.spout = (e.fx.spout || rand(4, 9)) - dt;
+        if (e.fx.spout < 0) { e.fx.spout = E.wet ? rand(2, 4) : rand(6, 12); drops(e.x + (e.flip ? -12 : 12), pond.b + 14, E.wet ? 6 : 4, 10, "#bfe6ff"); }
+        if (E.cold && Math.random() < dt * 0.4) say(e, pick(["추워…", "부르르"]));
+        if (E.wet && Math.random() < dt * 0.05) say(e, pick(["비다! 좋아", "첨벙첨벙"]));
+        if (e.t < 0) {
+          // 날이 좋으면 뭍으로, 추우면 그대로
+          if (!E.wet && !E.cold && !E.hot && Math.random() < 0.55) setState(e, "climbout", 0.7);
+          else if (Math.random() < 0.4) setState(e, "dive", 2.2);
+          else e.t = rand(5, 10);
+        }
+        break;
+      }
+      case "dive": {
+        // 쏙 들어갔다가 다른 자리에서 뽀글뽀글 올라와요
+        const p = 1 - e.t / 2.2;
+        e.fx.sink = p < 0.2 ? p / 0.2 : p > 0.75 ? Math.max(0, 1 - (p - 0.75) / 0.25) : 1;
+        if (!e.fx.moved && p > 0.4) { e.fx.moved = true; e.x = rand(pond.x0 + 18, pond.x1 - 18); e.flip = Math.random() < 0.5; }
+        if (p > 0.2 && p < 0.75 && Math.random() < dt * 8) drops(e.x + rand(-6, 6), pond.b + 9, 1, 2, "#dff3ff");
+        if (e.t < 0) { e.fx.sink = 0; e.fx.moved = false; ring(e.x); setState(e, "swim", rand(5, 10)); }
+        break;
+      }
+      case "climbout": {
+        const p = 1 - e.t / 0.7;
+        const tx = pond.x1 + 22;
+        e.x = (e.fx.fromX = e.fx.fromX || e.x) + (tx - e.fx.fromX) * p;
+        e.flip = false;
+        e.lift = Math.sin(p * Math.PI) * 14;
+        if (p > 0.3) e.swim = false;
+        if (e.t < 0) { e.fx.fromX = 0; e.lift = 0; e.swim = false; e.b = 7; drops(pond.x1 - 4, pond.b + 6, 6, 12, "#bfe6ff"); setState(e, "land", rand(10, 20)); }
+        break;
+      }
+      case "land": {
+        const [l, r] = [pond.x1 + 14, Math.min(W - 30, pond.x1 + 90)];
+        if (!e.fx.target || Math.abs(e.x - e.fx.target) < 1) {
+          e.fx.idle = (e.fx.idle || 0) - dt;
+          if (e.fx.idle <= 0) {
+            const r2 = Math.random();
+            if (r2 < 0.25) { e.fx.yawn = 1.4; }
+            else if (r2 < 0.45 && E.sunny) { e.fx.nap = rand(4, 7); }
+            e.fx.target = rand(l, r); e.fx.idle = rand(1.5, 4);
+          }
+        }
+        if (e.fx.yawn > 0) { e.fx.yawn -= dt; e.frame = "stand"; e.face = "yawn"; if (e.fx.yawn > 1.3 && e.fx.yawn - dt <= 1.3) say(e, "하아암"); }
+        else if (e.fx.nap > 0) { e.fx.nap -= dt; e.frame = "lie"; e.face = "sleep"; if (Math.random() < dt * 0.7) zzz(e); }
+        else if (!moveTo(e, e.fx.target, 11, dt)) { e.frame = walkFrame(e, dt, 11); e.face = ""; }
+        else { e.frame = "stand"; e.face = blink(e, dt) ? "blink" : ""; }
+        if (e.t < 0 || E.wet || E.cold) setState(e, "climbin", 0.8);
+        break;
+      }
+      case "climbin": {
+        const p = 1 - e.t / 0.8;
+        const tx = rand(pond.x0 + 30, pond.x1 - 20);
+        if (!e.fx.fromX) { e.fx.fromX = e.x; e.fx.toX = tx; }
+        e.flip = true;
+        e.x = e.fx.fromX + (e.fx.toX - e.fx.fromX) * p;
+        e.lift = Math.sin(p * Math.PI) * 18;
+        e.frame = "stand"; e.face = "happy";
+        if (p > 0.75) e.swim = true;
+        if (e.t < 0) { e.fx.fromX = 0; e.lift = 0; e.swim = true; ring(e.x); drops(e.x, pond.b + 8, 10, 22, "#bfe6ff"); setState(e, "swim", rand(6, 12)); }
+        break;
+      }
+      case "sleepswim": {
+        e.frame = "stand"; e.face = "sleep";
+        e.fx.z = (e.fx.z || 0) - dt;
+        if (e.fx.z < 0) { e.fx.z = 1.6; zzz(e); drops(e.x + 12, pond.b + 10, 1, 1, "#dff3ff"); }
+        if (!E.night && e.t < 0) setState(e, "swim", 4);
+        break;
+      }
+      case "jump": {
+        // 여러 번 누르면: 물 밖으로 펄쩍 뛰었다가 첨벙
+        const p = 1 - e.t / 1.0;
+        e.lift = Math.sin(p * Math.PI) * 34;
+        e.rot = (e.flip ? -1 : 1) * p * 20;
+        e.frame = "walk1"; e.face = "happy";
+        e.swim = p < 0.12 || p > 0.88;
+        if (e.t < 0) { e.lift = 0; e.rot = 0; e.swim = true; ring(e.x); drops(e.x, pond.b + 8, 16, 30, "#bfe6ff"); say(e, "첨벙!"); setState(e, "swim", rand(6, 10)); }
+        break;
+      }
+      case "dance": {
+        const p = 1 - e.t / 2.4;
+        e.flip = Math.floor(p * 10) % 2 === 1;
+        e.lift = Math.abs(Math.sin(p * Math.PI * 5)) * 8;
+        e.face = "happy"; e.frame = Math.floor(p * 10) % 2 ? "walk1" : "walk2";
+        if (Math.random() < dt * 4) hearts(e, 1);
+        if (e.t < 0) { e.lift = 0; say(e, "졸려…"); if (e.swim) setState(e, "swim", 8); else setState(e, "land", 8); e.fx.nap = 3; }
+        break;
+      }
+      default: setState(e, "swim", 4);
+    }
+  }
+
+  // ============================================================
+  // 아기 양: 풀 뜯고, 깡총 뛰고, 비 오면 털을 털어요
+  // ============================================================
+  function sheep(e, dt, E) {
+    e.t -= dt;
+    const [l, r] = landRange(e);
+    if (E.night && e.st !== "sleep" && !e.busy) setState(e, "sleep", 8);
+    switch (e.st) {
+      case "walk": {
+        if (!e.fx.target) e.fx.target = rand(l, r);
+        if (moveTo(e, e.fx.target, E.windy ? 8 : 13, dt)) { e.fx.target = 0; setState(e, pick(["graze", "graze", "idle", "baa", "pronk"]), rand(2, 5)); }
+        else e.frame = walkFrame(e, dt, 13);
+        e.face = "";
+        break;
+      }
+      case "graze": {
+        e.frame = Math.floor(e.t * 2.5) % 2 ? "eat" : "stand";
+        e.face = "";
+        if (e.t < 0) setState(e, pick(["walk", "walk", "idle", "baa"]), rand(2, 4));
+        break;
+      }
+      case "idle": {
+        e.frame = "stand"; e.face = blink(e, dt) ? "blink" : "";
+        if (E.wet && Math.random() < dt * 0.3) { setState(e, "shake", 0.8); break; }
+        if (e.t < 0) setState(e, pick(["walk", "graze"]), rand(2, 4));
+        break;
+      }
+      case "baa": {
+        e.frame = "stand"; e.face = "baa";
+        if (!e.fx.said) { e.fx.said = true; say(e, E.wet ? "메에… 젖었어" : E.snowy ? "메에! 눈이다" : pick(["메에~", "메에에", "음메"])); }
+        if (e.t < 0) { e.fx.said = false; setState(e, "walk", 3); }
+        break;
+      }
+      case "pronk": {
+        // 네 발로 통통 뛰기
+        const p = 1 - e.t / 1.2;
+        e.lift = Math.abs(Math.sin(p * Math.PI * 3)) * 9;
+        e.frame = "walk1"; e.face = "happy";
+        if (e.t < 0) { e.lift = 0; setState(e, "walk", 3); }
+        break;
+      }
+      case "shake": {
+        e.tx = Math.sin(e.t * 60) * 1.6;
+        e.frame = "stand"; e.face = "blink";
+        if (Math.random() < dt * 20) drops(e.x, e.b + 14, 1, 12, "#bfe6ff");
+        if (e.t < 0) { e.tx = 0; setState(e, "idle", 2); }
+        break;
+      }
+      case "sleep": {
+        e.frame = "lie"; e.face = "sleep";
+        e.fx.z = (e.fx.z || 0) - dt;
+        if (e.fx.z < 0) { e.fx.z = 2; zzz(e); }
+        if (!E.night) setState(e, "idle", 2);
+        break;
+      }
+      case "puff": {
+        e.scale = 1 + 0.18 * Math.sin(Math.min(1, (2 - e.t) / 0.3) * Math.PI / 2);
+        e.face = "happy"; e.frame = "stand";
+        if (e.t < 0) { e.scale = 1; setState(e, "idle", 1); }
+        break;
+      }
+      case "roll": {
+        // 데굴데굴 털 뭉치
+        e.rot += dt * 720 * (e.flip ? -1 : 1);
+        e.x += (e.flip ? -1 : 1) * 40 * dt;
+        if (e.x < l || e.x > r) e.flip = !e.flip;
+        e.face = "happy"; e.frame = "lie";
+        if (e.t < 0) { e.rot = 0; setState(e, "idle", 1.5); }
+        break;
+      }
+      case "cloud": {
+        // 구름처럼 둥실
+        const p = 1 - e.t / 3.4;
+        e.lift = Math.sin(Math.min(1, p * 1.3) * Math.PI / 2) * 34 * (1 - Math.max(0, p - 0.75) * 4);
+        e.tx = Math.sin(p * Math.PI * 4) * 6;
+        e.scale = 1.15; e.face = "happy"; e.frame = "lie";
+        if (Math.random() < dt * 6) hearts(e, 1, "spark");
+        if (e.t < 0) { e.lift = 0; e.tx = 0; e.scale = 1; setState(e, "idle", 2); }
+        break;
+      }
+      default: setState(e, "walk", 3);
+    }
+  }
+
+  // ============================================================
+  // 먼치킨 고양이: 짧은 다리로 아장아장, 식빵 굽고, 그루밍, 우다다
+  // ============================================================
+  function cat(e, dt, E) {
+    e.t -= dt;
+    const [l, r] = landRange(e);
+    const cx = couplePos();
+    e.fx.tail = (e.fx.tail || 0) - dt;
+    if (e.fx.tail < 0) { e.fx.tail = rand(0.3, 1.2); e.tail = e.tail ? 0 : 1; }
+    // 비, 눈 오면 두 사람 발치로 와서 식빵
+    if ((E.wet || E.snowy) && !e.busy && e.st !== "shelter" && e.st !== "goshelter") setState(e, "goshelter", 20);
+    switch (e.st) {
+      case "walk": {
+        if (!e.fx.target) e.fx.target = rand(l, r);
+        if (moveTo(e, e.fx.target, 15, dt)) {
+          e.fx.target = 0;
+          const opts = E.night ? ["hunt", "loaf", "sit"] : E.sunny ? ["loaf", "nap", "groom", "stretch", "rub", "sit"] : ["loaf", "groom", "stretch", "rub", "sit"];
+          setState(e, pick(opts), rand(2.5, 5));
+        } else e.frame = walkFrame(e, dt, 15);
+        e.face = E.night ? "glow" : "";
+        break;
+      }
+      case "sit": case "loaf": {
+        e.frame = e.st === "sit" ? "stand" : "loaf";
+        e.face = blink(e, dt) ? "blink" : E.night ? "glow" : "";
+        if (e.t < 0) setState(e, "walk", 3);
+        break;
+      }
+      case "nap": {
+        e.frame = "loaf"; e.face = "blink";
+        e.fx.z = (e.fx.z || 0) - dt;
+        if (e.fx.z < 0) { e.fx.z = 2.2; zzz(e); }
+        if (e.t < 0) setState(e, "stretch", 1.2);
+        break;
+      }
+      case "groom": {
+        e.frame = Math.floor(e.t * 3) % 2 ? "groom" : "loaf";
+        e.face = "blink";
+        if (e.t < 0) setState(e, "walk", 3);
+        break;
+      }
+      case "stretch": {
+        e.frame = "stretch"; e.face = "happy";
+        if (e.t < 0) setState(e, "walk", 3);
+        break;
+      }
+      case "rub": {
+        // 두 사람 발치에 몸 비비기
+        const tx = cx + (e.fx.side || (e.fx.side = Math.random() < 0.5 ? -26 : 26));
+        if (!moveTo(e, tx, 18, dt)) { e.frame = walkFrame(e, dt, 18); e.face = ""; break; }
+        e.frame = "stand"; e.face = "happy";
+        e.tx = Math.sin(e.t * 9) * 2.5;
+        if (Math.random() < dt * 1.2) hearts(e, 1);
+        if (e.t < 0) { e.tx = 0; e.fx.side = 0; setState(e, "walk", 3); }
+        break;
+      }
+      case "hunt": {
+        // 밤에는 눈이 반짝, 반딧불을 노려요
+        e.frame = "loaf"; e.face = "glow";
+        e.tx = Math.sin(e.t * 20) * 0.6;
+        if (e.t < 0) { e.tx = 0; setState(e, "pounce", 0.6); }
+        break;
+      }
+      case "pounce": {
+        const p = 1 - e.t / 0.6;
+        e.lift = Math.sin(p * Math.PI) * 16;
+        e.x += (e.flip ? -1 : 1) * 40 * dt;
+        e.frame = "stretch"; e.face = E.night ? "glow" : "happy";
+        if (e.t < 0) { e.lift = 0; setState(e, "sit", 2); }
+        break;
+      }
+      case "goshelter": {
+        const tx = cx + 34;
+        if (moveTo(e, tx, 20, dt)) setState(e, "shelter", 30);
+        else e.frame = walkFrame(e, dt, 20);
+        e.face = "grump";
+        break;
+      }
+      case "shelter": {
+        e.frame = "loaf"; e.face = blink(e, dt) ? "blink" : "grump";
+        if (Math.random() < dt * 0.04) say(e, E.snowy ? "발 시려…" : "비 싫어…");
+        if (!E.wet && !E.snowy) setState(e, "stretch", 1.2);
+        break;
+      }
+      case "belly": {
+        e.rot = 180; e.frame = "stand"; e.face = "happy";
+        if (Math.random() < dt * 2) hearts(e, 1);
+        if (e.t < 0) { e.rot = 0; setState(e, "sit", 1.5); }
+        break;
+      }
+      case "zoomies": {
+        // 우다다다
+        e.frame = walkFrame(e, dt * 3, 40); e.face = "happy";
+        if (moveTo(e, e.fx.target || (e.fx.target = e.x < W / 2 ? W - 20 : 20), 150, dt)) e.fx.target = e.x < W / 2 ? W - 20 : 20;
+        if (Math.random() < dt * 10) drops(e.x, e.b + 2, 1, 6, "#c9b28a");
+        if (e.t < 0) { e.fx.target = 0; setState(e, "loaf", 2.5); say(e, "헥헥"); }
+        break;
+      }
+      case "head": {
+        // 머리 위에 올라가 식빵
+        const bobs = document.querySelectorAll(".couple .bob");
+        const bob = bobs[e.fx.who || 0];
+        if (bob) {
+          const br = bob.getBoundingClientRect(), sr = scene.getBoundingClientRect();
+          e.x = br.left - sr.left + br.width / 2;
+          e.b = H - (br.top - sr.top) - 2;
+        }
+        e.frame = "loaf"; e.face = blink(e, dt) ? "blink" : "happy";
+        if (e.t < 0) { e.b = 4; e.lift = 0; drops(e.x, 10, 3, 10, "#c9b28a"); setState(e, "sit", 2); say(e, "냥!"); }
+        break;
+      }
+      default: setState(e, "walk", 3);
+    }
+  }
+
+  // ---------- 누르기: 횟수마다 다른 반응 ----------
+  function tap(e) {
+    const now = performance.now();
+    e.taps = e.taps.filter((t) => now - t < 1400);
+    e.taps.push(now);
+    const n = e.taps.length;
+    const E = env();
+    e.el.animate([{ scale: "1" }, { scale: "1.12 .9" }, { scale: "1" }], { duration: 220, composite: "add" });
+    if (e.kind === "hippo") {
+      if (e.st === "sleepswim") { say(e, n > 2 ? "zzz… 5분만…" : "음냐…"); drops(e.x + 12, pond.b + 10, 2, 2, "#dff3ff"); return; }
+      if (n === 1) { if (e.swim) { setState(e, "dive", 2.2); say(e, "뽀글"); } else { e.fx.yawn = 1.4; say(e, "하아암"); } }
+      else if (n === 2) { hearts(e, 3); say(e, "뿌우~"); drops(e.x + (e.flip ? -12 : 12), pond.b + 14, 8, 14, "#bfe6ff"); }
+      else if (n <= 5) { if (e.swim) { setState(e, "jump", 1.0); } else { setState(e, "climbin", 0.8); say(e, "첨벙 갈래!"); } }
+      else { setState(e, "dance", 2.4); say(e, "신난다!"); e.taps = []; }
+    }
+    if (e.kind === "sheep") {
+      if (e.st === "sleep") { say(e, "음…메…"); return; }
+      if (n === 1) { setState(e, "pronk", 1.2); say(e, E.snowy ? "눈 좋아!" : "메에"); }
+      else if (n === 2) { setState(e, "puff", 2); say(e, "폭신!"); hearts(e, 3); }
+      else if (n <= 5) { setState(e, "roll", 2.4); say(e, "데굴데굴"); }
+      else { setState(e, "cloud", 3.4); say(e, "둥실~ 구름이 됐어"); e.taps = []; }
+    }
+    if (e.kind === "cat") {
+      if (n === 1) { e.tail = e.tail ? 0 : 1; say(e, E.night ? "냐?" : pick(["냐옹", "야옹", "냥"])); if (e.st === "walk") setState(e, "sit", 2); }
+      else if (n === 2) { setState(e, "belly", 2.4); say(e, "골골골"); }
+      else if (n <= 5) { if (e.st !== "zoomies") { setState(e, "zoomies", 3); say(e, "우다다다!"); } }
+      else { e.fx.who = Math.random() < 0.5 ? 0 : 1; setState(e, "head", 4.5); say(e, "여기 내 자리야"); hearts(e, 4); e.taps = []; }
+    }
+  }
+
+  // ---------- 그리기 ----------
+  function render(e) {
+    let src;
+    if (e.kind === "hippo") src = SP.hippoImg(e.frame, e.face);
+    if (e.kind === "sheep") src = SP.sheepImg(e.frame, e.face, env().wet);
+    if (e.kind === "cat") src = SP.catImg(e.frame, e.face, e.tail);
+    if (src !== e.src) { e.img.src = src; e.src = src; }
+    const iw = e.img.naturalWidth * SC || 50;
+    e.img.style.width = iw + "px";
+    let b = e.kind === "hippo" && e.swim ? pond.b + pond.water - 2 : e.b;
+    b += e.lift;
+    e.el.style.left = (e.x - iw / 2 + (e.tx || 0)).toFixed(1) + "px";
+    e.el.style.bottom = b.toFixed(1) + "px";
+    e.el.style.width = iw + "px";
+    e.img.style.transform = `scaleX(${e.flip ? -1 : 1}) rotate(${e.rot || 0}deg) scale(${e.scale || 1})`;
+    // 헤엄칠 땐 물 위로 머리만
+    const swimH = Math.round(8 * SC + (e.fx.sink ? -e.fx.sink * 8 * SC : 0));
+    e.clip.style.height = e.kind === "hippo" && e.swim ? Math.max(0, swimH) + "px" : "";
+    e.el.classList.toggle("swim", e.kind === "hippo" && e.swim);
+    e.el.style.zIndex = e.kind === "cat" && e.st === "head" ? "8" : e.b > 8 ? "4" : "6";
+    if (e.sayT > 0) {
+      e.sayT -= 1 / 60;
+      if (e.sayT <= 0) e.say.hidden = true;
+    }
+  }
+
+  function frame(ts) {
+    raf = 0;
+    if (!visible()) return;
+    const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016;
+    last = ts;
+    if (scene.clientWidth !== W) layout(false);
+    const E = env();
+    pondEl.classList.toggle("frozen", E.snowy && E.cold);
+    ents.forEach((e) => {
+      e.busy = ["jump", "dance", "dive", "climbin", "climbout", "puff", "roll", "cloud", "belly", "zoomies", "head", "pounce"].includes(e.st);
+      if (e.kind === "hippo") hippo(e, dt, E);
+      if (e.kind === "sheep") sheep(e, dt, E);
+      if (e.kind === "cat") cat(e, dt, E);
+      render(e);
+    });
+    raf = requestAnimationFrame(frame);
+  }
+  function visible() {
+    if (!scene || document.hidden || document.body.classList.contains("game-open")) return false;
+    return !!document.querySelector('.view[data-view="home"].is-active');
+  }
+  function kick() {
+    if (!scene && !setup()) return;
+    if (!raf && visible()) { last = 0; raf = requestAnimationFrame(frame); }
+  }
+  function start() {
+    setup();
+    setInterval(kick, 600);
+    document.addEventListener("visibilitychange", kick);
+    kick();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(start, 300));
+  else setTimeout(start, 300);
+  window.Pals = { ents, tap, env };
+})();
