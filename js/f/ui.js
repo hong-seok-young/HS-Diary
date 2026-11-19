@@ -448,7 +448,7 @@
     draw(instant) {
       const el = $("farmMe");
       if (!el) return;
-      const h = T * 1.45, w = h * S.CH_W / S.CH_H;
+      const h = T * 1.62, w = h * S.CH_W / S.CH_H;
       el.style.width = w + "px"; el.style.height = h + "px";
       el.style.transform = `translate(${(this.x * T - w / 2).toFixed(1)}px, ${(this.y * T - h).toFixed(1)}px)`;
       el.style.zIndex = String(10 + Math.round(this.y * 2));
@@ -671,7 +671,7 @@
       if (recent && o.pos[1] >= 2.6) { pal.x = o.pos[0]; pal.y = o.pos[1]; } else { pal.x = 2.1; pal.y = 3.05; }
       pal.mode = "idle"; pal.until = performance.now() + 2500;
     }
-    const h = T * 1.45, w = h * S.CH_W / S.CH_H;
+    const h = T * 1.62, w = h * S.CH_W / S.CH_H;
     el.style.width = w + "px"; el.style.height = h + "px";
     const im = el.querySelector("img");
     const src = S.charImg(other(), pal.dir, pal.frame, pal.pose, pal.expr);

@@ -56,13 +56,14 @@
             <div class="sc-flash" id="flash"></div>
             <button class="weather-chip" id="weatherChip" aria-label="날씨"></button>
             <span class="phase-chip" id="phaseChip"></span>
+            <button class="closet-chip" id="btnCloset" aria-label="옷장" hidden><img class="px" alt="" id="closetIco"></button>
           </div>
           <div class="bubble" id="bubble" role="status"></div>
         </div>
         <div class="hero-row">
           <button class="dday" id="dday" aria-label="함께한 날">D+0</button>
           <h1 id="diaryTitle">석영이와 예은이</h1>
-          <button class="gear" id="btnSettings" aria-label="설정"><span data-icon="gear"></span><i class="sync-dot" id="syncDot"></i></button>
+          <button class="gear" id="btnSync" aria-label="저장 상태"><span data-icon="heart"></span><i class="sync-dot" id="syncDot"></i></button>
         </div>
       </div>
     </header>
@@ -285,47 +286,34 @@
     </div>
   </div>
 
-  <!-- 설정 -->
-  <div class="modal" id="settingsModal" hidden>
-    <div class="modal-card box">
-      <h2>설정</h2>
-      <div class="settings">
-        <div class="field">
-          <label>이 폰은 누구 거야?</label>
-          <div class="who-pick" id="meWho">
-            <button type="button" class="chip" data-who="him">석영</button>
-            <button type="button" class="chip" data-who="her">예은</button>
-          </div>
+  <!-- 처음 한 번: 누구 폰인지 고르기 (한 번 고르면 바꿀 수 없어요) -->
+  <div class="modal hello" id="hello" hidden>
+    <div class="modal-card box hello-card">
+      <div class="hello-step" id="helloWho">
+        <h2>안녕! 이 폰은 누구 거야?</h2>
+        <p class="hint">한 번 고르면 다시 바꿀 수 없어요</p>
+        <div class="hello-pick">
+          <button type="button" class="hello-who" data-hello="him"><img class="px" alt="" id="helloHim"><b id="helloHimName">석영</b></button>
+          <button type="button" class="hello-who" data-hello="her"><img class="px" alt="" id="helloHer"><b id="helloHerName">예은</b></button>
         </div>
-        <div class="field">
-          <label for="tokenInput">깃 저장 연결</label>
-          <button type="button" class="sync-chip" id="syncChip"></button>
-          <p class="hint" id="tokenState"></p>
-          <div class="field-row">
-            <input type="password" id="tokenInput" placeholder="토큰 붙여 넣기" autocomplete="off">
-            <button type="button" class="btn small primary" id="btnToken">연결</button>
-          </div>
-          <button type="button" class="link" id="btnTokenOff" hidden>연결 끊기</button>
-          <details class="help">
-            <summary>토큰 만드는 법</summary>
-            <ol>
-              <li>깃허브 로그인 후 Settings, Developer settings, Fine-grained tokens 로 가요.</li>
-              <li>Generate new token 을 눌러요.</li>
-              <li>Repository access 에서 Only select repositories 로 HS-Diary 하나만 골라요.</li>
-              <li>Permissions 의 Contents 를 Read and write 로 바꿔요.</li>
-              <li>만들어진 토큰을 복사해서 위 칸에 붙여 넣어요. 두 폰 모두 같은 토큰을 넣으면 돼요.</li>
-            </ol>
-          </details>
+      </div>
+      <div class="hello-step" id="helloSure" hidden>
+        <h2 id="helloSureText">석영 폰으로 할까요?</h2>
+        <p class="hint">이제부터 이 폰은 계속 이 사람으로 기록돼요</p>
+        <div class="modal-btns">
+          <button type="button" class="btn" id="helloBack">다시 고르기</button>
+          <button type="button" class="btn primary" id="helloYes">맞아요</button>
         </div>
-        <div class="field">
-          <label>이 폰의 내용</label>
-          <div class="tools-btns">
-            <button type="button" class="btn small" id="btnBackup">백업 받기</button>
-            <button type="button" class="btn small danger" id="btnClearLocal">이 폰에서 지우기</button>
-          </div>
+      </div>
+      <div class="hello-step" id="helloLink" hidden>
+        <h2>두 폰을 이어요</h2>
+        <p class="hint" id="tokenState">받은 연결 열쇠를 한 번만 붙여 넣으면 둘이 같은 기록을 봐요</p>
+        <div class="field-row">
+          <input type="password" id="tokenInput" placeholder="연결 열쇠 붙여 넣기" autocomplete="off">
+          <button type="button" class="btn small primary" id="btnToken">연결</button>
         </div>
         <div class="modal-btns">
-          <button type="button" class="btn primary" data-close>닫기</button>
+          <button type="button" class="btn" id="helloLater">나중에</button>
         </div>
       </div>
     </div>
@@ -366,6 +354,7 @@
   <script src="js/f/farm.js"></script>
   <script src="js/f/sprites.js"></script>
   <script src="js/f/ui.js"></script>
+  <script src="js/tale.js"></script>
   <script src="js/charanim.js"></script>
   <script src="js/pals.js"></script>
   <script src="js/scene.js"></script>

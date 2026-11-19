@@ -129,5 +129,5 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
-  window.CharAnim = { start, act: () => act };
+  window.CharAnim = { start, act: () => act, play(k) { if (!ACTS[k]) return; act = { key: k, at: performance.now(), one: pick(["him", "her"]) }; if (ACTS[k].start) ACTS[k].start(act); } };
 })();

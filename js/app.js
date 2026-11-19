@@ -727,7 +727,6 @@
 
   function renderSync() {
     const st = Store.status();
-    const chip = $("syncChip");
     const pend = Store.pendingPhotoCount();
     let text;
     let cls = st.state;
@@ -738,12 +737,26 @@
     else if (!Store.token()) { text = "이 폰에만 저장 중 · 눌러서 연결"; cls = "local"; }
     else text = "모두 저장됨";
     if (pend && Store.token() && st.state !== "syncing") text += ` · 사진 ${pend}장 대기`;
-    chip.textContent = text;
-    chip.className = "sync-chip " + cls;
+    $("btnSync").setAttribute("aria-label", text);
+    $("btnSync").dataset.state = text;
     $("syncDot").className = "sync-dot " + cls;
   }
 
+  // 못 본 이야기가 있으면 알려 줘요 (창이 다 닫힌 뒤에)
+  let taleT = 0;
+  function talePing() {
+    clearTimeout(taleT);
+    taleT = setTimeout(() => {
+      if (!window.Tale) return;
+      Tale.notify();
+      const ico = $("btnCloset");
+      const n = Tale.owned().length;
+      ico.hidden = !n || !Store.me();
+      if (n && Store.me() && window.FSprites) $("closetIco").src = FSprites.charImg(Store.me(), "down", 0, "", "happy");
+    }, 450);
+  }
   function renderHome() {
+    talePing();
     renderHeader();
     renderMoodTags();
     renderScenePlant();
@@ -815,6 +828,7 @@
         </div>`;
   }
   function renderLog() {
+    talePing();
     $("logTabs").innerHTML = catTabs(Object.keys(CATS), state.cat, "data-cat");
     const parts = [];
     if (state.q.trim()) parts.push(`"${state.q.trim()}"`);
@@ -896,6 +910,7 @@
         </div>`;
   }
   function renderPlans() {
+    talePing();
     $("planTabs").innerHTML = catTabs(PLAN_CATS, state.planCat, "data-plan-cat");
     const list = Store.list("plans")
       .filter((p) => state.planCat === "all" || p.category === state.planCat)
@@ -923,6 +938,7 @@
       </article>`;
   }
   function renderDiary() {
+    talePing();
     const list = sortedPosts();
     $("postList").innerHTML = list.map(postHtml).join("");
     $("postEmpty").hidden = list.length > 0;
@@ -1045,19 +1061,20 @@
     if (!post) $("dText").focus();
   }
 
-  // 설정
-  function renderSettings() {
-    const me = Store.me();
-    $("meWho").querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c.dataset.who === me));
-    const on = !!Store.token();
-    const st = Store.status();
-    $("tokenState").textContent = !on
-      ? "지금은 이 폰에만 저장돼요. 연결하면 두 폰에서 같이 보여요."
-      : st.state === "auth" ? "토큰이 맞지 않아요. 다시 넣어 주세요." : "연결됨. 고친 내용이 저장소에 올라가요.";
-    $("btnTokenOff").hidden = !on;
-    $("tokenInput").value = "";
-    $("tokenInput").placeholder = on ? "새 토큰으로 바꾸기" : "토큰 붙여 넣기";
+  // ---------- 처음 한 번: 누구 폰인지 ----------
+  let helloPick = "";
+  function helloStep(id) { ["helloWho", "helloSure", "helloLink"].forEach((k) => { $(k).hidden = k !== id; }); }
+  function openHello(step) {
+    $("helloHimName").textContent = WHO.him; $("helloHerName").textContent = WHO.her;
+    if (window.FSprites) { $("helloHim").src = FSprites.charImg("him", "down", 0, "wave1", "happy"); $("helloHer").src = FSprites.charImg("her", "down", 0, "wave1", "happy"); }
+    helloStep(step);
+    openModal($("hello"));
   }
+  function startHello() {
+    if (!Store.me()) openHello("helloWho");
+    else if (!Store.token() && !sessionStorageGet("hsd.later")) openHello("helloLink");
+  }
+  function sessionStorageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
   // ---------- 누르기 ----------
   function bind() {
@@ -1076,6 +1093,7 @@
       if (ev.key !== "Escape") return;
       if (!$("lightbox").hidden) { closeLightbox(); return; }
       const m = openModalEl();
+      if (m && m.id === "hello") return;
       if (m) { closeModal(m); return; }
       hideBubble();
       setPanel(null);
@@ -1108,10 +1126,11 @@
       }
       const close = t.closest("[data-close]");
       if (close) { closeModal(close.closest(".modal")); return; }
-      if (t.classList.contains("modal")) { closeModal(t); return; }
+      if (t.classList.contains("modal") && t.id !== "hello") { closeModal(t); return; }
       const goBtn = t.closest("[data-go]");
       if (goBtn) { go(goBtn.dataset.go); return; }
       const me = t.closest("[data-me]");
+      if (me && Store.me()) return;
       if (me) {
         silently(() => Store.setMe(me.dataset.me));
         if (window.Garden) Garden.attend();
@@ -1139,23 +1158,16 @@
 
     bindScene();
 
+    $("btnCloset").addEventListener("click", (ev) => { ev.stopPropagation(); if (window.Tale) Tale.closet(); });
     $("dday").addEventListener("click", () => {
       state.ddayMode++;
       $("dday").textContent = ddayText();
       play($("dday"), "flip");
       burstAt($("dday"), 6);
     });
-    $("btnSettings").addEventListener("click", () => {
-      renderSettings();
-      openModal($("settingsModal"));
-    });
-    $("syncChip").addEventListener("click", () => {
-      if (!Store.token() || Store.status().state === "auth") {
-        renderSettings();
-        openModal($("settingsModal"));
-      } else {
-        Store.sync();
-      }
+    $("btnSync").addEventListener("click", () => {
+      if (!Store.token() || Store.status().state === "auth") openHello("helloLink");
+      else { Store.sync(); toast($("btnSync").dataset.state || "저장 중"); }
     });
 
     // 홈 타일
@@ -1267,7 +1279,7 @@
       const check = ev.target.closest("[data-check]");
       if (check) {
         const done = !p.done;
-        silently(() => Store.put("plans", Object.assign({}, p, { done })));
+        silently(() => Store.put("plans", Object.assign({}, p, { done }, done && !p.dn ? { dn: Date.now(), dby: Store.me() } : {})));
         check.classList.toggle("on", done);
         card.classList.toggle("done", done);
         play(check, "boing");
@@ -1275,6 +1287,7 @@
           burstAt(check, 10);
           toast("해냈어요");
         }
+        talePing();
         renderScenePlant();
         return;
       }
@@ -1384,13 +1397,27 @@
       toast("지웠어요");
     });
 
-    // 설정
-    $("meWho").addEventListener("click", (ev) => {
-      const c = ev.target.closest("[data-who]");
-      if (!c) return;
-      silently(() => Store.setMe(c.dataset.who));
-      renderSettings();
+    // 처음 화면
+    $("hello").addEventListener("click", (ev) => {
+      const w = ev.target.closest("[data-hello]");
+      if (!w) return;
+      helloPick = w.dataset.hello;
+      $("helloSureText").textContent = `${WHO[helloPick]} 폰으로 할까요?`;
+      helloStep("helloSure");
+    });
+    $("helloBack").addEventListener("click", () => helloStep("helloWho"));
+    $("helloYes").addEventListener("click", () => {
+      if (!helloPick || Store.me()) return;
+      silently(() => Store.setMe(helloPick));
+      if (window.Garden) Garden.attend();
       renderHome();
+      if (!Store.token()) helloStep("helloLink");
+      else closeModal($("hello"));
+      toast(`안녕, ${WHO[helloPick]}!`);
+    });
+    $("helloLater").addEventListener("click", () => {
+      try { localStorage.setItem("hsd.later", "1"); } catch (e) { /* 그냥 닫아요 */ }
+      closeModal($("hello"));
     });
     $("btnToken").addEventListener("click", async () => {
       const tk = $("tokenInput").value.trim();
@@ -1399,33 +1426,11 @@
       $("tokenState").textContent = "확인하는 중";
       const res = await Store.checkToken(tk);
       $("btnToken").disabled = false;
-      if (!res.ok) {
-        $("tokenState").textContent = res.msg;
-        toast(res.msg);
-        return;
-      }
+      if (!res.ok) { $("tokenState").textContent = res.msg; toast(res.msg); return; }
       Store.setToken(tk);
-      renderSettings();
-      toast("연결했어요");
-    });
-    $("btnTokenOff").addEventListener("click", () => {
-      Store.setToken("");
-      renderSettings();
-      renderSync();
-      toast("연결을 끊었어요");
-    });
-    $("btnBackup").addEventListener("click", () => {
-      const blob = new Blob([Store.exportJson()], { type: "application/json;charset=utf-8" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `diary-backup-${todayKey()}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    });
-    $("btnClearLocal").addEventListener("click", () => {
-      if (!confirm("이 폰에 저장된 내용을 지울까요?\n저장소에 올라간 내용은 다시 받아 와요.")) return;
-      Store.clearLocal();
-      toast("이 폰에서 지웠어요");
+      $("tokenInput").value = "";
+      closeModal($("hello"));
+      toast("두 폰을 이었어요");
     });
   }
 
@@ -1551,6 +1556,10 @@
   if (window.Scene) Scene.init();
   lockScroll();
   renderView();
+  startHello();
+  talePing();
+  document.addEventListener("hsd:wear", () => talePing());
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) talePing(); });
 
   // 다른 폰에서 고친 내용이 들어오면 다시 그려요.
   Store.onChange(() => {
@@ -1558,14 +1567,11 @@
     if (openModalEl()) { renderSync(); return; }
     renderView();
     if (state.view !== "home") { renderMoodTags(); renderScenePlant(); }
+    talePing();
   });
   Store.onStatus(() => {
     renderSync();
-    if (!$("settingsModal").hidden) {
-      const keep = $("tokenInput").value;
-      renderSettings();
-      $("tokenInput").value = keep;
-    }
+    if (Store.status().state === "auth" && Store.me() && $("hello").hidden) { toast("연결이 끊겼어요. 하트 단추를 눌러 다시 이어 주세요"); }
   });
 
   // 처음 한 번, 눌러 볼 수 있다는 걸 알려 줘요.

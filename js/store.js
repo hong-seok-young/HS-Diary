@@ -376,7 +376,12 @@
     put(col, rec, opts) {
       const id = rec.id || uid(col[0]);
       if (opts && opts.soft && db[col][id]) return db[col][id];
+      const prev = db[col][id];
+      const fresh = !prev || prev.del;
       db[col][id] = Object.assign({}, rec, { id, t: opts && opts.soft ? 1 : Date.now() });
+      // 처음 만든 때와 만든 사람 (이야기가 이걸 보고 진행돼요)
+      if (fresh && !(opts && opts.soft)) { db[col][id].c = rec.c || Date.now(); if (!rec.by && this.me()) db[col][id].by = this.me(); }
+      else if (prev && prev.c) { db[col][id].c = prev.c; if (prev.by) db[col][id].by = prev.by; }
       delete db[col][id].del;
       changed();
       return db[col][id];
@@ -437,8 +442,10 @@
       const v = ls(KEY.me);
       return v === "him" || v === "her" ? v : "";
     },
+    // 한 번 정하면 바꿀 수 없어요
     setMe(v) {
-      ls(KEY.me, v || null);
+      if (this.me() || (v !== "him" && v !== "her")) return;
+      ls(KEY.me, v);
       emit();
     },
     // 토큰이 이 저장소에 쓸 수 있는지 미리 확인해요.
