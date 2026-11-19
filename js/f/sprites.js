@@ -55,12 +55,12 @@
   const HEADS = {
     him: {
       down: [".....HHHHHH.....", "...HHHHHHHHHH...", "..HHHhhHHHHHHH..", ".HHHhHHHHHHHHHH.", ".HHHHHHHHHHHHHH.", ".HHSHHHHSHHHSHH.", ".HSSSSSSSSSSSSH.", ".HSSWESSSSWESSH.", ".SSSEESSSSEESSS.", ".SCCSSSmmSSSCCS.", "..SSSSSSSSSSSS..", "....SSSSSSSS...."],
-      side: ["....HHHHHH......", "..HHHHHHHHHH....", ".HHHHhhHHHHHH...", "HHHhhHHHHHHHHH..", "HHHHHHHHHHHHHHH.", "HHHHHHHHHSHHSHH.", "HHHHHHSSSSSSSSS.", "HHHHHsSSSSWESSSS", "HHHHHsSSSSEESSSS", ".HHHHSSSSSSCCSS.", ".HHHSSSSSSSSmS..", "...HSSSSSSSSS..."],
+      side: [".....HHHHHH.....", "...HHHHHHHHHH...", "..HHHHhhHHHHHH..", ".HHHHhHHHHHHHHH.", ".HHHHHHHHHHHHHH.", ".HHHHHSHHHSHHSH.", ".HHHSSSSSSSSSSH.", ".HHsSSSWESSSWES.", ".HHsSSSEESSSEES.", ".HHSSCCSSSmmSCS.", "..HSSSSSSSSSSSS.", "....SSSSSSSSS..."],
       up: [".....HHHHHH.....", "...HHHHHHHHHH...", "..HHHhhHHHHHHH..", ".HHHhHHHHHHHHHH.", ".HHHHHHHHHHHHHH.", ".HHHHHHhHHHHHHH.", ".HHHHHHHHHHHHHH.", ".HHHHHHHHHHHHHH.", "sHHHHHHHHHHHHHHs", ".HHHHHHHHHHHHHH.", "..HHHHHHHHHHHH..", "....SSSSSSSS...."],
     },
     her: {
       down: [".....HHHHHH.....", "...HHHHHHHHHH...", "..HHHhhHHHHHHH..", ".HHHhHHHHHHHHHH.", ".HHHHHHHHHHHHHH.", "HHHHHHHHHSHHHHHH", "HHSSSSSSSSSSSSHH", "HHSSWESSSSWESSHH", "HSSSEESSSSEESSSH", "HSCCSSSmmSSSCCSH", "HHSSSSSSSSSSSSHH", "HHHHSSSSSSSSHHHH"],
-      side: ["....HHHHHH......", "..HHHHHHHHHH....", ".HHHHhhHHHHHH...", "HHHhhHHHHHHHHH..", "HHHHHHHHHHHHHHH.", "HHHHHHHHHHHHSHH.", "HHHHHHSSSSSSSSS.", "HHHHHsSSSSWESSSS", "HHHHHsSSSSEESSSS", "HHHHHSSSSSSCCSS.", "HHHHSSSSSSSSmS..", "HHHHHSSSSSSSS..."],
+      side: [".....HHHHHH.....", "...HHHHHHHHHH...", "..HHHHhhHHHHHH..", ".HHHHhHHHHHHHHH.", "HHHHHHHHHHHHHHH.", "HHHHHHHHHHSHHHH.", "HHHHSSSSSSSSSSHH", "HHHsSSSWESSSWESH", "HHHsSSSEESSSEESH", "HHHSSCCSSSmmSCSH", "HHHHSSSSSSSSSSHH", "HHHHHSSSSSSSSHHH"],
       up: [".....HHHHHH.....", "...HHHHHHHHHH...", "..HHHhhHHHHHHH..", ".HHHhHHHHHHHHHH.", ".HHHHHHHHHHHHHH.", "HHHHHHhHHHHHHHHH", "HHHHHHHHHHHHHHHH", "HHHHHHHHHHHHHHHH", "HHHHHHHHHHHHHHHH", "HHHHHHHHHHHHHHHH", "HHHHHHHHHHHHHHHH", "HHHHHHHHHHHHHHHH"],
     },
   };
@@ -69,7 +69,7 @@
   function faceWin(dir, x, y) {
     if (dir === "up") return false;
     if (dir === "down") return (y >= 5 && y <= 10 && x >= 2 && x <= 13) || (y === 11 && x >= 4 && x <= 11);
-    return (y >= 5 && y <= 10 && x >= 6 && x <= 15) || (y === 11 && x >= 5 && x <= 12);
+    return (y >= 5 && y <= 10 && x >= 4 && x <= 14) || (y === 11 && x >= 5 && x <= 12);
   }
   const CH_W = 18, CH_H = 23, TOP = 3, FOOT = 21, HX = 1;
   // 귀 모양 (왼쪽 귀, 머리 왼쪽 위 기준. 오른쪽은 거울로)
@@ -93,7 +93,7 @@
     // 잠옷 꼬리 (몸 뒤)
     if (P && P.tail) {
       if (dir === "side") {
-        const tx = 5, ty = by + 2;
+        const tx = 5, ty = by + 2; // 몸 왼쪽 뒤
         if (P.tail === "puff") { rect(g, tx - 2, ty, 2, 2, "U"); }
         else if (P.tail === "long") { put(g, tx - 1, ty + 1, "U"); put(g, tx - 2, ty, "U"); put(g, tx - 3, ty - 1, "U"); put(g, tx - 3, ty - 2, P.stripes ? "x" : "U"); }
         else if (P.tail === "bushy") { rect(g, tx - 3, ty - 1, 3, 3, "U"); put(g, tx - 3, ty - 1, "b"); put(g, tx - 4, ty, "b"); }
@@ -106,18 +106,18 @@
     // 여자 뒷머리 (잠옷을 입으면 후드 속에 들어가요)
     if (girl && !P) {
       if (dir === "down") { rect(g, HX, by - 1, 2, 3, "H"); rect(g, HX + 14, by - 1, 2, 3, "H"); }
-      if (dir === "side") { rect(g, HX, by - 1, 5, 3, "H"); rect(g, HX + 1, by + 2, 3, 1, "H"); }
+      if (dir === "side") { rect(g, HX, by - 1, 4, 3, "H"); rect(g, HX + 14, by - 1, 1, 2, "H"); put(g, HX + 1, by + 2, "H"); put(g, HX + 2, by + 2, "H"); }
     }
     // 몸통
     const bodyC = P ? "U" : "T", lowC = P ? "U" : "P";
     if (P) {
-      if (dir === "side") { rect(g, 6, by, 6, 4, "U"); rect(g, 6, by + 3, 6, 1, "u"); rect(g, 9, by + 1, 3, 2, "b"); }
+      if (dir === "side") { rect(g, 5, by, 8, 4, "U"); rect(g, 5, by + 3, 8, 1, "u"); rect(g, 8, by + 1, 4, 2, "b"); rect(g, 5, by, 1, 3, "u"); }
       else { rect(g, 5, by, 8, 4, "U"); rect(g, 5, by + 3, 8, 1, "u"); if (dir === "down") rect(g, 7, by + 1, 4, 2, "b"); else if (P.tail) rect(g, 8, by + 2, 2, 2, P.tail === "bushy" || P.tail === "puff" ? "b" : "U"); }
     } else if (girl) {
-      if (dir === "side") { rect(g, 6, by, 6, 2, "T"); rect(g, 5, by + 2, 8, 1, "T"); rect(g, 5, by + 3, 8, 1, "t"); }
+      if (dir === "side") { rect(g, 5, by, 8, 3, "T"); rect(g, 4, by + 3, 10, 1, "t"); rect(g, 5, by, 1, 3, "t"); put(g, 9, by, "W"); put(g, 10, by, "W"); }
       else { rect(g, 5, by, 8, 3, "T"); rect(g, 4, by + 3, 10, 1, "t"); if (dir === "down") { put(g, 8, by, "W"); put(g, 9, by, "W"); } }
     } else {
-      if (dir === "side") { rect(g, 6, by, 6, 3, "T"); rect(g, 6, by + 3, 6, 1, "P"); }
+      if (dir === "side") { rect(g, 5, by, 8, 3, "T"); rect(g, 5, by, 1, 3, "t"); rect(g, 5, by + 3, 8, 1, "P"); put(g, 9, by, "W"); put(g, 10, by, "W"); }
       else { rect(g, 5, by, 8, 3, "T"); rect(g, 5, by + 2, 8, 1, "t"); rect(g, 5, by + 3, 8, 1, "P"); if (dir === "down") { put(g, 8, by, "W"); put(g, 9, by, "W"); } }
     }
     const armC = P ? (P.limbs || "U") : bodyC;
@@ -130,7 +130,7 @@
       // 머리를 그린 뒤에 올려요
     } else if (dir === "side") {
       if (pose === "act") { rect(g, 10, by + 1, 4, 1, armC); put(g, 14, by + 1, "S"); }
-      else { const ax = 9 + swing; rect(g, ax, by, 1, 2, P ? (P.limbs || "u") : "t"); put(g, ax, by + 2, "S"); }
+      else { rect(g, 4, by, 1, 2, P ? (P.limbs || "u") : "t"); put(g, 4, by + 2 - (swing > 0 ? 1 : 0), "S"); rect(g, 13, by, 1, 2, armC); put(g, 13 + (swing < 0 ? 1 : 0), by + 2, "S"); }
     } else if (pose === "act") {
       rect(g, 4, by, 1, 2, armC); rect(g, 13, by, 1, 2, armC);
       rect(g, 5, by + 2, 2, 1, "S"); rect(g, 11, by + 2, 2, 1, "S");
@@ -145,10 +145,11 @@
       rect(g, 4, FOOT - 1, 2, 1, legC); rect(g, 12, FOOT - 1, 2, 1, legC);
       rect(g, 4, FOOT, 2, 1, footC); rect(g, 12, FOOT, 2, 1, footC);
     } else if (dir === "side") {
-      const back = P ? (P.limbs || "u") : (girl ? "s" : "P");
-      if (frame === 1) { leg(10, FOOT, legC); leg(6, FOOT - 1, back); }
-      else if (frame === 2) { leg(6, FOOT, legC); leg(10, FOOT - 1, back); }
-      else { leg(7, FOOT, back); leg(9, FOOT, legC); }
+      if (frame === 1) { leg(6, FOOT, legC); leg(11, FOOT - 1, legC); put(g, 13, FOOT - 1, footC); }
+      else if (frame === 2) { leg(10, FOOT, legC); leg(6, FOOT - 1, legC); put(g, 8, FOOT - 1, footC); }
+      else { leg(6, FOOT, legC); leg(10, FOOT, legC); }
+      if (frame !== 1) put(g, 12, FOOT, footC);
+      if (frame !== 2) put(g, 8, FOOT, footC);
     } else {
       leg(6, FOOT - (frame === 1 ? 1 : 0), legC); leg(10, FOOT - (frame === 2 ? 1 : 0), legC);
     }
@@ -172,26 +173,26 @@
       if (P.ear === "floppy") {
         const fl = ["UU", "Uu", "uU", "uu"];
         if (dir === "down" || dir === "up") { drawEar(fl, -1, 3); drawEar(fl, 15, 3); }
-        else drawEar(fl, 2, 3);
+        else { drawEar(fl, -1, 3); drawEar(fl, 15, 4); }
       } else if (P.ear === "tuft") { H(7, -1, "U"); H(8, -2, "U"); H(8, -1, "U"); H(9, -2, "U"); }
-      else if (P.ear === "spikes") { const sp = dir === "side" ? [[2, 1], [4, 0], [7, -1], [10, 0]] : [[4, 0], [7, -1], [8, -1], [11, 0]]; sp.forEach(([x, y]) => { H(x, y, "g"); H(x, y + 1, "g"); }); }
+      else if (P.ear === "spikes") { const sp = dir === "side" ? [[3, 1], [5, 0], [8, -1], [9, -1], [12, 0]] : [[4, 0], [7, -1], [8, -1], [11, 0]]; sp.forEach(([x, y]) => { H(x, y, "g"); H(x, y + 1, "g"); }); }
       else if (EARS[P.ear]) {
         const e = EARS[P.ear];
-        if (dir === "side") { drawEar(e.rows, e.at[0] + 2, e.at[1]); if (P.ear !== "koala") drawEar(mirror(e.rows), 15 - e.at[0] - e.rows[0].length + 1 - 2, e.at[1] + 1); }
+        if (dir === "side") { drawEar(e.rows, e.at[0] + 1, e.at[1] + 1); drawEar(mirror(e.rows), 16 - e.at[0] - e.rows[0].length + 1, e.at[1]); }
         else { drawEar(e.rows, e.at[0], e.at[1]); drawEar(mirror(e.rows), 16 - e.at[0] - e.rows[0].length, e.at[1]); }
       }
       if (P.top === "wool") [[3, 1], [6, 0], [9, 0], [12, 1], [5, 2], [10, 2]].forEach(([x, y]) => H(x, y, "w"));
       if (P.stripes && dir !== "side") { [[7, 1], [7, 2], [8, 1], [8, 2], [0, 6], [1, 6], [15, 6], [14, 6]].forEach(([x, y]) => H(x, y, "x")); }
-      if (P.stripes && dir === "side") { [[4, 1], [4, 2], [1, 6], [2, 6]].forEach(([x, y]) => H(x, y, "x")); }
-      if (P.spots) { (dir === "side" ? [[2, 4], [4, 7]] : [[2, 3], [13, 3]]).forEach(([x, y]) => H(x, y, "W")); }
+      if (P.stripes && dir === "side") { [[8, 1], [8, 2], [9, 1], [9, 2], [0, 6], [1, 6], [15, 5]].forEach(([x, y]) => H(x, y, "x")); }
+      if (P.spots) { (dir === "side" ? [[1, 4], [2, 8], [13, 3]] : [[2, 3], [13, 3]]).forEach(([x, y]) => H(x, y, "W")); }
       if (P.beak && dir === "down") { H(7, 4, "B"); H(8, 4, "B"); }
-      if (P.beak && dir === "side") { H(14, 4, "B"); H(15, 4, "B"); }
+      if (P.beak && dir === "side") { H(9, 4, "B"); H(10, 4, "B"); }
       if (P.snout && dir === "down") { rect(g, HX + 6, oy + 2, 4, 2, "n"); H(7, 3, "q"); H(8, 3, "q"); }
-      if (P.snout && dir === "side") { rect(g, HX + 12, oy + 2, 3, 2, "n"); H(13, 3, "q"); }
+      if (P.snout && dir === "side") { rect(g, HX + 8, oy + 2, 4, 2, "n"); H(9, 3, "q"); H(10, 3, "q"); }
       if (P.ear === "koala" && dir === "down") { H(7, 3, "k"); H(8, 3, "k"); }
       // 예은이는 후드 사이로 머리카락이 살짝 보여요
       if (girl && dir === "down") { for (let y = 6; y <= 10; y++) { H(2, y, "H"); H(13, y, "H"); } H(3, 6, "H"); H(12, 6, "H"); }
-      if (girl && dir === "side") { for (let y = 6; y <= 10; y++) H(6, y, "H"); H(7, 6, "H"); }
+      if (girl && dir === "side") { for (let y = 6; y <= 10; y++) { H(4, y, "H"); H(14, y, "H"); } H(5, 6, "H"); }
     }
     // 리본 (잠옷이 아닐 때)
     if (girl && !P) {
@@ -207,12 +208,12 @@
     }
     // 표정
     if (dir !== "up" && (face === "blink" || face === "happy")) {
-      const eyes = dir === "side" ? [HX + 10] : [HX + 4, HX + 10];
+      const eyes = dir === "side" ? [HX + 7, HX + 12] : [HX + 4, HX + 10];
       const ey = oy + 7;
       eyes.forEach((x) => { rect(g, x, ey, 2, 2, "S"); });
       if (face === "blink") eyes.forEach((x) => rect(g, x, ey + 1, 2, 1, "E"));
       else eyes.forEach((x) => { rect(g, x, ey, 2, 1, "E"); put(g, x - 1, ey + 1, "E"); put(g, x + 2, ey + 1, "E"); });
-      if (face === "happy") { if (dir === "down") { put(g, HX + 7, oy + 9, "M"); put(g, HX + 8, oy + 9, "M"); } else put(g, HX + 12, oy + 10, "M"); }
+      if (face === "happy") { if (dir === "down") { put(g, HX + 7, oy + 9, "M"); put(g, HX + 8, oy + 9, "M"); } else { put(g, HX + 10, oy + 9, "M"); put(g, HX + 11, oy + 9, "M"); } }
     }
     return rows(outline(g));
   }
@@ -221,7 +222,7 @@
   function charImg(who, dir, frame, pose, face, pj) {
     if (pj === undefined) pj = wearing(who);
     const P = pj && PJ[pj];
-    const key = `ch3|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}`;
+    const key = `ch4|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}`;
     return A.fromRows(key, charRows(who, dir, frame, pose || "", face || "", P ? pj : ""), Object.assign({ o: OUT }, PEOPLE[who] || PEOPLE.him, P ? P.c : {})).uri;
   }
 

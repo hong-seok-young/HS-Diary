@@ -47,15 +47,16 @@
     highfive: { dur: 1300, start: () => setTimeout(() => burstAt(document.getElementById("couple"), 5, "spark"), 420), f: (who, t) => ({ face: "happy", pose: t > 250 && t < 900 ? "raise" : "", dir: t < 250 ? "side" : "down", flip: who === "her", dx: (who === "him" ? 1 : -1) * (t > 250 && t < 900 ? 4 : 0) }) },
     jump: { dur: 900, who: "one", start: (a) => { const st = state[a.one]; if (st) { hop(st, 14); setTimeout(() => hop(st, 9), 430); } }, f: (who, t, a) => (who === a.one ? { face: "happy" } : { dir: "side", flip: who === "her" }) },
     point: { dur: 2400, start: () => { const h = H(); if (h.bubble && Math.random() < 0.6) h.bubble(pick(["하마 봐!", "하마 귀여워", "저기 양이다", "고양이 다리 짧아"]), pick(["him", "her"])); }, f: (who, t) => ({ dir: "side", flip: true, face: t % 1500 < 140 ? "blink" : "" }) },
-    stroll: { dur: 2600, who: "one", f: (who, t, a) => {
+    // 혼자 몇 걸음 산책: 거리, 빠르기, 쉬는 시간이 매번 달라요
+    stroll: { dur: 2600, who: "one", start: (a) => { a.dist = 8 + Math.random() * 26; a.go = 500 + a.dist * 28 * (0.8 + Math.random() * 0.6); a.wait = 300 + Math.random() * 1500; a.back = 500 + a.dist * 28 * (0.8 + Math.random() * 0.6); a.dur = a.go + a.wait + a.back; }, f: (who, t, a) => {
       if (who !== a.one) return { dir: "side", flip: who === "her" };
       const away = who === "him" ? -1 : 1;
-      const p = t / 2600;
-      const going = p < 0.45, back = p > 0.55;
-      const c = Math.floor(t / 150) % 4;
+      const going = t < a.go, back = t > a.go + a.wait;
+      const c = Math.floor(t / 160) % 4;
       const fr = (going || back) ? (c === 1 ? 1 : c === 3 ? 2 : 0) : 0;
-      const dist = 22 * (going ? p / 0.45 : back ? (1 - p) / 0.45 : 1);
-      return { dir: (going || back) ? "side" : "down", flip: going ? away < 0 : back ? away > 0 : false, frame: fr, dx: away * dist };
+      const p = going ? t / a.go : back ? 1 - (t - a.go - a.wait) / a.back : 1;
+      const ease = p * p * (3 - 2 * p);
+      return { dir: (going || back) ? "side" : (t % 1400 < 700 ? "down" : "side"), flip: going ? away < 0 : back ? away > 0 : away > 0, frame: fr, dx: away * a.dist * ease };
     } },
     crouch: { dur: 2200, who: "one", f: (who, t, a) => (who === a.one ? { pose: "crouch", face: t > 600 ? "happy" : "" } : { face: t % 1700 < 140 ? "blink" : "" }) },
     stretch2: { dur: 1600, f: (who, t) => ({ pose: Math.floor(t / 400) % 2 ? "raise" : "", face: "happy" }) },
@@ -82,7 +83,7 @@
     // 특별한 할 일(잠, 산책, 체조)이 없을 때만 자유롭게 움직여요
     const free = !walking && !sleeping && !stretch;
     if (free && !act && now > nextAt) startAct(now);
-    if (act && (!free || now - act.at > ACTS[act.key].dur)) { act = null; nextAt = now + 3500 + Math.random() * 6000; }
+    if (act && (!free || now - act.at > (act.dur || ACTS[act.key].dur))) { act = null; nextAt = now + 3500 + Math.random() * 6000; }
     for (const who in state) {
       const st = state[who];
       if (st.el.classList.contains("jump") && st.waveTo < now) st.waveTo = now + 1100;

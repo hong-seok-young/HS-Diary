@@ -700,20 +700,42 @@
   }
 
   // ---------- 산책: 둘이 왔다 갔다 ----------
+  // 정해진 왕복이 아니라, 매번 다른 곳까지 다른 빠르기로 걷고, 멈춰서 두리번거리다 다시 걸어요.
   let walkX = 0;
   let walkDir = 1;
+  const wp = { to: 0, rest: 0, speed: 18 };
   function stepWalk(dt, time) {
     const couple = $("couple");
     if (!couple) return;
     const walking = S.act && S.act.key === "walk";
-    const target = walking ? Math.sin(time / 7) * Math.min(70, S.W * 0.18) : 0;
-    const prev = walkX;
-    walkX += (target - walkX) * Math.min(1, dt * 1.5);
-    const v = walkX - prev;
-    if (Math.abs(v) > 0.02) walkDir = v < 0 ? -1 : 1;
+    const R = Math.min(70, S.W * 0.18);
+    let v = 0;
+    if (walking) {
+      if (time < wp.rest) v = 0;
+      else {
+        const d = wp.to - walkX;
+        const step = wp.speed * dt;
+        if (Math.abs(d) <= step) {
+          walkX = wp.to;
+          // 다음 목적지: 가끔은 몇 걸음만, 가끔은 멀리
+          wp.rest = time + rand(0.8, 4.5);
+          const far = Math.random() < 0.55;
+          let to = far ? rand(-R, R) : walkX + (Math.random() < 0.5 ? -1 : 1) * rand(8, 22);
+          if (Math.abs(to - walkX) < 6) to = walkX + (to >= walkX ? 10 : -10);
+          wp.to = Math.max(-R, Math.min(R, to));
+          wp.speed = rand(12, 26);
+        } else { v = Math.sign(d) * step; walkX += v; }
+      }
+    } else {
+      const d = -walkX;
+      const step = 22 * dt;
+      if (Math.abs(d) > 0.5) { v = Math.sign(d) * Math.min(step, Math.abs(d)); walkX += v; }
+      wp.to = 0; wp.rest = 0;
+    }
+    if (Math.abs(v) > 0.001) walkDir = v < 0 ? -1 : 1;
     couple.style.transform = `translateX(calc(-50% + ${walkX.toFixed(1)}px))`;
-    couple.classList.toggle("walking", walking && Math.abs(v) > 0.02);
-    couple.classList.toggle("face-left", walking && walkDir < 0);
+    couple.classList.toggle("walking", Math.abs(v) > 0.001);
+    couple.classList.toggle("face-left", Math.abs(v) > 0.001 && walkDir < 0);
   }
 
   // ---------- 별자리 (별 보기) ----------
