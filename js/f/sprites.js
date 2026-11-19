@@ -374,54 +374,45 @@
     return A.fromRows(`cat3|${frame}|${face || ""}|${tail ? 1 : 0}`, catRows(frame, face || "", tail), { o: "#3a3a4a", B: "#98a3b5", l: "#b8c0ce", b: "#7b879c", w: "#dde2ea", P: "#f2a0b4", Y: "#f0a030", K: "#2e221c", W: "#ffffff", C: "#f7a8b8", L: "#fff6a0" }).uri;
   }
 
-  // ---------- 강아지 (몸은 옆, 얼굴은 앞을 봐요. 귀가 축 처진 크림색 아기 강아지) ----------
-  const DOG_HEAD = [
-    "...BBBBBB...",
-    "..BlBBBBBB..",
-    ".DBlBBBBBBD.",
-    "DDBBBBBBBBDD",
-    "DDBBBBBBBBDD",
-    "DDBBBBBBBBDD",
-    ".DCBWWWWBCD.",
-    "..BWWNNWWB..",
-    "...WWWWWW...",
-    "....WWWW....",
-  ];
-  const DOG_BODY = [
-    "..BBBBBBBB..",
-    ".BlllBBBBBB.",
-    "BBBBBBBBBBBB",
-    "BBBBBBBBBBBB",
-    "DBBBWWWWBBBD",
-    ".DDDDDDDDDD.",
-  ];
-  const DOG_W = 22, DOG_H = 15;
-  // frame: stand, walk1, walk2, sit / tail: 0 위, 1 옆 / face: "", happy
-  function dogRows(frame, tail, face) {
+  // ---------- 강아지 (찹쌀떡처럼 동그랗게 앞을 봐요) ----------
+  // cream: 귀가 축 처진 크림볼 (농장 마루) / bichon: 하얀 솜사탕 비숑 (홈 산책)
+  const DOGS = {
+    cream: { body: mir(["....BBBBB", "..lBBBBBB", ".DlBBBBBB", "DDBBBBBBB", "DDBBBBBBB", "DDBBBBBBB", "DDBBBBBBB", "DDCBBWWWW", ".DBBWWWWN", "..BBWWWWK", "..BBBWWKT", ".BBBBBBBB", "BBBBBBWWW", "BBBBBBWWW", "dBBBBBBBB", ".dWWdddWW"]), base: "B", tail: "B", eye: [3, 5],
+      pal: { o: "#5a3e2c", B: "#f6dcb4", l: "#fff0d8", D: "#e0b07a", d: "#c8955c", W: "#fffaf0", N: "#3b2a20", K: "#2e221c", C: "#ffaaa8", T: "#ff8aa0", M: "#c0506a" } },
+    bichon: { body: mir(["...wWWwWW", ".wWWWWWWW", "wWWWWWWWW", "WWWWWWWWW", "WwWWWWWWW", "WWWWWWWWW", "WWWWWWWWW", "wWCWWWWWW", "WWWWWWWWN", "wWWWWWWWK", ".wWWWWWKT", "..wwRRRRR", ".wWWWWWWW", "wWWWwWWWW", ".wwWWwwWW", "..www.www"]), base: "W", tail: "W", eye: [3, 5],
+      pal: { o: "#5a4a54", W: "#ffffff", w: "#ece4ee", K: "#2e221c", N: "#2e221c", C: "#ffb0c4", T: "#ff8aa0", R: "#ff7aa8", M: "#c0506a" } },
+  };
+  const DOG_W = 22, DOG_H = 18;
+  // frame: stand, walk1, walk2, sit / tail: 0 왼쪽, 1 오른쪽 (살랑살랑) / face: "", happy
+  function dogRows(frame, tail, face, breed) {
+    const D = DOGS[breed] || DOGS.cream;
     const g = blank(DOG_W, DOG_H);
     const sit = frame === "sit";
-    const bx = sit ? 3 : 1, by = sit ? 7 : 6, hx = 9, hy = sit ? 1 : 0;
-    // 꼬리
-    if (tail) { put(g, bx - 1, by + 1, "B"); put(g, bx - 2, by + 1, "B"); put(g, bx - 2, by, "l"); }
-    else { put(g, bx, by - 1, "B"); put(g, bx - 1, by - 2, "B"); put(g, bx - 1, by - 3, "l"); }
-    // 다리
-    if (sit) {
-      rect(g, bx, 12, 4, 1, "B"); rect(g, bx, 13, 4, 1, "W");
-      rect(g, 11, 11, 2, 2, "B"); rect(g, 14, 11, 2, 2, "B"); rect(g, 11, 13, 2, 1, "W"); rect(g, 14, 13, 2, 1, "W");
-    } else {
-      const lift = frame === "walk1" ? [1, 0, 0, 1] : frame === "walk2" ? [0, 1, 1, 0] : [0, 0, 0, 0];
-      [2, 5, 9, 12].forEach((x, i) => { rect(g, x, 11 - lift[i], 2, 2, i === 1 || i === 2 ? "D" : "B"); rect(g, x, 13 - lift[i], 2, 1, "W"); });
-    }
-    stamp(g, sit ? DOG_BODY.slice(0, 5) : DOG_BODY, bx, by);
-    stamp(g, DOG_HEAD, hx, hy);
-    eye(g, hx + 3, hy + 4, face === "happy" ? "happy" : "");
-    eye(g, hx + 7, hy + 4, face === "happy" ? "happy" : "");
-    if (face === "happy") { rect(g, hx + 5, hy + 8, 2, 2, "R"); put(g, hx + 5, hy + 8, "M"); put(g, hx + 6, hy + 8, "M"); }
+    const walk = frame === "walk1" || frame === "walk2";
+    const look = walk ? 1 : 0;
+    let body = D.body.slice();
+    if (sit) body = body.filter((r, i) => i !== 12);
+    const oy = 1 + (sit ? 1 : 0), ox = 2;
+    // 꼬리 (몸 뒤에서 살랑)
+    const tx = tail ? ox + 17 : ox - 2, ty = oy + 9;
+    put(g, tx, ty, D.tail); put(g, tx + (tail ? 1 : 1), ty - 1, D.tail); put(g, tail ? tx + 1 : tx, ty - 2, D.tail);
+    stamp(g, body, ox, oy);
+    // 걸을 땐 한쪽 발씩 들어요
+    const last = oy + body.length - 1;
+    if (frame === "walk1") for (let x = ox; x < ox + 9; x++) g[last][x] = ".";
+    if (frame === "walk2") for (let x = ox + 9; x < ox + 18; x++) g[last][x] = ".";
+    // 눈
+    const [ex, ey] = D.eye;
+    [ox + ex, ox + 17 - ex - 1].forEach((x) => { rect(g, x, oy + ey, 2, 2, D.base); });
+    const f = face === "happy" ? "happy" : "";
+    eye(g, ox + ex + look, oy + ey, f); eye(g, ox + 17 - ex - 1 + look, oy + ey, f);
+    if (face === "happy") { put(g, ox + 8, oy + 11, "T"); put(g, ox + 9, oy + 11, "T"); }
     return rows(outline(g));
   }
-  function dogImg(frame, tail, face) {
-    const key = `dog2|${frame}|${tail ? 1 : 0}|${face || ""}`;
-    return A.fromRows(key, dogRows(frame, tail, face), { o: "#4a3428", B: "#f2d1a4", l: "#fbe6c6", D: "#d9a46c", W: "#fff6e6", N: "#3b2a20", C: "#ffa8a8", K: "#2e221c", R: "#ff8aa0", M: "#c0506a" }).uri;
+  function dogImg(frame, tail, face, breed) {
+    const b = DOGS[breed] ? breed : "cream";
+    const key = `dog3|${b}|${frame}|${tail ? 1 : 0}|${face || ""}`;
+    return A.fromRows(key, dogRows(frame, tail, face, b), DOGS[b].pal).uri;
   }
   // ---------- 닭 ----------
   const HEN = {

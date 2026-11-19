@@ -563,7 +563,7 @@
     const frames = opts.frames || [kind];
     // 강아지는 농장 마루와 같은 새 걷기 그림으로 (다리를 번갈아 움직여요)
     const html = kind === "dog" && window.FSprites
-      ? ["walk1", "walk2"].map((f) => `<img class="px" src="${FSprites.dogImg(f, f === "walk1" ? 1 : 0, "")}" width="44" height="30" alt="">`).join("")
+      ? ["walk1", "walk2"].map((f) => `<img class="px" src="${FSprites.dogImg(f, f === "walk1" ? 1 : 0, "", "bichon")}" width="44" height="36" alt="">`).join("")
       : frames.map((f) => PIXEL.sprite(f, opts.scale || 2)).join("");
     const e = el(opts.button ? "button" : "span", "critter " + kind, html);
     if (frames.length > 1) e.classList.add("anim");
@@ -614,9 +614,9 @@
         if (k === "squirrel") { const t = treeTop(".sc-tree.t1"); if (t) addCritter("squirrel", { button: true, x: t.x + t.w / 2, y: t.y + 4, speed: 0, perch: t, scale: 2 }); }
       }
     });
-    if (!S.dogDone && day && dry && (new Date(now()).getDay() % 6 === 0) && !hasCritter("dog") && Math.random() < 0.5) {
+    if (!S.dogDone && day && dry && !hasCritter("dog") && Math.random() < 0.6) {
       S.dogDone = true;
-      setTimeout(() => { if (!hasCritter("dog")) addCritter("dog", { button: true, frames: ["dog1", "dog2"], x: -30, y: groundTop() + 4, tx: S.W + 40, ty: groundTop() + 4, speed: 36, walkOff: true, scale: 3 }); }, rand(2000, 9000));
+      setTimeout(() => { if (!hasCritter("dog")) addCritter("dog", { button: true, frames: ["dog1", "dog2"], x: -30, y: groundTop() - 10, tx: S.W + 40, ty: groundTop() - 10, speed: 36, walkOff: true, scale: 3 }); }, rand(2000, 9000));
     }
   }
   function stepCritters(dt, time) {
