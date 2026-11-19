@@ -731,10 +731,10 @@
     let text;
     let cls = st.state;
     if (st.state === "syncing") text = "저장 중";
-    else if (st.state === "auth") text = "토큰을 확인해 주세요";
+    else if (st.state === "auth") text = "이 폰에 저장됨";
     else if (st.state === "offline") text = "인터넷이 없어요 · 이 폰에 저장됨";
     else if (st.state === "error") text = "저장 실패 · 눌러서 다시 시도";
-    else if (!Store.token()) { text = "이 폰에만 저장 중 · 눌러서 연결"; cls = "local"; }
+    else if (!Store.token()) { text = "이 폰에 저장됨"; cls = "local"; }
     else text = "모두 저장됨";
     if (pend && Store.token() && st.state !== "syncing") text += ` · 사진 ${pend}장 대기`;
     $("btnSync").setAttribute("aria-label", text);
@@ -1063,7 +1063,7 @@
 
   // ---------- 처음 한 번: 누구 폰인지 ----------
   let helloPick = "";
-  function helloStep(id) { ["helloWho", "helloSure", "helloLink"].forEach((k) => { $(k).hidden = k !== id; }); }
+  function helloStep(id) { ["helloWho", "helloSure"].forEach((k) => { $(k).hidden = k !== id; }); }
   function openHello(step) {
     $("helloHimName").textContent = WHO.him; $("helloHerName").textContent = WHO.her;
     if (window.FSprites) { $("helloHim").src = FSprites.charImg("him", "down", 0, "wave1", "happy"); $("helloHer").src = FSprites.charImg("her", "down", 0, "wave1", "happy"); }
@@ -1072,9 +1072,7 @@
   }
   function startHello() {
     if (!Store.me()) openHello("helloWho");
-    else if (!Store.token() && !sessionStorageGet("hsd.later")) openHello("helloLink");
   }
-  function sessionStorageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
   // ---------- 누르기 ----------
   function bind() {
@@ -1166,8 +1164,8 @@
       burstAt($("dday"), 6);
     });
     $("btnSync").addEventListener("click", () => {
-      if (!Store.token() || Store.status().state === "auth") openHello("helloLink");
-      else { Store.sync(); toast($("btnSync").dataset.state || "저장 중"); }
+      if (Store.token()) Store.sync();
+      toast($("btnSync").dataset.state || "저장 중");
     });
 
     // 홈 타일
@@ -1411,26 +1409,8 @@
       silently(() => Store.setMe(helloPick));
       if (window.Garden) Garden.attend();
       renderHome();
-      if (!Store.token()) helloStep("helloLink");
-      else closeModal($("hello"));
+      closeModal($("hello"));
       toast(`안녕, ${WHO[helloPick]}!`);
-    });
-    $("helloLater").addEventListener("click", () => {
-      try { localStorage.setItem("hsd.later", "1"); } catch (e) { /* 그냥 닫아요 */ }
-      closeModal($("hello"));
-    });
-    $("btnToken").addEventListener("click", async () => {
-      const tk = $("tokenInput").value.trim();
-      if (!tk) { $("tokenInput").focus(); return; }
-      $("btnToken").disabled = true;
-      $("tokenState").textContent = "확인하는 중";
-      const res = await Store.checkToken(tk);
-      $("btnToken").disabled = false;
-      if (!res.ok) { $("tokenState").textContent = res.msg; toast(res.msg); return; }
-      Store.setToken(tk);
-      $("tokenInput").value = "";
-      closeModal($("hello"));
-      toast("두 폰을 이었어요");
     });
   }
 
@@ -1571,7 +1551,7 @@
   });
   Store.onStatus(() => {
     renderSync();
-    if (Store.status().state === "auth" && Store.me() && $("hello").hidden) { toast("연결이 끊겼어요. 하트 단추를 눌러 다시 이어 주세요"); }
+
   });
 
   // 처음 한 번, 눌러 볼 수 있다는 걸 알려 줘요.
