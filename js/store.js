@@ -1,30 +1,18 @@
 // ============================================================
 // 저장 담당
 // - 모든 내용은 먼저 이 폰(localStorage)에 저장돼요.
-// - 깃 토큰을 연결하면 저장소의 data 브랜치(db.json, photos/)와 맞춰요.
+// - 두 사람 전용 서버(data/config.js 의 api)와 맞춰요. 폰마다 서버가 기기 열쇠를 알아서 줘요.
 //   두 폰이 동시에 고쳐도, 항목마다 더 나중에 고친 쪽이 남아요.
 // - 사진은 올리기 전까지 이 폰(IndexedDB)에 잠깐 보관해요.
 // ============================================================
 (function () {
   "use strict";
 
-  const KEY = { db: "hsd.db", token: "hsd.token", me: "hsd.me", old: "hs-diary-local-entries" };
+  const KEY = { db: "hsd.db", dev: "hsd.dev", join: "hsd.join", me: "hsd.me", old: "hs-diary-local-entries" };
   const COLS = ["entries", "plans", "diary", "garden"];
   const cfg = typeof DIARY_CONFIG !== "undefined" ? DIARY_CONFIG : {};
 
-  function repo() {
-    const r = cfg.repo || {};
-    let owner = r.owner || "";
-    let name = r.name || "";
-    if (!owner && /\.github\.io$/.test(location.hostname)) {
-      owner = location.hostname.split(".")[0];
-      name = location.pathname.split("/").filter(Boolean)[0] || "";
-    }
-    return { owner, name, branch: r.branch || "data" };
-  }
-  const R = repo();
-  const API = `https://api.github.com/repos/${R.owner}/${R.name}/contents/`;
-  const RAW = `https://raw.githubusercontent.com/${R.owner}/${R.name}/${R.branch}/`;
+  const API = String(cfg.api || "").replace(/\/+$/, "");
 
   // ---------- 작은 도구 ----------
   function ls(key, val) {
@@ -170,7 +158,7 @@
     statusListeners.forEach((fn) => { try { fn(status); } catch (e) { console.error(e); } });
   }
   function token() {
-    return ls(KEY.token) || "";
+    return ls(KEY.dev) || "";
   }
 
   // ---------- 사진: 올리기 전까지 폰에 보관 ----------
@@ -226,66 +214,75 @@
     if (pendingPhotos.size) emit();
   });
 
-  // ---------- 저장소와 맞추기 ----------
-  async function fetchRemote() {
-    const tk = token();
-    if (tk) {
-      const res = await fetch(`${API}db.json?ref=${encodeURIComponent(R.branch)}&t=${Date.now()}`, {
-        headers: { Authorization: "Bearer " + tk, Accept: "application/vnd.github+json" },
-        cache: "no-store",
-      });
-      if (res.status === 404) return { db: emptyDb(), sha: null };
-      if (res.status === 401 || res.status === 403) throw Object.assign(new Error("auth"), { auth: true });
-      if (!res.ok) throw new Error("read " + res.status);
-      const j = await res.json();
-      return { db: normalize(JSON.parse(b64ToUtf8(j.content) || "{}")), sha: j.sha };
+  // ---------- 서버와 맞추기 ----------
+  const auth = () => ({ Authorization: "Bearer " + token() });
+  const authErr = () => Object.assign(new Error("auth"), { auth: true });
+  // 이 폰을 서버에 들여요. 사람마다 첫 폰은 바로, 그다음 폰은 상대 폰의 허락을 받아요.
+  async function ensureDevice() {
+    if (token()) return true;
+    const me = window.Store && Store.me();
+    if (!API || !me) return false;
+    const waitId = ls(KEY.join);
+    if (waitId) {
+      const r = await fetch(`${API}/join/${encodeURIComponent(waitId)}`, { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (j.tok) { ls(KEY.dev, j.tok); ls(KEY.join, null); return true; }
+      if (r.status === 404 || j.status === "no") ls(KEY.join, null);
+      else return false;
     }
-    const res = await fetch(`${RAW}db.json?t=${Date.now()}`, { cache: "no-store" });
-    if (res.status === 404) return { db: emptyDb(), sha: null };
-    if (!res.ok) throw new Error("read " + res.status);
-    return { db: normalize(await res.json()), sha: null };
+    const r = await fetch(`${API}/join`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ who: me, ua: (navigator.userAgent || "").replace(/\s+/g, " ").slice(0, 80) }) });
+    const j = await r.json().catch(() => ({}));
+    if (j.tok) { ls(KEY.dev, j.tok); return true; }
+    if (j.wait) ls(KEY.join, j.wait);
+    return false;
   }
-  async function putFile(path, contentB64, message, sha) {
-    const body = { message, content: contentB64, branch: R.branch };
-    if (sha) body.sha = sha;
-    return fetch(API + path, {
-      method: "PUT",
-      headers: { Authorization: "Bearer " + token(), Accept: "application/vnd.github+json", "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+  async function fetchRemote() {
+    const res = await fetch(`${API}/db?t=${Date.now()}`, { headers: auth(), cache: "no-store" });
+    if (res.status === 401) throw authErr();
+    if (!res.ok) throw new Error("read " + res.status);
+    const j = await res.json();
+    return { db: normalize(j.db || {}), v: j.v || 0 };
+  }
+  async function putDb(data, v) {
+    return fetch(`${API}/db`, { method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, auth()), body: JSON.stringify({ db: data, v }) });
   }
   async function uploadPending() {
     for (const [name, blob] of Array.from(pendingPhotos.entries())) {
-      const res = await putFile("photos/" + name, await blobToB64(blob), "사진 추가");
-      // 422 는 "이미 있는 파일"일 때도 오고 다른 오류일 때도 와서, 정말 올라가 있는지 확인해요.
-      let exists = false;
-      if (res.status === 422 || res.status === 409) {
-        const chk = await fetch(`${API}photos/${encodeURIComponent(name)}?ref=${encodeURIComponent(R.branch)}`, {
-          headers: { Authorization: "Bearer " + token(), Accept: "application/vnd.github+json" }, cache: "no-store",
-        });
-        exists = chk.ok;
-      }
-      if (res.ok || exists) {
+      const res = await fetch(`${API}/photo/${encodeURIComponent(name)}`, { method: "PUT", headers: Object.assign({ "Content-Type": blob.type || "image/jpeg" }, auth()), body: blob });
+      if (res.ok) {
         pendingPhotos.delete(name);
         await idbDelete(name);
-      } else if (res.status === 401 || res.status === 403) {
-        throw Object.assign(new Error("auth"), { auth: true });
-      } else {
-        throw new Error("photo " + res.status);
-      }
+      } else if (res.status === 401) throw authErr();
+      else throw new Error("photo " + res.status);
     }
+  }
+  // 새 폰이 들어오려고 하면 허락을 물어봐요
+  let pendingJoins = [];
+  async function checkPending() {
+    try {
+      const r = await fetch(`${API}/pending`, { headers: auth(), cache: "no-store" });
+      const j = r.ok ? await r.json() : { list: [] };
+      const before = JSON.stringify(pendingJoins);
+      pendingJoins = j.list || [];
+      if (JSON.stringify(pendingJoins) !== before) setStatus(status.state, status.msg);
+    } catch (e) { /* 다음에 다시 봐요 */ }
   }
 
   let syncing = false;
   let again = false;
   let timer = null;
   async function sync() {
-    if (!R.owner || !R.name) return;
+    if (!API) return;
     if (syncing) { again = true; return; }
     syncing = true;
     setStatus("syncing");
     try {
       await ready;
+      if (!(await ensureDevice())) {
+        setStatus(ls(KEY.join) ? "wait" : "local");
+        if (ls(KEY.join)) schedule(6000);
+        return;
+      }
       for (let attempt = 0; attempt < 4; attempt++) {
         const remote = await fetchRemote();
         const merged = merge(remote.db, db);
@@ -294,19 +291,19 @@
           saveLocal();
           emit();
         }
-        if (!token()) break;
         await uploadPending();
         if (same(merged, remote.db)) break;
-        const res = await putFile("db.json", utf8ToB64(JSON.stringify(sorted(merged), null, 1)), "일지 업데이트", remote.sha);
+        const res = await putDb(sorted(merged), remote.v);
         if (res.ok) break;
-        if (res.status === 401 || res.status === 403) throw Object.assign(new Error("auth"), { auth: true });
-        // 409 / 422: 그사이 다른 폰이 먼저 저장함 → 다시 받아서 합쳐요.
-        if (res.status !== 409 && res.status !== 422) throw new Error("write " + res.status);
+        if (res.status === 401) throw authErr();
+        // 409: 그사이 다른 폰이 먼저 저장함 → 다시 받아서 합쳐요.
+        if (res.status !== 409) throw new Error("write " + res.status);
         if (attempt === 3) throw new Error("conflict");
       }
-      setStatus(token() ? "ok" : "local");
+      await checkPending();
+      setStatus("ok");
     } catch (e) {
-      if (e && e.auth) setStatus("auth", "토큰을 확인해 주세요");
+      if (e && e.auth) { ls(KEY.dev, null); setStatus("local"); schedule(3000); }
       else if (!navigator.onLine) setStatus("offline");
       else setStatus("error", String((e && e.message) || e));
       // 잠깐 끊긴 거라면 조금 있다가 알아서 다시 해 봐요.
@@ -364,7 +361,6 @@
 
   // ---------- 밖에서 쓰는 기능 ----------
   window.Store = {
-    repo: R,
     list(col) {
       return Object.values(db[col] || {}).filter((r) => r && !r.del);
     },
@@ -427,16 +423,19 @@
       if (!name) return "";
       if (photoUrls.has(name)) return photoUrls.get(name);
       if (/^(https?:|data:|blob:|\/|\.\/|photos\/)/.test(name)) return name;
-      return RAW + "photos/" + encodeURIComponent(name);
+      return `${API}/photo/${encodeURIComponent(name)}?k=${encodeURIComponent(token())}`;
     },
     pendingPhotoCount() {
       return pendingPhotos.size;
     },
     // 연결
     token,
-    setToken(v) {
-      ls(KEY.token, v ? String(v).trim() : null);
-      schedule(0);
+    // 새 폰 허락
+    pendingJoins() { return pendingJoins.slice(); },
+    async approve(id, ok) {
+      await fetch(`${API}/approve`, { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, auth()), body: JSON.stringify({ id, ok: !!ok }) }).catch(() => {});
+      pendingJoins = pendingJoins.filter((r) => r.id !== id);
+      setStatus(status.state, status.msg);
     },
     me() {
       const v = ls(KEY.me);
@@ -446,23 +445,8 @@
     setMe(v) {
       if (this.me() || (v !== "him" && v !== "her")) return;
       ls(KEY.me, v);
+      schedule(0);
       emit();
-    },
-    // 토큰이 이 저장소에 쓸 수 있는지 미리 확인해요.
-    async checkToken(tk) {
-      try {
-        const res = await fetch(`https://api.github.com/repos/${R.owner}/${R.name}`, {
-          headers: { Authorization: "Bearer " + tk, Accept: "application/vnd.github+json" },
-          cache: "no-store",
-        });
-        if (res.status === 401) return { ok: false, msg: "토큰이 맞지 않아요" };
-        if (!res.ok) return { ok: false, msg: "저장소를 볼 수 없는 토큰이에요" };
-        const j = await res.json();
-        if (j.permissions && j.permissions.push === false) return { ok: false, msg: "쓰기 권한이 없는 토큰이에요" };
-        return { ok: true };
-      } catch (e) {
-        return { ok: false, msg: "인터넷 연결을 확인해 주세요" };
-      }
     },
     sync,
     status() {

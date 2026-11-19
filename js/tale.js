@@ -250,6 +250,7 @@
     if (k === "later" || k === "wear") { advance(); return; }
     if (k === "closet-wear") { setWear(v); refreshArt(); closet(); return; }
     if (k === "closet-close") { close(); return; }
+    if (k === "ask-yes" || k === "ask-no") { const f = askFn; askFn = null; close(); if (f) f(k === "ask-yes"); return; }
   }
   function refreshArt() { wearCache.t = 0; document.dispatchEvent(new CustomEvent("hsd:wear")); }
   function close() {
@@ -291,6 +292,23 @@
     banner.hidden = false;
   }
 
+  // ---------- 물어보기 (새 폰 허락 같은 것) ----------
+  let askFn = null;
+  function ask(text, yes, no, fn) {
+    ensure();
+    askFn = fn;
+    root.hidden = false;
+    root.classList.add("closet");
+    cur = null;
+    $("taleHead").textContent = "알림";
+    $("taleFace").parentNode.hidden = true;
+    $("taleName").textContent = "";
+    $("taleLine").textContent = text;
+    $("taleMore").hidden = true;
+    $("taleGift").hidden = true;
+    $("taleBtns").innerHTML = `<button class="btn" data-tale="ask-no">${esc(no)}</button><button class="btn primary" data-tale="ask-yes">${esc(yes)}</button>`;
+  }
+
   // ---------- 옷장 ----------
   function closet() {
     ensure();
@@ -316,5 +334,5 @@
     $("taleBtns").innerHTML = `<button class="btn primary" data-tale="closet-close">닫기</button>`;
   }
 
-  window.Tale = { beats, owned, unseen, markSeen, notify, play, closet, wearOf, setWear, GIFTS, isOpen: () => !!(root && !root.hidden) };
+  window.Tale = { ask, beats, owned, unseen, markSeen, notify, play, closet, wearOf, setWear, GIFTS, isOpen: () => !!(root && !root.hidden) };
 })();

@@ -731,11 +731,11 @@
     let text;
     let cls = st.state;
     if (st.state === "syncing") text = "저장 중";
-    else if (st.state === "auth") text = "이 폰에 저장됨";
+    else if (st.state === "wait") { text = "쓰던 폰에서 허락을 기다리는 중"; cls = "syncing"; }
     else if (st.state === "offline") text = "인터넷이 없어요 · 이 폰에 저장됨";
     else if (st.state === "error") text = "저장 실패 · 눌러서 다시 시도";
     else if (!Store.token()) { text = "이 폰에 저장됨"; cls = "local"; }
-    else text = "모두 저장됨";
+    else text = "둘이 같이 저장됨";
     if (pend && Store.token() && st.state !== "syncing") text += ` · 사진 ${pend}장 대기`;
     $("btnSync").setAttribute("aria-label", text);
     $("btnSync").dataset.state = text;
@@ -1549,8 +1549,16 @@
     if (state.view !== "home") { renderMoodTags(); renderScenePlant(); }
     talePing();
   });
+  let asking = "", waitTold = false;
   Store.onStatus(() => {
     renderSync();
+    if (Store.status().state === "wait" && !waitTold) { waitTold = true; toast("새 폰이에요. 쓰던 폰에서 허락을 눌러 주세요"); }
+    const reqs = Store.pendingJoins();
+    if (reqs.length && window.Tale && !asking && !Tale.isOpen() && !openModalEl()) {
+      const r = reqs[0];
+      asking = r.id;
+      Tale.ask(`새 폰이 "${WHO[r.who]}"(으)로 들어오려고 해요. 우리 폰이 맞으면 허락해 주세요.`, "허락", "아니야", (ok) => { Store.approve(r.id, ok).then(() => { asking = ""; toast(ok ? "새 폰을 허락했어요" : "막았어요"); }); });
+    }
 
   });
 
