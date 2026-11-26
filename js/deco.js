@@ -52,7 +52,7 @@
   // T0 전의 것은 예전 규칙(하루에 종류마다 하나)으로 셈해서, 이미 받은 것은 그대로예요.
   const T0 = 1795692000000; // 2026-11-26 20:20 (한국 시간)
   const PATTERN = ["item", "pet", "mood", "item", "pj", "ban"];
-  const ACTS = "출석, 기분 고르기, 질문 답, 하트, 쪽지, 기록, 할 일, 일기, 일정";
+  const ACTS = "출석, 기분 고르기, 질문 답, 하트, 쪽지, 기록, 할 일, 일기, 일기 댓글과 반응, 일정";
   const cut = (t0) => { const t = String(t0 || "").trim(); return t.length > 10 ? t.slice(0, 10) + "…" : t; };
   let cache = null, kNow = 0, needCache = null, giftCount = 0;
   // 동물이 오는 순서: 예전 규칙으로 받은 것(과 그 뒤 두 마리)까지는 그대로, 그다음부터는 날아다니는 친구와 땅 친구가 번갈아 와요
@@ -116,6 +116,9 @@
     const acts = [];
     const PAIR = { "a:": "출석해서", "m:": "오늘의 기분을 골라서", "q:": "오늘의 질문에 답해서", "p:": "하트를 보내서" };
     Object.keys(PAIR).forEach((pre) => St.pairKeys(pre).forEach((k) => ["him", "her"].forEach((w) => { const t = St.pairTime(k, w); if (St.pair(k, w) && t >= T0) acts.push({ t, k: k + w, who: w, why: PAIR[pre] }); })));
+    // 일기에 남긴 반응(일기마다 한 번)과 댓글(달 때마다)
+    St.pairKeys("dr:").forEach((k) => ["him", "her"].forEach((w) => { const t = St.pairTime(k, w); if (St.pair(k, w) && t >= T0) acts.push({ t, k: k + w, who: w, why: "일기에 반응을 남겨서" }); }));
+    St.pairKeys("dc:").forEach((k) => ["him", "her"].forEach((w) => { const v = St.pair(k, w); if (Array.isArray(v)) v.forEach((c) => { if (c && c.t >= T0) acts.push({ t: c.t, k: k + w + c.i, who: w, why: "일기에 댓글을 달아서" }); }); }));
     const REC = {
       notes: (r) => "쪽지를 보내서",
       entries: (r) => (r.title || r.place ? `'${cut(r.title || r.place)}' 기록을 남겨서` : "기록을 남겨서"),

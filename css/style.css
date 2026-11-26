@@ -1729,3 +1729,29 @@ button.day-it:active { transform: translateY(1px); }
 .mood-empty { margin: 0 0 6px; padding: 6px 8px; font-size: 13px; line-height: 18px; color: #8a4a5a; background: #ffeef2; box-shadow: inset 0 0 0 2px #ffc2d0; word-break: keep-all; }
 .pal-warp { position: absolute; z-index: 7; pointer-events: none; image-rendering: pixelated; }
 .pal-warp[hidden] { display: none; }
+
+/* ---------- 일기: 반응과 댓글 ---------- */
+.post-react { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 6px 2px 0; min-height: 36px; }
+.post-react .pr { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px 3px 5px; background: #fdf5e2; box-shadow: inset 0 0 0 2px #9cc0e6; font-size: 12.5px; line-height: 18px; }
+.post-react .pr.her { box-shadow: inset 0 0 0 2px #f0a8c0; }
+.post-react .pr i { font-style: normal; color: var(--ink-soft); }
+.post-react .pr.boing { animation: boing .5s var(--ease); }
+.post-react .link { min-height: 32px; margin-left: auto; }
+.react-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 4px; max-height: 136px; overflow-y: auto; overscroll-behavior: contain; margin: 4px 2px 2px; padding: 6px; background: #fdf5e2; box-shadow: inset 0 0 0 2px #e6d6b0; }
+.react-btn { display: flex; align-items: center; justify-content: center; height: 36px; border: 0; padding: 0; background: #fffaf0; box-shadow: inset 0 0 0 2px #e6d6b0; }
+.react-btn.active { background: var(--butter); box-shadow: inset 0 0 0 2px var(--ink); }
+.react-btn:active { transform: scale(.9); }
+.react-pick .link { grid-column: 1 / -1; min-height: 30px; justify-self: end; }
+.react-none { grid-column: 1 / -1; margin: 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); word-break: keep-all; }
+.post-cmts { display: flex; flex-direction: column; gap: 4px; margin: 6px 2px 0; }
+.cmt { position: relative; padding: 4px 30px 5px 12px; background: #fffaf0; box-shadow: inset 5px 0 0 0 #4f86c0; }
+.cmt.her { box-shadow: inset 5px 0 0 0 #e0709a; }
+.cmt b { font-weight: normal; font-size: 12.5px; color: var(--ink-soft); margin-right: 6px; }
+.cmt p { display: inline; margin: 0; white-space: pre-wrap; word-break: break-word; }
+.cmt small { display: block; font-size: 11px; line-height: 14px; color: var(--ink-soft); }
+.cmt-del { position: absolute; right: 2px; top: 2px; width: 28px; height: 28px; border: 0; background: none; color: #b0948a; font: inherit; font-size: 16px; line-height: 28px; }
+.cmt-form { display: flex; gap: 6px; margin: 6px 2px 2px; }
+.cmt-form input { flex: 1 1 auto; min-width: 0; min-height: 40px; }
+.cmt-form .btn.small { min-height: 40px; flex: 0 0 auto; }
+.nav-btn { position: relative; }
+.nav-btn.dot::after { content: ""; position: absolute; right: 22%; top: 6px; width: 9px; height: 9px; background: #e05a88; box-shadow: 0 0 0 2px var(--ink); }

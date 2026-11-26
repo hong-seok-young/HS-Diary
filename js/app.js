@@ -962,9 +962,26 @@
   function sortedPosts() {
     return Store.list("diary").sort((a, b) => String(b.date).localeCompare(String(a.date)) || (b.t || 0) - (a.t || 0));
   }
+  // 일기마다 반응(가진 기분 얼굴 하나)과 댓글을 남겨요. 사람마다 따로 저장돼서 둘이 동시에 남겨도 안 겹쳐요.
+  let reactOpen = "";
+  const reactOf = (id, w) => Number(Store.pair("dr:" + id, w)) || 0;
+  function commentsOf(id) {
+    const out = [];
+    ["him", "her"].forEach((w) => { const v = Store.pair("dc:" + id, w); if (Array.isArray(v)) v.forEach((c) => { if (c && !c.d) out.push({ w, i: c.i, t: c.t, x: c.x }); }); });
+    return out.sort((a, b) => a.t - b.t);
+  }
+  function stamp(t) { const d = new Date(t), p2 = (n) => String(n).padStart(2, "0"); return `${d.getMonth() + 1}.${d.getDate()} ${p2(d.getHours())}:${p2(d.getMinutes())}`; }
   function postHtml(p, i) {
     const who = p.author === "her" ? "her" : "him";
     const long = (p.text || "").length > 120 || (p.text || "").split("\n").length > 4;
+    const me = Store.me();
+    const mine = me ? reactOf(p.id, me) : 0;
+    const faces = ["him", "her"].map((w) => { const r = reactOf(p.id, w); return r && window.Moods ? `<span class="pr ${w}">${Moods.html(r, false)}<i>${esc(WHO[w])}</i></span>` : ""; }).join("");
+    const own = window.Deco ? Deco.ownedMoods() : [];
+    const pick = reactOpen === p.id
+      ? `<div class="react-pick">${own.length ? own.slice().reverse().map((n) => `<button class="react-btn${mine === n ? " active" : ""}" data-react="${n}" aria-label="${esc(Moods.name(n))}">${Moods.html(n, false)}</button>`).join("") + (mine ? '<button class="link" data-react="0">지우기</button>' : "") : '<p class="react-none">아직 기분 얼굴이 없어요. 선물로 받으면 여기서 고를 수 있어요.</p>'}</div>`
+      : "";
+    const cs = commentsOf(p.id);
     return `
       <article class="post box" data-id="${esc(p.id)}" style="--i:${Math.min(i || 0, 8)}">
         <header class="post-head">
@@ -974,13 +991,42 @@
         </header>
         ${galleryHtml(p.photos, "일기 사진")}
         ${p.text ? `<p class="post-text${long ? " clamp" : ""}">${esc(p.text)}</p>${long ? '<button class="link more" data-more>더 보기</button>' : ""}` : ""}
+        <div class="post-react">${faces}${me ? `<button class="link" data-react-open>${reactOpen === p.id ? "닫기" : mine ? "반응 바꾸기" : "반응 남기기"}</button>` : ""}</div>
+        ${pick}
+        ${cs.length ? `<div class="post-cmts">${cs.map((c) => `<div class="cmt ${c.w}"><b>${esc(WHO[c.w])}</b><p>${esc(c.x)}</p><small>${stamp(c.t)}</small>${c.w === me ? `<button class="cmt-del" data-cdel="${esc(c.i)}" aria-label="댓글 지우기">×</button>` : ""}</div>`).join("")}</div>` : ""}
+        ${me ? `<form class="cmt-form" data-cform><input type="text" maxlength="200" placeholder="댓글 쓰기" autocomplete="off" aria-label="댓글"><button class="btn small" type="submit">남기기</button></form>` : ""}
       </article>`;
   }
+  // 상대가 남긴 댓글과 반응 중 아직 못 본 것
+  function diaryNews() {
+    const me = Store.me();
+    if (!me) return 0;
+    const o = partnerOf(me);
+    let seen = 0;
+    try { seen = Number(localStorage.getItem("hsd.dseen")) || 0; } catch (e) { /* 그냥 둬요 */ }
+    let n = 0;
+    Store.pairKeys("dc:").forEach((k) => { const v = Store.pair(k, o); if (Array.isArray(v)) v.forEach((c) => { if (c && !c.d && c.t > seen) n++; }); });
+    Store.pairKeys("dr:").forEach((k) => { if (Store.pair(k, o) && Store.pairTime(k, o) > seen) n++; });
+    return n;
+  }
+  let diaryTold = 0;
+  function renderDiaryDot() {
+    const n = diaryNews(), b = document.querySelector('.nav-btn[data-go="diary"]');
+    if (b) b.classList.toggle("dot", n > 0 && state.view !== "diary");
+    if (n > diaryTold && state.view !== "diary") toast(`${WHO[partnerOf(Store.me())]}${batchimOf(WHO[partnerOf(Store.me())]) ? "이" : ""}가 일기에 ${n === 1 ? "댓글이나 반응을" : `댓글·반응 ${n}개를`} 남겼어요`);
+    diaryTold = n;
+  }
+  function batchimOf(w) { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; }
   function renderDiary() {
     talePing();
     const list = sortedPosts();
-    $("postList").innerHTML = list.map(postHtml).join("");
+    const html = list.map(postHtml).join("");
+    if (window.MORPH) MORPH($("postList"), html); else $("postList").innerHTML = html;
     $("postEmpty").hidden = list.length > 0;
+    // 일기장을 보고 있으면 상대가 남긴 것은 본 걸로
+    try { localStorage.setItem("hsd.dseen", String(Date.now())); } catch (e) { /* 그냥 둬요 */ }
+    diaryTold = 0;
+    renderDiaryDot();
   }
 
   function renderView() {
@@ -1355,7 +1401,39 @@
         const text = post.querySelector(".post-text");
         const clamp = text.classList.toggle("clamp");
         more.textContent = clamp ? "더 보기" : "접기";
+        return;
       }
+      const me = Store.me(), id = post.dataset.id;
+      if (!me) return;
+      if (ev.target.closest("[data-react-open]")) { reactOpen = reactOpen === id ? "" : id; renderDiary(); return; }
+      const rb = ev.target.closest("[data-react]");
+      if (rb) {
+        const n = Number(rb.dataset.react) || 0;
+        silently(() => Store.setPair("dr:" + id, me, n));
+        reactOpen = "";
+        renderDiary();
+        if (n) { const el = document.querySelector(`.post[data-id="${id}"] .pr.${me}`); if (el) { play(el, "boing"); burstAt(el, 6, "heart"); } }
+        return;
+      }
+      const del = ev.target.closest("[data-cdel]");
+      if (del) {
+        const cur = (Store.pair("dc:" + id, me) || []).map((c) => (c.i === del.dataset.cdel ? { i: c.i, t: c.t, d: 1 } : c));
+        silently(() => Store.setPair("dc:" + id, me, cur));
+        renderDiary();
+      }
+    });
+    $("postList").addEventListener("submit", (ev) => {
+      const f = ev.target.closest("[data-cform]");
+      if (!f) return;
+      ev.preventDefault();
+      const post = f.closest(".post"), me = Store.me(), inp = f.querySelector("input");
+      const text = inp.value.trim().slice(0, 200);
+      if (!post || !me || !text) { inp.focus(); return; }
+      const cur = (Store.pair("dc:" + post.dataset.id, me) || []).slice();
+      cur.push({ i: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), t: Date.now(), x: text });
+      inp.value = "";
+      silently(() => Store.setPair("dc:" + post.dataset.id, me, cur));
+      renderDiary();
     });
     $("dWho").addEventListener("click", (ev) => {
       const c = ev.target.closest("[data-who]");
@@ -1593,8 +1671,10 @@
     if (openModalEl()) { renderSync(); return; }
     renderView();
     if (state.view !== "home") { renderMoodTags(); renderScenePlant(); }
+    if (state.view !== "diary") renderDiaryDot();
     talePing();
   });
+  setTimeout(() => { if (state.view !== "diary") renderDiaryDot(); }, 1500);
   let asking = "", waitTold = false;
   Store.onStatus(() => {
     renderSync();
