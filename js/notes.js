@@ -122,9 +122,13 @@
     knownQ = qs;
   }
   // 종이비행기가 (who)의 머리에 날아가 콕 꽂혀요. 맞은 사람은 머리를 부여잡고 엉엉 울어요.
+  // 비행기가 날아가 꽂히고 엉엉 우는 동안은 선물 화면이 끼어들지 않게 해요
+  let busyUntil = 0;
+  const SHOW = 1000 + 4300 + 300; // 날아가는 시간 + 우는 연출 + 여유
   function hitHead(who, fromX, fromY, done) {
     const scene = $("scene"), bob = document.querySelector(`.bob[data-who="${who}"]`);
     if (!scene || !bob) { if (done) done(); return; }
+    busyUntil = Date.now() + SHOW;
     const sr = scene.getBoundingClientRect(), tr = bob.getBoundingClientRect();
     const x1 = tr.left - sr.left + tr.width / 2 - PS, y1 = tr.top - sr.top - PS * 1.2;
     const f = document.createElement("i");
@@ -202,6 +206,7 @@
     const w = me(), ta = $("noteText");
     const text = ta.value.trim();
     if (!w || !text) { ta.focus(); return; }
+    busyUntil = Date.now() + SHOW + 400;
     H.silently(() => Store.put("notes", { from: w, to: other(w), text: text.slice(0, 300) }));
     ta.value = "";
     askNotify();
@@ -264,5 +269,5 @@
     $("mailWrite").addEventListener("click", () => { H.setPanel("note"); renderWrite(); setTimeout(() => $("noteText").focus(), 250); });
   }
 
-  window.Notes = { bind, renderScene, renderMail, renderWrite, unread: () => unread().length, tab: () => tab, open(t) { tab = t || "q"; H.setPanel("mail"); renderMail(); } };
+  window.Notes = { busy: () => Math.max(0, busyUntil - Date.now()), bind, renderScene, renderMail, renderWrite, unread: () => unread().length, tab: () => tab, open(t) { tab = t || "q"; H.setPanel("mail"); renderMail(); } };
 })();

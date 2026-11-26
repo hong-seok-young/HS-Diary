@@ -790,6 +790,9 @@
     taleT = setTimeout(() => {
       if (window.Deco) Deco.bindDrag();
       if (!Store.me() || !$("hello").hidden) return;
+      // 쪽지 비행기가 머리에 꽂히는 연출이 끝난 뒤에
+      const wait = window.Notes && Notes.busy ? Notes.busy() : 0;
+      if (wait > 0) { clearTimeout(taleT); taleT = setTimeout(talePing, wait + 100); return; }
       // 새로 열린 선물이 있으면 그것부터, 그다음에 이야기
       if (window.Deco && (Deco.celebrating() || (Nav.layers() === 0 && Deco.celebrate()))) return;
       if (window.Tale) Tale.notify();

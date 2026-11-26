@@ -461,7 +461,7 @@
   function pump(scene) {
     if (busy || !queue.length) return;
     // 선물 화면이 떠 있으면 닫힌 뒤에
-    if (window.Deco && Deco.celebrating && Deco.celebrating()) { setTimeout(() => pump(scene), 800); return; }
+    if ((window.Deco && Deco.celebrating && Deco.celebrating()) || (window.Notes && Notes.busy && Notes.busy() > 0)) { setTimeout(() => pump(scene), 800); return; }
     busy = true;
     const i = queue.shift(), L = LEVELS[i];
     const done = () => { busy = false; setTimeout(() => pump(scene), 500); };
