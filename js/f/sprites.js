@@ -68,7 +68,7 @@
   // 귀 모양 (왼쪽 귀, 머리 왼쪽 위 기준. 오른쪽은 거울로)
   const EARS = {
     round: { at: [1, -2], rows: [".UU.", "UiiU", "UiiU"] },
-    long: { at: [3, -5], rows: ["UU.", "UiU", "UiU", "UiU", "UiU", "UUU"] },
+    long: { at: [2, -5], rows: [".UU.", "UiiU", "UiiU", "UiiU", "UiiU", "UUUU"] },
     point: { at: [1, -2], rows: ["U..", "UU.", "UiU", "UiiU"] },
     tiny: { at: [3, -1], rows: ["UU", "Ui"] },
     frog: { at: [1, -3], rows: [".UUU.", "UiiiU", "UiEiU", "UUUUU"] },
@@ -397,7 +397,7 @@
       if (!it || it.kind !== k) return;
       shapes[k] = it.shape; pal[a] = it.c[0]; pal[b] = it.c[1]; pal[c] = k === "neck" && it.shape !== "lace" ? "#ffd34d" : it.c[2];
     });
-    const key = `ch9|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
+    const key = `ch10|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
     return A.fromRows(key, charRows(who, dir, frame, pose || "", face || "", P ? pj : "", shapes), pal).uri;
   }
 
