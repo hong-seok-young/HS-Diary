@@ -441,17 +441,12 @@
     if (a === "sleep") html += `<span class="zzz" style="${L(-30)}"><i>z</i><i>z</i><i>Z</i></span><span class="zzz z2" style="${L(18)}"><i>z</i><i>z</i><i>Z</i></span>`;
     if (a === "breakfast") html += prop("mug", 3, `${L(-66)};bottom:10px`) + steam(`${L(-62)};bottom:30px`) + prop("mug", 3, `${L(56)};bottom:10px`) + steam(`${L(60)};bottom:30px`);
     if (a === "lunch") back += prop("mat", 5, `${L(-60)};bottom:2px`, "mat"), html += prop("bowl", 3, `${L(-70)};bottom:8px`) + steam(`${L(-64)};bottom:24px`) + prop("bowl", 3, `${L(56)};bottom:8px`) + steam(`${L(62)};bottom:24px`);
-    if (a === "snack") {
-      const snack = S.season === "winter" ? "bungeo" : S.season === "summer" ? "icecream" : "cake";
-      html += prop(snack, 3, `${L(-58)};bottom:34px`, "held") + prop(snack, 3, `${L(46)};bottom:34px`, "held b2");
-    }
+    // 손에 드는 것은 저절로 바뀌지 않아요. 옷장에서 직접 골라요.
     if (a === "dinner") back += prop("table", 3, `${L(58)};bottom:12px`) , html += prop("pot", 3, `${L(66)};bottom:27px`) + steam(`${L(74)};bottom:40px`);
     if (a === "dinner" || a === "campfire" || (S.dark > 0.55 && new Date(now()).getMonth() === 11)) html += `<span class="lights" style='background-image:${PIXEL.dataUri("lights", 2)}'></span>`;
     if (a === "campfire") back += `<span class="prop fire" style="${L(62)};bottom:10px">${PIXEL.sprite("fire1", 3)}${PIXEL.sprite("fire2", 3)}</span>`;
     if (a === "kite") html += `<span class="prop kite" id="kite" style="left:18%;top:14%">${PIXEL.sprite("kite", 3)}</span>`;
-    if (a === "read") html += prop("book", 3, `${L(-52)};bottom:34px`, "held") + prop("book2", 3, `${L(36)};bottom:34px`, "held b2");
-    if (a === "cafe") back += prop("cafeTable", 3, `${L(62)};bottom:12px`), html += prop("mug", 3, `${L(-60)};bottom:34px`, "held") + steam(`${L(-56)};bottom:52px`);
-    if (a === "movie") back += prop("screen", 3, `${L(66)};bottom:14px`, "screen"), html += prop("popcorn", 3, `${L(-56)};bottom:32px`, "held");
+    if (a === "movie") back += prop("screen", 3, `${L(66)};bottom:14px`, "screen");
     if (a === "stargaze") back += prop("telescope", 3, `${L(64)};bottom:12px`, "scope");
     // 특별한 날
     let hat = { him: "", her: "" };
