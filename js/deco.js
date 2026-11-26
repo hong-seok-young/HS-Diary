@@ -5,7 +5,7 @@
 //   · 석영이 출석: 동물 한 마리 / 예은이 출석: 잠옷 한 벌
 //   · 오늘의 질문에 답하거나 하트를 보내면: 이름표 하나
 //   · 그날 처음 기록, 할 일, 일기, 일정을 남기면: 장식품 하나
-//   · 그날 오늘의 기분을 고르면: 기분 얼굴 하나
+//   · 둘 중 한 사람이라도 출석하면: 기분 얼굴 하나 (처음엔 하나도 없어요)
 // - 열릴 때는 검은 그림자와 대화가 먼저 나오고, 누르면 폭죽과 함께 모습이 드러나요.
 // - 고른 것(입은 잠옷, 그림에 둔 동물, 이름표)은 상대 폰에도 바로 보여요.
 // ============================================================
@@ -39,11 +39,11 @@
   const IT0 = window.Items ? Items.LIST.map((x) => x.id) : [];
   const FIRST_IT = ["cake0", "e_gr1", "h_bow0", "n_scarf12", "cone7", "h_crown8", "e_sun15", "boba10"].filter((id) => IT0.indexOf(id) >= 0);
   const ITEMS = FIRST_IT.concat(shuffled(IT0.filter((id) => FIRST_IT.indexOf(id) < 0), 19930811));
-  // 기분 얼굴: 1~20번(기본 얼굴)은 처음부터 있고, 21번부터 하나씩 열려요
+  // 기분 얼굴: 처음엔 하나도 없고, 500개 모두 하나씩 열려요. 자주 쓰는 마음이 먼저 나와요.
   const MD = window.Moods;
   const MD0 = [];
-  if (MD) for (let n = MD.NF + 1; n <= MD.COUNT; n++) MD0.push(n);
-  const FIRST_MD = MD ? [[2, 7], [3, 8], [1, 11], [5, 12], [11, 20], [4, 1], [7, 10], [8, 6]].map(([b, f]) => MD.idOf(b, f)) : [];
+  if (MD) for (let n = 1; n <= MD.COUNT; n++) MD0.push(n);
+  const FIRST_MD = MD ? [[0, 2], [0, 4], [0, 1], [0, 3], [2, 7], [0, 5], [0, 16], [3, 8], [0, 11], [0, 6], [1, 19], [0, 7], [5, 12], [0, 17], [11, 20], [0, 10]].map(([b, f]) => MD.idOf(b, f)) : [];
   const MOODS = FIRST_MD.concat(shuffled(MD0.filter((n) => FIRST_MD.indexOf(n) < 0), 20260710));
   const PETS = FIRST_PET.concat(shuffled(ids.filter((id) => FIRST_PET.indexOf(id) < 0), 19970929));
 
@@ -55,10 +55,9 @@
     if (!St) return [];
     const days = {};
     const day = (d) => (days[d] = days[d] || {});
-    St.pairKeys("a:").forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) day(k.slice(2))["a_" + w] = St.pairTime(k, w) || 1; }); });
+    St.pairKeys("a:").forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) { const o = day(k.slice(2)), t = St.pairTime(k, w) || 1; o["a_" + w] = t; if (!o.m || t < o.m) o.m = t; } }); });
     St.pairKeys("q:").concat(St.pairKeys("p:")).forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) { const o = day(k.slice(2)), t = St.pairTime(k, w) || 1; if (!o.q || t < o.q) { o.q = t; o.qk = k[0]; } } }); });
     ["entries", "plans", "diary", "cal"].forEach((col) => St.list(col).forEach((r) => { if (!r.c) return; const o = day(dayKey(new Date(r.c))); if (!o.r || r.c < o.r) o.r = r.c; }));
-    St.pairKeys("m:").forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) { const o = day(k.slice(2)), t = St.pairTime(k, w) || 1; if (!o.m || t < o.m) o.m = t; } }); });
     const n = { pet: 0, pj: 0, ban: 1, item: 0, mood: 0 };
     const src = { pet: PETS, pj: PJS, ban: null, item: ITEMS, mood: MOODS };
     const out = [];
@@ -385,14 +384,14 @@
       unlocks().forEach((u) => { if (u.id.slice(0, today.length) < today) s1[u.id] = 1; });
       try { localStorage.setItem(SEEN, JSON.stringify(s1)); } catch (e) { /* 그냥 둬요 */ }
     }
-    // 기분 얼굴 선물이 생기기 전에 골랐던 날들은 이미 본 걸로 해요 (한꺼번에 줄줄이 뜨지 않게)
+    // 기분 얼굴 선물이 생기기 전에 출석했던 날들 몫은 이미 본 걸로 해요 (한꺼번에 줄줄이 뜨지 않게)
     let old = "1";
-    try { old = localStorage.getItem(SEEN + ".m"); } catch (e) { /* 그냥 둬요 */ }
+    try { old = localStorage.getItem(SEEN + ".m2"); } catch (e) { /* 그냥 둬요 */ }
     if (!old) {
       const today = "u:" + dayKey(new Date());
       const s2 = seenSet();
       unlocks().forEach((u) => { if (u.cat === "mood" && u.id.slice(0, today.length) < today) s2[u.id] = 1; });
-      try { localStorage.setItem(SEEN, JSON.stringify(s2)); localStorage.setItem(SEEN + ".m", "1"); } catch (e) { /* 그냥 둬요 */ }
+      try { localStorage.setItem(SEEN, JSON.stringify(s2)); localStorage.setItem(SEEN + ".m2", "1"); } catch (e) { /* 그냥 둬요 */ }
     }
     const s0 = seenSet();
     return unlocks().filter((u) => !s0[u.id]);
