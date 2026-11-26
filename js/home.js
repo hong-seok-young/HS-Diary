@@ -1,9 +1,11 @@
 // ============================================================
-// 우리 집: 그림 속 배경에 있는 집. 황무지에서 시작해서, 둘이 이것저것 할수록 조금씩 좋아져요.
-// - 집 종류 15가지 × 꾸밈 단계 = 모두 260단계. 한 단계마다 눈에 보이는 것이 하나씩 늘어요
-//   (창문, 화분, 굴뚝, 울타리, 꽃밭, 나무, 가로등 …). 꾸밈이 다 차면 다음 종류의 집으로 이사해요.
+// 우리 동네: 황무지에서 시작해서, 둘이 이것저것 할수록 동네 전체가 조금씩 자라요.
+// - 한 단계에 딱 하나씩 바뀌어요. 집만 바뀌는 게 아니라 땅에 풀이 돋고, 새싹이 나무가 되고,
+//   울타리와 가로등이 생기고, 연못에 연꽃이 피고, 하늘에 열기구가 떠요. 집도 그 사이사이에
+//   살림을 들이고, 지붕을 새로 칠하고, 공사를 해서 다음 집이 돼요.
+// - 무엇이 바뀌었는지는 그 자리에 말풍선으로 알려 줘요 (다른 폰에서 바뀐 것도 앱을 열 때).
 // - 단계는 지금까지 받은 선물 수(= 한 일의 수)로 정해요. 두 폰이 늘 같아요.
-// - 집을 누르면 지금까지의 집과 앞으로의 집을 볼 수 있어요 (js/deco.js). 옷장은 빨랫줄이에요.
+// - 집을 누르면 동네 이야기(지금까지 생긴 것과 앞으로 생길 것)를 볼 수 있어요. 옷장은 빨랫줄이에요.
 // ============================================================
 (function () {
   "use strict";
@@ -199,117 +201,303 @@
     vane: ["풍향계 단", (g, A) => { if (!A.top) return false; const [x, y] = A.top; const yy = y - 4; rect(g, x + 3, yy - 3, 1, 4, "K"); row(g, x + 1, x + 5, yy - 3, "Y"); put(g, x + 5, yy - 4, "Y"); put(g, x + 5, yy - 2, "Y"); return true; }],
     sparkle: ["반짝반짝", (g, A) => { const t = A.top || [CX, GY - 14]; [[t[0] - 9, t[1] + 1], [t[0] + 9, t[1] - 1], [A.l - 3, A.eave - 3], [A.r + 3, A.eave - 5], [t[0] + 5, t[1] - 6]].forEach(([x, y]) => { put(g, x, y, "Y"); put(g, x - 1, y, "y"); put(g, x + 1, y, "y"); put(g, x, y - 1, "y"); put(g, x, y + 1, "y"); }); return true; }],
   };
-  const FULL = ["win0", "path", "pot", "chimney", "box", "fenceL", "bush", "win1", "fenceR", "flowerbed", "heart", "tree", "lamp", "bench", "garland", "birdhouse", "apples", "vane", "sparkle"];
-  // 자리가 없어 못 그릴 때 대신 넣는 것
-  const ALT = { chimney: "flag", win0: "mat", win1: "fire", box: "mat", heart: "flag", apples: "fire", vane: "flag" };
-  // ---------- 단계 목록 ----------
-  const LEVELS = []; // { tier, step, name, need, first }
-  TIERS.forEach((T, ti) => {
-    const feats = T.feats || FULL;
-    for (let s = 0; s <= feats.length; s++) {
-      const L = LEVELS.length;
-      const need = Math.round(2.6 * L + 0.034 * L * L);
-      let name = T.name;
-      if (ti === 0 && s === 0) name = "황무지";
-      else if (s > 0) name = `${FEATS[feats[s - 1]][0]} ${T.name}`;
-      LEVELS.push({ tier: ti, step: s, name, need, first: s === 0 });
-    }
-  });
-  const levelOf = (n) => { let l = 0; for (let i = 0; i < LEVELS.length; i++) { if (n >= LEVELS[i].need) l = i; else break; } return l; };
-
-  const BASE = { o: "#7a5a48", G: "#a8d8f0", F: "#ffffff", D: "#b07a4e", d: "#8a5a36", Y: "#ffc83a", y: "#ffe27a", K: "#9a6a44", k: "#74502e", L: "#8fd67a", l: "#62b45e", M: "#b6ea96", P: "#ff8fb0", p: "#e2708e", V: "#b79cf0", A: "#7cc6f6", N: "#ff7a6a", n: "#c8a878", T: "#f0dcb0", E: "#e0c090", e: "#c4a070", S: "#cfd2dc", s: "#a8acba", C: "#ffffff", c: "#d8e8f8" };
+  // ---------- 집의 모습 ----------
+  // spec: { tier, feats: [...], roof: 색 번호(-1 은 원래 색), build: 공사 중 }
+  const ROOFS = [["분홍", "#ff9ab4", "#e2708e", "#ffc4d4"], ["하늘색", "#8fc4f6", "#64a0dc", "#bfe0ff"], ["민트색", "#7fd6c0", "#56b29c", "#b4ecdc"], ["노란색", "#ffd36a", "#e8b040", "#ffe8a0"], ["보라색", "#b79cf0", "#9478d8", "#d8c6ff"], ["주황색", "#ffa860", "#e88838", "#ffcc98"], ["빨간색", "#ff7a7a", "#e0525e", "#ffa8a0"], ["풀색", "#9fd67a", "#74b458", "#c6eea6"]];
+  const BASE = { o: "#7a5a48", G: "#a8d8f0", F: "#ffffff", D: "#b07a4e", d: "#8a5a36", Y: "#ffc83a", y: "#ffe27a", K: "#9a6a44", k: "#74502e", L: "#8fd67a", l: "#62b45e", M: "#b6ea96", P: "#ff8fb0", p: "#e2708e", V: "#b79cf0", A: "#7cc6f6", N: "#ff7a6a", n: "#c8a878", T: "#f0dcb0", E: "#e0c090", e: "#c4a070", S: "#cfd2dc", s: "#a8acba", C: "#ffffff", c: "#d8e8f8", W: "#fbeed2", R: "#ff7a7a" };
   function outline(g) {
-    const add = [];
-    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const h = g.length, w = g[0].length, add = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       if (g[y][x] !== ".") continue;
       if ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([a, b]) => g[b] && g[b][a] && g[b][a] !== "." && g[b][a] !== "o")) add.push([x, y]);
     }
     add.forEach(([x, y]) => { g[y][x] = "o"; });
-    // 빈 줄과 빈 칸을 잘라요 (아래는 땅에 맞추려고 그대로)
-    let x0 = GW, x1 = 0, y0 = GH;
-    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (g[y][x] !== ".") { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; }
-    return g.slice(y0).map((r) => r.slice(x0, x1 + 1).join(""));
+    let x0 = w, x1 = 0, y0 = h, y1 = 0;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (g[y][x] !== ".") { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    return g.slice(y0, y1 + 1).map((r) => r.slice(x0, x1 + 1).join(""));
   }
-  const cache = {};
-  // { day, nite, w, h, smoke } (크기는 도트 칸 수)
-  function img(level) {
-    level = Math.max(0, Math.min(LEVELS.length - 1, level | 0));
-    if (cache[level]) return cache[level];
+  const hcache = {};
+  function houseImg(spec) {
+    const key = [spec.tier, (spec.feats || []).join("+"), spec.roof == null ? -1 : spec.roof, spec.build ? 1 : 0].join("|");
+    if (hcache[key]) return hcache[key];
     if (!window.GArt) return null;
-    const L = LEVELS[level], T = TIERS[L.tier], feats = T.feats || FULL;
+    const T = TIERS[spec.tier];
     const g = grid();
-    const A = T.draw(g, L.step);
-    // 나무처럼 집 뒤에 서는 것도 있지만, 도트라 순서대로 얹어도 괜찮아요
-    for (let s = 0; s < L.step; s++) {
-      const k = feats[s];
-      if (FEATS[k][1](g, A) === false && ALT[k]) FEATS[ALT[k]][1](g, A);
+    const A = T.draw(g, (spec.feats || []).indexOf("weed") >= 0 ? 1 : 0);
+    (spec.feats || []).forEach((k) => { if (FEATS[k][1](g, A) === false && ALT[k]) FEATS[ALT[k]][1](g, A); });
+    let smoke = null;
+    if (A.chim && (spec.feats || []).indexOf("chimney") >= 0) smoke = [A.chim[0] + 1, A.chim[1]];
+    if (spec.build) {
+      // 공사 중: 사다리, 발판, 벽돌 더미
+      const y = A.cloud ? GY - 3 : GY, x = Math.min(GW - 4, A.r + 2), top = Math.max(2, A.eave - 4);
+      for (let yy = top; yy < y; yy++) { put(g, x, yy, "K"); put(g, x + 2, yy, "K"); if ((y - yy) % 2 === 0) put(g, x + 1, yy, "k"); }
+      row(g, Math.max(0, A.l - 2), A.r + 1, A.eave + 2, "K"); rect(g, Math.max(0, A.l - 2), A.eave + 3, 1, y - A.eave - 3, "k");
+      const bx = Math.max(1, A.l - 8); rect(g, bx, y - 2, 5, 2, "N"); rect(g, bx + 1, y - 4, 3, 2, "N"); dots(g, [[bx + 2, y - 1], [bx + 1, y - 3], [bx + 3, y - 2]], "p");
     }
-    const rows = outline(g);
     const pal = Object.assign({}, BASE, T.c || {});
-    const day = GArt.fromRows("home2|" + level, rows, pal);
-    const nite = GArt.fromRows("home2N|" + level, rows, Object.assign({}, pal, { G: "#ffe08f" }));
-    cache[level] = { day: day.uri, nite: nite.uri, w: day.w, h: day.h, smoke: null };
-    return cache[level];
+    if (spec.roof != null && spec.roof >= 0) { const r = ROOFS[spec.roof % ROOFS.length]; pal.R = r[1]; pal.r = r[2]; pal.H = r[3]; }
+    // 문 자리(도트 칸)도 같이 돌려줘요: 길을 놓을 때 써요
+    let x0 = GW;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (g[y][x] !== "." && x < x0) x0 = x;
+    let y0 = GH;
+    for (let y = 0; y < GH; y++) if (g[y].some((c) => c !== ".") && y < y0) y0 = y;
+    const rows = outline(g);
+    const day = GArt.fromRows("house|" + key, rows, pal);
+    const nite = GArt.fromRows("houseN|" + key, rows, Object.assign({}, pal, { G: "#ffe08f" }));
+    hcache[key] = { day: day.uri, nite: nite.uri, w: day.w, h: day.h, smoke: smoke ? [smoke[0] - x0 + 1, smoke[1] - y0 + 1] : null };
+    return hcache[key];
   }
-  // 그림 속 집을 지금 단계로 바꿔요. 한 단계 좋아지면 통통 튀고 무엇이 생겼는지 알려 줘요.
-  const SCALE = 2, SEENLV = "hsd.home.lv";
-  function apply() {
-    const el = document.getElementById("home");
-    if (!el || !window.Deco || !Deco.homeLevel) return;
-    const lv = Deco.homeLevel();
-    if (el.dataset.lv === String(lv)) return;
-    const r = img(lv);
-    if (!r) return;
-    el.dataset.lv = String(lv);
-    const w = r.w * SCALE, h = r.h * SCALE;
-    el.style.width = w + "px"; el.style.height = h + "px"; el.style.marginLeft = -Math.round(w / 2) + "px";
-    el.setAttribute("aria-label", "우리 집: " + LEVELS[lv].name);
-    el.innerHTML = `<img class="px day" alt="" src="${r.day}" width="${w}" height="${h}" draggable="false"><img class="px nite" alt="" src="${r.nite}" width="${w}" height="${h}" draggable="false">`;
-    let seen = null;
-    try { seen = localStorage.getItem(SEENLV); } catch (e) { /* 그냥 둬요 */ }
-    try { localStorage.setItem(SEENLV, String(lv)); } catch (e) { /* 그냥 둬요 */ }
-    if (seen !== null && lv > Number(seen)) {
-      el.classList.remove("grow"); void el.offsetWidth; el.classList.add("grow");
-      // 집 종류가 바뀔 때는 큰 축하가 따로 나와요. 꾸밈이 하나 늘 때는 여기서 작게.
-      if (!LEVELS[lv].first) {
-        const H = window.HSD || {};
-        if (H.toast) H.toast(`우리 집: ${LEVELS[lv].name}`);
-        const b = el.getBoundingClientRect();
-        if (window.FX && FX.cutePop) FX.cutePop(b.left + b.width / 2, b.top + b.height / 2, 0.6);
-      }
+  const ALT = { chimney: "flag", win0: "mat", win1: "fire", box: "mat", heart: "flag", vane: "flag" };
+
+  // ---------- 작은 그림들 (나무 새싹, 횃불, 연잎 …) ----------
+  const ART = {
+    grass: ["..L...L..", ".LlL.LlL.", "LLlLLLlLL"],
+    sprout: ["..L.L.", "..LLL.", "...l..", "...l..", ".EEEEE"],
+    sapling: ["...LL...", "..LLLL..", ".LLMLLL.", ".LLLLLl.", "..lLLl..", "...KK...", "...K....", "...K....", "..EKEE.."],
+    birdhouse: ["..A..", ".AAA.", "AAAAA", ".FFF.", ".FkF.", ".FFF."],
+    swing: ["K....K", "K....K", "K....K", "K....K", "K....K", "PPPPPP"],
+    treehouse: ["...NNNN...", "..NNNNNN..", ".NNNNNNNN.", "..TTTTTT..", "..TGGTDT..", "..TGGTDT..", ".KKKKKKKK.", "......K.K.", "......KKK.", "......K.K.", "......KKK."],
+    apples: ["..N.....", "......N.", ".N...N..", "....N..."],
+    lights: ["y...P...A.", ".k.k.k.k.k", "..M...y..."],
+    torch: [".N.", "NyN", ".y.", "KKK", ".K.", ".K.", ".K.", ".K."],
+    lily: [".LLL...LL.", "LLlLL.LLlL", ".LLL...LL."],
+    lotus: [".P.P.", "PPyPP", ".PPP."],
+    duck: ["..yy...", ".yyky..", ".yyyNN.", "yyyyy..", "yyyyyy.", ".yyyy.."],
+    balloon: ["...NNNN...", "..NNyyNN..", ".NNyyyyNN.", ".NyyNNyyN.", ".NyyNNyyN.", ".NNyyyyNN.", "..NNyyNN..", "...NyyN...", "....kk....", "...k..k...", "...KKKK...", "...KKKK..."],
+    stones: ["SS....ss..", "sS..SS....", "....sS..SS", "........sS"],
+    flowerpath: ["SSP...ssy.", "sS..SSV...", ".P..sS..SS", "....y...sS"],
+    stake: ["K....K....K", "K....K....K", "K....K....K"],
+    vine: ["P...y...V...", "lL.Ll.lL.Ll."],
+    flower: [".P.", "PyP", ".P.", ".l.", "ll."],
+  };
+  const acache = {};
+  function art(name, noOutline) {
+    const k = name + (noOutline ? "|n" : "");
+    if (acache[k]) return acache[k];
+    if (!window.GArt) return null;
+    let rows = ART[name];
+    if (name === "rainbow") {
+      rows = [];
+      for (let y = 0; y < 11; y++) { let r = ""; for (let x = 0; x < 22; x++) { const d = Math.hypot(x + 0.5 - 11, y + 0.5 - 11); r += d >= 10 && d < 11 ? "N" : d >= 9 && d < 10 ? "y" : d >= 8 && d < 9 ? "L" : d >= 7 && d < 8 ? "A" : d >= 6 && d < 7 ? "V" : "."; } rows.push(r); }
+      noOutline = true;
     }
+    if (!rows && window.PIXEL && PIXEL.rows(name)) { const p = PIXEL.rows(name); acache[k] = GArt.fromRows("tw|" + k, p.rows, p.colors); return acache[k]; }
+    if (!rows) return null;
+    const w = Math.max.apply(null, rows.map((r) => r.length));
+    let g = rows.map((r) => r.padEnd(w, "."));
+    if (!noOutline) { const gg = g.map((r) => ("." + r + ".").split("")); gg.unshift(new Array(w + 2).fill(".")); gg.push(new Array(w + 2).fill(".")); g = outline(gg); }
+    acache[k] = GArt.fromRows("tw|" + k, g, BASE);
+    return acache[k];
+  }
+
+  // ---------- 단계 목록 ----------
+  // 집 단계
+  const HS = [];
+  const H = (tier, feats, name, msg, more) => HS.push(Object.assign({ kind: "house", spec: { tier, feats, roof: -1, build: false }, name, msg }, more || {}));
+  H(0, ["weed", "sign"], "집터 팻말", "집터에 팻말을 세웠어요");
+  H(0, ["weed", "sign", "fire"], "모닥불", "빈터에 모닥불을 피웠어요");
+  H(1, [], "텐트", "빈터에 텐트를 쳤어요", { first: true });
+  H(1, ["mat", "fire"], "돗자리 깐 텐트", "텐트 앞에 돗자리를 깔고 모닥불을 피웠어요");
+  H(1, ["mat", "fire", "flag", "pot"], "깃발 꽂은 텐트", "텐트에 깃발을 꽂고 화분을 놓았어요");
+  H(2, [], "움집", "짚을 엮어 움집을 지었어요", { first: true });
+  H(2, ["mat", "path", "pot"], "살림 차린 움집", "움집 앞에 디딤돌과 화분을 놓았어요");
+  H(2, ["mat", "path", "pot", "bush", "flowerbed"], "꽃 심은 움집", "움집 둘레에 덤불과 꽃을 심었어요");
+  HS.push({ kind: "house", spec: { tier: 2, feats: ["mat", "path", "pot", "bush", "flowerbed"], roof: -1, build: true }, name: "공사 중인 움집", msg: "새 집을 지으려고 공사를 시작했어요" });
+  const BA = ["win0", "win1", "chimney", "path"], BB = ["pot", "box", "bush", "flowerbed"], BC = ["heart", "garland", "vane"];
+  const josa = (w, a, b) => { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0 ? a : b; };
+  for (let t = 3; t < TIERS.length; t++) {
+    const n = TIERS[t].name, r1 = (t * 3 + 1) % ROOFS.length, r2 = (t * 5 + 4) % ROOFS.length;
+    const sp = (feats, roof, build) => ({ tier: t, feats, roof, build: !!build });
+    HS.push({ kind: "house", spec: sp([], -1), name: n, msg: `우리 집이 ${n}${josa(n, "이", "가")} 됐어요`, first: true });
+    HS.push({ kind: "house", spec: sp(BA, -1), name: `살림 들인 ${n}`, msg: "창문을 내고 굴뚝을 올렸어요" });
+    HS.push({ kind: "house", spec: sp(BA, r1), name: `${ROOFS[r1][0]} 지붕 ${n}`, msg: `지붕을 ${ROOFS[r1][0]}으로 새로 칠했어요` });
+    HS.push({ kind: "house", spec: sp(BA.concat(BB), r1), name: `마당 가꾼 ${n}`, msg: "화분과 꽃밭으로 마당을 가꿨어요" });
+    HS.push({ kind: "house", spec: sp(BA.concat(BB), r2), name: `${ROOFS[r2][0]} 지붕 ${n}`, msg: `지붕을 ${ROOFS[r2][0]}으로 새로 칠했어요` });
+    HS.push({ kind: "house", spec: sp(BA.concat(BB, BC), r2), name: `한껏 꾸민 ${n}`, msg: "지붕에 하트와 가랜드를 달았어요" });
+    if (t < TIERS.length - 1) HS.push({ kind: "house", spec: sp(BA.concat(BB, BC), r2, true), name: `공사 중인 ${n}`, msg: "더 좋은 집을 지으려고 공사를 시작했어요" });
+  }
+  // 동네 단계 (자리마다 차례가 있어요)
+  const SC = {
+    land: [[1, "돋아난 풀", "황무지에 풀이 돋아났어요", "grass"], [2, "풀밭", "황무지가 푸른 풀밭이 됐어요", "grass"]],
+    t1: [[1, "나무 새싹", "나무 새싹이 올라왔어요", "sprout"], [2, "어린 나무", "새싹이 어린 나무로 자랐어요", "sapling"], [3, "작은 나무", "어린 나무가 제법 나무다워졌어요", "tree"], [4, "큰 나무", "나무가 크게 자랐어요", "tree"], [5, "새집 단 나무", "나무에 새집을 달았어요", "birdhouse"], [6, "그네 단 나무", "나무에 그네를 달았어요", "swing"], [7, "나무 위 오두막", "나무 위에 오두막을 지었어요", "treehouse"]],
+    t2: [[1, "둘째 새싹", "오른쪽에도 새싹이 올라왔어요", "sprout"], [2, "둘째 어린 나무", "오른쪽 새싹이 어린 나무가 됐어요", "sapling"], [3, "둘째 나무", "오른쪽 나무가 다 자랐어요", "tree"], [4, "사과나무", "오른쪽 나무에 사과가 열렸어요", "apples"], [5, "꼬마전구 나무", "나무에 꼬마전구를 둘렀어요", "lights"]],
+    fl: [[1, "첫 꽃", "첫 꽃이 피었어요", "flower"], [2, "꽃 두 송이", "꽃이 한 송이 더 피었어요", "flower"]],
+    fence: [[1, "울타리 말뚝", "울타리 말뚝을 박았어요", "stake"], [2, "나무 울타리", "울타리를 다 둘렀어요", "fence"], [3, "흰 울타리", "울타리를 하얗게 칠했어요", "fence"], [4, "꽃 넝쿨 울타리", "울타리에 꽃 넝쿨이 올라왔어요", "vine"]],
+    lamp: [[1, "횃불", "길가에 횃불을 세웠어요", "torch"], [2, "가로등", "횃불 자리에 가로등이 생겼어요", "lamp"]],
+    pond: [[1, "연잎", "연못에 연잎이 떴어요", "lily"], [2, "연꽃", "연못에 연꽃이 피었어요", "lotus"], [3, "오리 인형", "연못에 오리 인형을 띄웠어요", "duck"]],
+    path: [[1, "디딤돌 길", "집 앞에 디딤돌 길을 놓았어요", "stones"], [2, "꽃길", "디딤돌 길에 꽃이 피었어요", "flowerpath"]],
+    sky: [[1, "열기구", "하늘에 열기구가 떠다녀요", "balloon"], [2, "무지개", "언덕 너머에 무지개가 걸렸어요", "rainbow"]],
+  };
+  const QS = {};
+  Object.keys(SC).forEach((k) => { QS[k] = SC[k].map(([v, name, msg, icon]) => ({ kind: "town", spot: k, v, name, msg, icon })); });
+  // 차례: 앞부분은 하나하나 정하고, 뒤는 집 사이사이에 동네 것이 돌아가며 끼어요
+  const LEVELS = [{ kind: "start", name: "황무지", msg: "", need: 0, tier: 0, spec: { tier: 0, feats: [], roof: -1, build: false } }];
+  const take = (k) => { const x = k === "H" ? HS.shift() : QS[k].shift(); if (x) LEVELS.push(x); return !!x; };
+  ["land", "H", "t1", "H", "H", "fl", "land", "H", "fence", "t1", "H", "lamp", "H", "fence", "t2", "H", "H", "H", "pond", "t1", "H", "fl", "path", "H", "t2", "lamp", "H", "H", "t1", "sky", "H", "pond", "H", "fence", "H"].forEach(take);
+  const ROT = ["t2", "t1", "pond", "path", "fence", "sky", "t1", "t2", "t1"], PAT = ["H", "H", "S", "H", "H", "H", "S", "H", "S", "H", "H"];
+  for (let i = 0, r = 0, guard = 0; (HS.length || ROT.some((k) => QS[k].length)) && guard < 2000; i++, guard++) {
+    if (PAT[i % PAT.length] === "H") { if (!take("H")) { for (let j = 0; j < ROT.length; j++) if (take(ROT[(r + j) % ROT.length])) { r += j + 1; break; } } }
+    else { let ok = false; for (let j = 0; j < ROT.length && !ok; j++) if (take(ROT[(r + j) % ROT.length])) { r += j + 1; ok = true; } if (!ok) take("H"); }
+  }
+  // 필요한 횟수, 그리고 그때의 집 모습과 동네 모습
+  (function () {
+    let spec = LEVELS[0].spec; const st = { land: 0, t1: 0, t2: 0, fl: 0, fence: 0, lamp: 0, pond: 0, path: 0, sky: 0 };
+    LEVELS.forEach((L, i) => {
+      L.need = Math.round(3.6 * i + 0.155 * i * i);
+      if (L.kind === "house") spec = L.spec; else if (L.kind === "town") st[L.spot] = L.v;
+      L.spec = spec; L.tier = spec.tier; L.first = !!L.first; L.st = Object.assign({}, st);
+    });
+  })();
+  const levelOf = (n) => { let l = 0; for (let i = 0; i < LEVELS.length; i++) { if (n >= LEVELS[i].need) l = i; else break; } return l; };
+  // 그 단계의 집 그림 (축하 화면용), 그 단계에서 생긴 것의 작은 그림 (목록용)
+  const img = (level) => houseImg(LEVELS[Math.max(0, Math.min(LEVELS.length - 1, level | 0))].spec);
+  function icon(level) {
+    const L = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, level | 0))];
+    if (L.kind !== "town") { const r = houseImg(L.spec); return r ? { uri: r.day, w: r.w, h: r.h } : null; }
+    return art(L.icon);
+  }
+
+  // ---------- 그림 속에 놓기 ----------
+  const SCALE = 2, SEEN = "hsd.town.seen";
+  const $ = (id) => document.getElementById(id);
+  let layer = null;
+  function ensureLayer(scene) {
+    if (layer && layer.isConnected) return layer;
+    layer = document.createElement("div");
+    layer.className = "sc-town";
+    const ground = scene.querySelector(".sc-ground");
+    scene.insertBefore(layer, ground ? ground.nextSibling : null);
+    return layer;
+  }
+  // 작은 그림 하나를 (없으면 만들어) 보이거나 숨겨요
+  function piece(parent, cls, name, show, noOutline) {
+    let el = parent.querySelector("." + cls);
+    if (!show) { if (el) el.remove(); return null; }
+    const a = art(name, noOutline);
+    if (!a) return null;
+    if (!el) { el = document.createElement("i"); el.className = "tw " + cls; parent.appendChild(el); }
+    if (el.dataset.a !== name) { el.dataset.a = name; el.innerHTML = `<img class="px" alt="" src="${a.uri}" width="${a.w * SCALE}" height="${a.h * SCALE}" draggable="false">`; el.style.width = a.w * SCALE + "px"; el.style.height = a.h * SCALE + "px"; }
+    return el;
+  }
+  // 다른 것(나무) 위에 얹기: 그 자리의 가운데 위를 기준으로
+  function over(el, target, scene, dx, dy) {
+    if (!el || !target) return;
+    const r = target.getBoundingClientRect(), s = scene.getBoundingClientRect();
+    if (!r.width) return;
+    el.style.left = Math.round(r.left - s.left + r.width / 2 - el.offsetWidth / 2 + dx) + "px";
+    el.style.bottom = Math.round(s.bottom - r.top + dy) + "px";
+  }
+  let shown = -1;
+  function apply() {
+    const scene = $("scene"), home = $("home");
+    if (!scene || !home || !window.Deco || !Deco.homeLevel) return;
+    const lv = Deco.homeLevel(), L = LEVELS[lv], st = L.st;
+    const lay = ensureLayer(scene);
+    // 땅, 울타리
+    scene.dataset.land = String(st.land); scene.dataset.fence = String(st.fence);
+    // 나무: 새싹 → 어린 나무 → 작은 나무 → 큰 나무, 그 위에 새집·그네·오두막
+    const t1 = scene.querySelector(".sc-tree.t1"), t2 = scene.querySelector(".sc-tree.t2");
+    if (t1) { t1.classList.toggle("tw-off", st.t1 < 3); t1.classList.toggle("tw-small", st.t1 === 3); }
+    if (t2) { t2.classList.toggle("tw-off", st.t2 < 3); }
+    piece(lay, "tw-t1", st.t1 === 1 ? "sprout" : "sapling", st.t1 === 1 || st.t1 === 2);
+    piece(lay, "tw-t2", st.t2 === 1 ? "sprout" : "sapling", st.t2 === 1 || st.t2 === 2);
+    over(piece(lay, "tw-bird", "birdhouse", st.t1 === 5), t1, scene, 14, -22);
+    over(piece(lay, "tw-swing", "swing", st.t1 === 6), t1, scene, 0, -44);
+    over(piece(lay, "tw-thouse", "treehouse", st.t1 >= 7), t1, scene, 0, -26);
+    over(piece(lay, "tw-apples", "apples", st.t2 >= 4, true), t2, scene, 0, -14);
+    over(piece(lay, "tw-lights", "lights", st.t2 >= 5, true), t2, scene, 0, -16);
+    // 꽃, 가로등
+    const fs = scene.querySelectorAll(".sc-flower");
+    fs.forEach((f, i) => f.classList.toggle("tw-off", i >= st.fl));
+    const lamp = scene.querySelector(".sc-lamp"), glow = scene.querySelector(".sc-glow");
+    if (lamp) lamp.classList.toggle("tw-off", st.lamp < 2);
+    if (glow) glow.classList.toggle("tw-off", st.lamp < 2);
+    piece(lay, "tw-torch", "torch", st.lamp === 1);
+    if (st.fence >= 4 && !scene.style.getPropertyValue("--vine")) { const v = art("vine", true); if (v) scene.style.setProperty("--vine", `url(${v.uri})`); }
+    scene.classList.toggle("tw-vines", st.fence >= 4);
+    // 길, 하늘
+    piece(lay, "tw-path", st.path >= 2 ? "flowerpath" : "stones", st.path >= 1, true);
+    piece(lay, "tw-balloon", "balloon", st.sky >= 1);
+    piece(lay, "tw-rainbow", "rainbow", st.sky >= 2, true);
+    // 연못 위
+    const pond = scene.querySelector(".pal-pond");
+    if (pond) { piece(pond, "tw-lily", "lily", st.pond >= 1, true); piece(pond, "tw-lotus", "lotus", st.pond >= 2); piece(pond, "tw-duck", "duck", st.pond >= 3); }
+    // 집
+    const r = houseImg(L.spec);
+    if (r && home.dataset.k !== r.day) {
+      home.dataset.k = r.day; home.dataset.lv = String(lv);
+      const w = r.w * SCALE, h = r.h * SCALE;
+      home.style.width = w + "px"; home.style.height = h + "px"; home.style.marginLeft = -Math.round(w / 2) + "px";
+      home.innerHTML = `<img class="px day" alt="" src="${r.day}" width="${w}" height="${h}" draggable="false"><img class="px nite" alt="" src="${r.nite}" width="${w}" height="${h}" draggable="false">` +
+        (r.smoke ? `<i class="tw-smoke" style="left:${r.smoke[0] * SCALE}px;top:${r.smoke[1] * SCALE - 22}px"><b></b><b></b><b></b></i>` : "");
+    }
+    home.dataset.lv = String(lv);
+    home.setAttribute("aria-label", "우리 집: " + L.name);
+    announce(lv, scene);
+    shown = lv;
+  }
+  // ---------- 새로 생긴 것 알리기: 그 자리가 통통 튀고, 말풍선이 떠요 ----------
+  const queue = [];
+  let busy = false;
+  function targetOf(L, scene) {
+    if (L.kind === "house") return $("home");
+    const q = { land: ".sc-ground", fl: ".sc-flower:not(.tw-off)", fence: ".sc-fence", path: ".tw-path", pond: ".pal-pond" }[L.spot];
+    if (L.spot === "t1") return scene.querySelector(L.v <= 2 ? ".tw-t1" : ".sc-tree.t1");
+    if (L.spot === "t2") return scene.querySelector(L.v <= 2 ? ".tw-t2" : ".sc-tree.t2");
+    if (L.spot === "lamp") return scene.querySelector(L.v === 1 ? ".tw-torch" : ".sc-lamp");
+    if (L.spot === "sky") return scene.querySelector(L.v === 1 ? ".tw-balloon" : ".tw-rainbow");
+    if (L.spot === "fl") { const a = scene.querySelectorAll(q); return a[a.length - 1] || null; }
+    return scene.querySelector(q);
+  }
+  function announce(lv, scene) {
+    let seen = null;
+    try { seen = localStorage.getItem(SEEN); } catch (e) { /* 그냥 둬요 */ }
+    try { localStorage.setItem(SEEN, String(lv)); } catch (e) { /* 그냥 둬요 */ }
+    if (seen === null || lv <= Number(seen)) return;
+    const from = Math.max(Number(seen) + 1, lv - 3); // 한꺼번에 많이 바뀌었으면 마지막 넷만
+    for (let i = from; i <= lv; i++) queue.push(i);
+    pump(scene);
+  }
+  function pump(scene) {
+    if (busy || !queue.length) return;
+    // 선물 화면이 떠 있으면 닫힌 뒤에
+    if (window.Deco && Deco.celebrating && Deco.celebrating()) { setTimeout(() => pump(scene), 800); return; }
+    busy = true;
+    const i = queue.shift(), L = LEVELS[i];
+    const done = () => { busy = false; setTimeout(() => pump(scene), 500); };
+    if (L.first) { done(); return; } // 집 종류가 바뀔 때는 큰 축하가 따로 나와요
+    const t = targetOf(L, scene);
+    const s = scene.getBoundingClientRect(), r = t && t.getBoundingClientRect().width ? t.getBoundingClientRect() : null;
+    const cx = r ? (L.spot === "land" || L.spot === "fence" ? s.left + s.width * 0.5 : r.left + r.width / 2) : s.left + s.width / 2;
+    const cy = r ? r.top : s.top + s.height * 0.6;
+    if (t && L.spot !== "land" && L.spot !== "fence") { t.classList.remove("tw-new"); void t.offsetWidth; t.classList.add("tw-new"); setTimeout(() => t.classList.remove("tw-new"), 1200); }
+    if (L.spot === "land" || L.spot === "fence") { scene.classList.remove("tw-wave"); void scene.offsetWidth; scene.classList.add("tw-wave"); setTimeout(() => scene.classList.remove("tw-wave"), 1600); }
+    if (window.FX && FX.cutePop) FX.cutePop(cx, r ? r.top + r.height / 2 : cy, 0.55);
+    const b = document.createElement("div");
+    b.className = "tw-call";
+    b.innerHTML = `<em>새로 생겼어요</em><span>${L.msg}</span>`;
+    scene.querySelectorAll(".tw-call").forEach((x) => x.remove());
+    scene.appendChild(b);
+    const bw = b.offsetWidth, x = Math.max(6, Math.min(s.width - bw - 6, cx - s.left - bw / 2));
+    b.style.left = x + "px";
+    b.style.top = Math.max(4, cy - s.top - b.offsetHeight - 10) + "px";
+    b.style.setProperty("--ax", Math.max(10, Math.min(bw - 10, cx - s.left - x)) + "px");
+    setTimeout(() => { b.classList.add("out"); setTimeout(() => { b.remove(); done(); }, 320); }, 3600);
   }
   // 빨랫줄 (누르면 옷장)
   let lineUri = "";
   function lineImg() {
     if (lineUri || !window.GArt) return lineUri;
-    const rows = [
-      "K....................K",
-      "Kk..................kK",
-      "K.kkkk..........kkkk.K",
-      "K.FPPPF.kkkkkkkk.F.F.K",
-      "K.PPPPP..F..F.F..yy..K",
-      "K..PPP...AAAAA...yy..K",
-      "K..PWP...AAAAA...yyy.K",
-      "K..PPP...AA.AA.......K",
-      "K........AA.AA.......K",
-      "K....................K",
-      "K....................K",
-    ];
-    const g = rows.map((r) => r.split(""));
-    const H0 = g.length, W0 = g[0].length, add = [];
-    const o = [];
-    for (let y = 0; y < H0 + 2; y++) o.push(new Array(W0 + 2).fill("."));
-    for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) o[y + 1][x + 1] = g[y][x];
-    for (let y = 0; y < H0 + 2; y++) for (let x = 0; x < W0 + 2; x++) { if (o[y][x] !== ".") continue; if ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([a, b]) => o[b] && o[b][a] && o[b][a] !== ".")) add.push([x, y]); }
-    add.forEach(([x, y]) => { o[y][x] = "o"; });
-    lineUri = GArt.fromRows("clothesline", o.map((r) => r.join("")), Object.assign({}, BASE, { W: "#ffffff" })).uri;
+    const rows = ["K....................K", "Kk..................kK", "K.kkkk..........kkkk.K", "K.FPPPF.kkkkkkkk.F.F.K", "K.PPPPP..F..F.F..yy..K", "K..PPP...AAAAA...yy..K", "K..PWP...AAAAA...yyy.K", "K..PPP...AA.AA.......K", "K........AA.AA.......K", "K....................K", "K....................K"];
+    const gg = rows.map((r) => ("." + r + ".").split("")); gg.unshift(new Array(24).fill(".")); gg.push(new Array(24).fill("."));
+    lineUri = GArt.fromRows("clothesline", outline(gg), Object.assign({}, BASE, { W: "#ffffff" })).uri;
     return lineUri;
   }
-  function applyLine() { const el = document.getElementById("closet"); if (el && !el.firstChild && lineImg()) el.innerHTML = `<img class="px" alt="" src="${lineUri}" width="48" height="26" draggable="false">`; }
+  function applyLine() { const el = $("closet"); if (el && !el.firstChild && lineImg()) el.innerHTML = `<img class="px" alt="" src="${lineUri}" width="48" height="26" draggable="false">`; }
   let t = 0;
-  const soon = () => { clearTimeout(t); t = setTimeout(() => { apply(); applyLine(); }, 120); };
+  const soon = () => { clearTimeout(t); t = setTimeout(() => { apply(); applyLine(); }, 150); };
   if (window.Store) Store.onChange(soon);
   document.addEventListener("DOMContentLoaded", soon);
-  window.Home = { LEVELS, TIERS, levelOf, img, apply, soon, name: (l) => (LEVELS[l] || LEVELS[0]).name, next: (l) => LEVELS[l + 1] || null };
+  window.addEventListener("resize", soon);
+  window.Home = { LEVELS, TIERS, levelOf, img, icon, apply, soon, name: (l) => (LEVELS[l] || LEVELS[0]).name, next: (l) => LEVELS[l + 1] || null };
 })();

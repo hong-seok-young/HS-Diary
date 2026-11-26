@@ -260,6 +260,8 @@
   function refreshArt() { wearCache.t = 0; document.dispatchEvent(new CustomEvent("hsd:wear")); }
   function close() {
     clearInterval(typing); typing = 0;
+    // 뒤로 가기로 닫아도, 내가 방금 남긴 이야기는 본 걸로 해요 (안 그러면 닫자마자 다시 떠요)
+    if (cur) { const who = window.Store && Store.me(); markSeen([cur.id].concat(queue.filter((b) => b.by === who).map((b) => b.id))); queue = []; }
     if (root) { root.classList.add("closing"); setTimeout(() => { root.hidden = true; root.classList.remove("closing", "closet"); }, 160); }
     cur = null;
     askFn = null;

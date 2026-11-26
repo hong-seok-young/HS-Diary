@@ -695,7 +695,7 @@
       hideMoodPop();
       const tile = (n, lazy) => `<button class="mood-btn" data-mood="${n}" aria-label="${esc(Moods.name(n))}">${lazy ? `<img class="px mood-img" alt="" data-n="${n}" src="${BLANK_IMG}" style="width:36px;height:36px">` : Moods.html(n, true)}<b>${MOODS[moodFeel(n)]}</b></button>`;
       const lock = (n, left) => `<button class="mood-btn lock" data-mood-why="${left}"><img class="px mood-img" alt="" data-n="${n}" src="${BLANK_IMG}" style="width:36px;height:36px"><b>???</b></button>`;
-      $("moodPick").innerHTML = `<p class="mood-tip">기분 ${own.length}개 / ${Moods.COUNT}개 · 무엇이든 할 때마다 선물이 하나씩 와요</p><div class="mood-pick">` +
+      $("moodPick").innerHTML = `<p class="mood-tip">기분 ${own.length}개 / ${Moods.COUNT}개 · 무엇이든 할 때마다 선물이 하나씩 와요</p>${own.length ? "" : `<p class="mood-empty">아직 기분 얼굴이 없어요. 무엇이든 ${window.Deco ? Deco.need("mood")[0] : 3}번 더 하면 첫 얼굴이 와요.</p>`}<div class="mood-pick">` +
         own.slice().reverse().map((n, i) => tile(n, i >= 20)).join("") + all.slice(own.length).map((n, k) => lock(n, k)).join("") + `</div>`;
       // 그림은 화면에 보일 때 그려요 (수백 개를 한꺼번에 그리지 않게)
       const box = $("moodPick").querySelector(".mood-pick");

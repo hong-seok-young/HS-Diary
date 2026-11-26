@@ -80,7 +80,7 @@
   function homeLine() {
     if (!window.Home) return "";
     const lv = homeLevel(), nx = Home.next(lv);
-    return `지금 ${Home.name(lv)} (${lv + 1} / ${Home.LEVELS.length})` + (nx ? ` · 다음 "${nx.name}"까지 ${nx.need - giftCount}번` : " · 끝까지 다 지었어요");
+    return `지금까지 ${lv}가지가 생겼어요 (모두 ${Home.LEVELS.length - 1}가지)` + (nx ? ` · 다음 것까지 ${nx.need - giftCount}번` : " · 동네를 다 가꿨어요");
   }
   function unlocks() {
     if (cache) return cache;
@@ -366,7 +366,7 @@
   let io = null;
   function srcOf(k) {
     const [kind, id] = k.split("|");
-    if (kind === "home") return Home.img(Number(id)).day;
+    if (kind === "home") { const ic = Home.icon(Number(id)); return ic ? ic.uri : BLANK; }
     if (kind === "item") { const it = Items.BY[id]; if (it && it.kind !== "hand") { const a = {}; a[it.kind] = id; return S().charImg(me() || "him", "down", 0, "", "", "", a); } return Items.uri(id); }
     return kind === "pet" ? S().petImg(id, "stand", "") : S().charImg(me() || "him", "down", 0, "", "", id);
   }
@@ -398,7 +398,7 @@
   function render() {
     const w = me();
     const closet = tab === "pj" || KINDS.indexOf(tab) >= 0;
-    $("decoTitle").textContent = closet ? "옷장" : tab === "pet" ? "동물 친구들" : tab === "home" ? "우리 집" : "이름표";
+    $("decoTitle").textContent = closet ? "옷장" : tab === "pet" ? "동물 친구들" : tab === "home" ? "우리 동네" : "이름표";
     // 옷장 안에는 잠옷과 손에 드는 것이 있어요
     $("decoTabs").hidden = !closet;
     $("decoTabs").innerHTML = closet ? [["pj", "잠옷"], ["hand", "손"], ["eye", "눈"], ["hat", "머리"], ["neck", "목"]].map(([k, n]) => `<button class="chip${tab === k ? " active" : ""}" data-d="ctab" data-v="${k}">${n}</button>`).join("") : "";
@@ -409,10 +409,13 @@
     const locked = (kind, id, left) => `<button class="deco-it lock${kind === "pet" ? " pet" : kind === "item" && Items.BY[id].kind === "hand" ? " item" : ""}" data-d="why" data-v="${esc(why[kind](left))}"><img class="px" alt="" data-k="${kind}|${id}" src="${BLANK}"><small>???</small></button>`;
     if (tab === "home") {
       const lv = homeLevel(), LV = Home.LEVELS;
-      tip = homeLine() + "\n무엇이든 할 때마다 조금씩 지어져요. 꾸밈이 다 차면 다음 집으로 이사해요.";
-      html = `<div class="deco-grid homes">` + LV.map((L, i) => (i <= lv
-        ? `<button class="deco-it hm${i === lv ? " on" : ""}" data-d="why" data-v="${esc(L.name)} · ${i + 1}번째 집"><img class="px" alt="" data-k="home|${i}" src="${BLANK}"><small>${esc(L.name)}</small></button>`
-        : `<button class="deco-it hm lock" data-d="why" data-v="무엇이든 ${L.need - giftCount}번 더 하면 지어져요. (${ACTS})"><img class="px" alt="" data-k="home|${i}" src="${BLANK}"><small>???</small></button>`)).join("") + `</div>`;
+      tip = homeLine() + "\n무엇이든 할 때마다 동네가 하나씩 자라요. 집만이 아니라 풀, 나무, 울타리, 연못, 하늘까지요.";
+      // 가장 최근에 생긴 것이 맨 위에, 그 아래로 앞으로 생길 것들
+      const done = [], todo = [];
+      for (let i = lv; i >= 1; i--) done.push(`<button class="deco-it hm${i === lv ? " on" : ""}" data-d="why" data-v="${esc(LV[i].msg)} (${i}번째)"><img class="px" alt="" data-k="home|${i}" src="${BLANK}"><small>${esc(LV[i].name)}</small></button>`);
+      for (let i = lv + 1; i < LV.length; i++) todo.push(`<button class="deco-it hm lock" data-d="why" data-v="무엇이든 ${LV[i].need - giftCount}번 더 하면 생겨요. (${ACTS})"><img class="px" alt="" data-k="home|${i}" src="${BLANK}"><small>???</small></button>`);
+      html = (done.length ? `<p class="deco-sub">지금까지 생긴 것 (최근 것부터)</p><div class="deco-grid homes">${done.join("")}</div>` : `<p class="deco-sub">아직 황무지예요. 무엇이든 ${LV[1].need - giftCount}번 하면 첫 변화가 생겨요.</p>`) +
+        `<p class="deco-sub">앞으로 생길 것</p><div class="deco-grid homes">${todo.join("")}</div>`;
     } else if (tab === "pj") {
       const own = ownedPajamas(), on = window.Tale ? Tale.wearOf(w) : "";
       tip = `잠옷 ${own.length}벌 / ${PJS.length}벌 · 무엇이든 할 때마다 선물이 하나씩 와요`;
@@ -599,7 +602,7 @@
       $("ulFace").parentNode.hidden = true;
       $("ulWho").textContent = "";
       $("ulWhy").textContent = u.cat === "home" ? `둘이 함께 ${Home.LEVELS[u.item].need}번을 채워서` : `${whyOf(u)} 받은 선물`;
-      utypeLine(u.cat === "home" ? (Home.LEVELS[u.item].tier === 1 ? `빈터에 ${nameOf(u)}${batchim(nameOf(u)) ? "을" : "를"} 쳤어요!` : `우리 집이 ${nameOf(u)}${batchim(nameOf(u)) ? "이" : "가"} 됐어요! 이제 하나씩 꾸며 가요.`) : `${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
+      utypeLine(u.cat === "home" ? `${Home.LEVELS[u.item].msg}!` : `${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
       const actName = u.cat === "mood" ? "오늘 기분으로" : u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? (Items.BY[u.item].kind === "hand" ? "손에 들기" : "지금 하기") : "달기";
       $("ulBtns").innerHTML = u.cat === "home" ? `<button class="btn primary" data-u="next">${uq.length ? "다음" : "좋아"}</button>` : `<button class="btn" data-u="next">${uq.length ? "다음" : "좋아"}</button><button class="btn primary" data-u="use">${actName}</button>`;
       party(u);
