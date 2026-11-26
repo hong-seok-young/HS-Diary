@@ -58,19 +58,34 @@
     scene.insertBefore(layer, $("couple"));
     pondEl = layer.querySelector(".pal-pond");
     pondEl.firstChild.src = pondImg(false);
-    ["hippo", "sheep", "cat"].forEach((kind) => {
-      const el = document.createElement("button");
-      el.className = "pal pal-" + kind;
-      el.setAttribute("aria-label", { hippo: "아기 하마", sheep: "아기 양", cat: "고양이" }[kind]);
-      el.innerHTML = `<span class="pal-clip"><img class="px" alt="" draggable="false"></span><i class="pal-say" hidden></i>`;
-      layer.appendChild(el);
-      const e = { kind, el, img: el.querySelector("img"), clip: el.querySelector(".pal-clip"), say: el.querySelector(".pal-say"), x: 0, b: 6, flip: false, st: "", t: 0, frame: "stand", face: "", tail: 1, taps: [], src: "", fx: {}, acc: 0, blinkAt: 0, swim: false, rot: 0, lift: 0, scale: 1, tx: 0, sayT: 0 };
-      el.addEventListener("pointerdown", (ev) => { ev.stopPropagation(); tap(e); });
-      el.addEventListener("click", (ev) => ev.stopPropagation());
-      ents.push(e);
-    });
     layout(true);
+    sync();
     return true;
+  }
+  // 그림에 둔 동물들 (꾸미기에서 고른 친구들). 물을 좋아하면 연못에서, 고양이 같으면 고양이처럼, 나머지는 양처럼 지내요.
+  function make(id) {
+    const sp = SP.PJ[id];
+    if (!sp) return null;
+    const swimmer = sp.fam === "w" && !ents.some((x) => x.kind === "hippo");
+    const kind = swimmer ? "hippo" : sp.fam === "c" ? "cat" : "sheep";
+    const el = document.createElement("button");
+    el.className = "pal pal-" + kind;
+    el.setAttribute("aria-label", sp.name);
+    el.innerHTML = `<span class="pal-clip"><img class="px" alt="" draggable="false"></span><i class="pal-say" hidden></i>`;
+    layer.appendChild(el);
+    const e = { kind, sp: id, el, img: el.querySelector("img"), clip: el.querySelector(".pal-clip"), say: el.querySelector(".pal-say"), x: 0, b: 6, flip: false, st: "", t: 0, frame: "stand", face: "", tail: 1, taps: [], src: "", fx: {}, acc: 0, blinkAt: 0, swim: false, rot: 0, lift: 0, scale: 1, tx: 0, sayT: 0 };
+    el.addEventListener("pointerdown", (ev) => { ev.stopPropagation(); tap(e); });
+    el.addEventListener("click", (ev) => ev.stopPropagation());
+    if (kind === "hippo") { e.x = (pond.x0 + pond.x1) / 2; e.swim = true; e.st = "swim"; e.t = rand(4, 9); }
+    if (kind === "sheep") { e.x = W * rand(0.55, 0.9); e.b = rand(5, 10); e.st = "graze"; e.t = rand(2, 4); }
+    if (kind === "cat") { e.x = W * rand(0.45, 0.85); e.b = rand(2, 6); e.st = "loaf"; e.t = rand(2, 4); }
+    return e;
+  }
+  function sync() {
+    if (!layer) return;
+    const want = window.Deco ? Deco.placed() : [];
+    for (let i = ents.length - 1; i >= 0; i--) if (want.indexOf(ents[i].sp) < 0) { ents[i].el.remove(); ents.splice(i, 1); }
+    want.forEach((id) => { if (!ents.some((e) => e.sp === id)) { const e = make(id); if (e) ents.push(e); } });
   }
   function layout(first) {
     W = scene.clientWidth; H = scene.clientHeight;
@@ -78,17 +93,13 @@
     pond = { x0: Math.max(6, Math.round(W * 0.03)), x1: Math.max(6, Math.round(W * 0.03)) + pw, b: 1, water: 13 };
     pondEl.style.left = pond.x0 + "px";
     pondEl.style.width = pw + "px";
-    if (first) {
-      ents.forEach((e) => {
-        if (e.kind === "hippo") { e.x = (pond.x0 + pond.x1) / 2; e.swim = true; e.st = "swim"; e.t = rand(4, 9); }
-        if (e.kind === "sheep") { e.x = W * 0.78; e.b = 8; e.st = "graze"; e.t = rand(2, 4); }
-        if (e.kind === "cat") { e.x = W * 0.66; e.b = 4; e.st = "loaf"; e.t = rand(2, 4); }
-      });
-    }
   }
 
   // ---------- 말풍선, 효과 ----------
+  const OWN = { hippo: 1, sheep: 1, cat: 1 };
   function say(e, text, ms) {
+    // 손으로 그린 세 친구 말고는 저마다 "뀨" 하고 울어요
+    if (!OWN[e.sp]) text = String(text).replace(/음…메…|메에…|메에!|메에/g, "뀨").replace(/냐옹|야옹|냥!|냥|냐\?/g, "뀨").replace("뿌우~", "뀨우~").replace("골골골", "뀨르르");
     e.say.textContent = text;
     e.say.hidden = false;
     e.sayT = (ms || 1800) / 1000;
@@ -496,9 +507,7 @@
   // ---------- 그리기 ----------
   function render(e) {
     let src;
-    if (e.kind === "hippo") src = SP.hippoImg(e.frame, e.face);
-    if (e.kind === "sheep") src = SP.sheepImg(e.frame, e.face, env().wet);
-    if (e.kind === "cat") src = SP.catImg(e.frame, e.face, e.tail);
+    src = SP.petImg(e.sp, e.frame, e.face, env().wet, e.tail);
     if (src !== e.src) { e.img.src = src; e.src = src; }
     const iw = e.img.naturalWidth * SC || 50;
     e.img.style.width = iw + "px";
@@ -509,7 +518,7 @@
     e.el.style.width = iw + "px";
     e.img.style.transform = `scaleX(${e.flip ? -1 : 1}) rotate(${e.rot || 0}deg) scale(${e.scale || 1})`;
     // 헤엄칠 땐 물 위로 머리만
-    const sw = SP.HIPPO_SWIM || 8;
+    const sw = e.sp === "hippo" ? SP.HIPPO_SWIM || 8 : 15;
     const swimH = Math.round(sw * SC + (e.fx.sink ? -e.fx.sink * sw * SC : 0));
     e.clip.style.height = e.kind === "hippo" && e.swim ? Math.max(0, swimH) + "px" : "";
     e.el.classList.toggle("swim", e.kind === "hippo" && e.swim);
@@ -553,5 +562,7 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(start, 300));
   else setTimeout(start, 300);
-  window.Pals = { ents, tap, env };
+  document.addEventListener("hsd:pets", sync);
+  if (window.Store) Store.onChange(() => setTimeout(sync, 50));
+  window.Pals = { ents, tap, env, sync };
 })();

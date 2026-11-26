@@ -88,7 +88,7 @@
   }
   function silently(fn) {
     quiet++;
-    try { return fn(); } finally { quiet--; }
+    try { return fn(); } finally { quiet--; if (typeof talePing === "function") talePing(); }
   }
   function naverSearchUrl(place) {
     return "https://map.naver.com/p/search/" + encodeURIComponent(place);
@@ -348,7 +348,6 @@
   function renderHeader() {
     if (cfg.title) {
       document.title = cfg.title;
-      $("diaryTitle").textContent = cfg.title;
     }
     // 이름표: 며칠째인지와 다음 주년까지 남은 날
     const start = parseDate(cfg.startDate);
@@ -359,8 +358,11 @@
       const left = Math.round((ann - today0()) / 86400000);
       if (years > 0) nx = left === 0 ? `오늘 ${years}주년!` : `${years}주년 D-${left}`;
     }
+    const bm = window.Deco ? Deco.ban().m : 0;
+    state.ddayMode = [0, 0, 1, 2, 3][bm] || 0;
     const text = ddayText();
-    const html = `<i>${esc(text)}</i>` + (nx ? `<i>${esc(nx)}</i>` : "");
+    const html = `<i>${esc(text)}</i>` + (nx && bm === 0 ? `<i>${esc(nx)}</i>` : "");
+    if (window.Deco) Deco.apply();
     if ($("dday").innerHTML !== html) $("dday").innerHTML = html;
   }
 
@@ -496,11 +498,12 @@
     let depth = 0, skip = 0, lastBack = 0;
     const modals = () => document.querySelectorAll(".modal:not([hidden]):not(.closing):not(#hello)").length;
     function layers() {
-      return (state.view !== "home" ? 1 : 0) + (state.openPanel ? 1 : 0) + (window.Garden && Garden.isOpen() ? 1 : 0) + modals() + (window.Tale && Tale.isOpen() ? 1 : 0) + ($("lightbox").hidden ? 0 : 1);
+      return (state.view !== "home" ? 1 : 0) + (state.openPanel ? 1 : 0) + (window.Garden && Garden.isOpen() ? 1 : 0) + modals() + (window.Tale && Tale.isOpen() ? 1 : 0) + (window.Deco && Deco.isOpen() ? 1 : 0) + ($("lightbox").hidden ? 0 : 1);
     }
     function closeTop() {
       if (!$("lightbox").hidden) return closeLightbox();
       if (window.Tale && Tale.isOpen()) return Tale.back();
+      if (window.Deco && Deco.isOpen()) return Deco.back();
       const m = document.querySelector(".modal:not([hidden]):not(.closing):not(#hello)");
       if (m) return closeModal(m);
       if (window.Garden && Garden.isOpen()) return Garden.close();
@@ -703,12 +706,12 @@
   function talePing() {
     clearTimeout(taleT);
     taleT = setTimeout(() => {
-      if (!window.Tale) return;
-      Tale.notify();
-      const ico = $("btnCloset");
-      const n = Tale.owned().length;
-      ico.hidden = !n || !Store.me();
-      if (n && Store.me() && window.FSprites) $("closetIco").src = FSprites.charImg(Store.me(), "down", 0, "", "happy");
+      $("btnCloset").hidden = !Store.me();
+      if (Store.me() && window.FSprites && !$("closetIco").getAttribute("src")) $("closetIco").src = FSprites.charImg(Store.me(), "down", 0, "", "happy");
+      if (!Store.me() || !$("hello").hidden) return;
+      // 새로 열린 선물이 있으면 그것부터, 그다음에 이야기
+      if (window.Deco && (Deco.celebrating() || (Nav.layers() === 0 && Deco.celebrate()))) return;
+      if (window.Tale) Tale.notify();
     }, 450);
   }
   function renderHome() {
@@ -1106,13 +1109,11 @@
 
     bindScene();
 
-    $("btnCloset").addEventListener("click", (ev) => { ev.stopPropagation(); if (window.Tale) Tale.closet(); });
+    $("btnCloset").addEventListener("click", (ev) => { ev.stopPropagation(); if (window.Deco) Deco.open(); });
     $("banner").addEventListener("click", (ev) => {
       ev.stopPropagation();
-      if (window.Deco && Deco.open) { Deco.open(); return; }
-      state.ddayMode++;
-      renderHeader();
       play($("banner"), "boing");
+      if (window.Deco) Deco.open("ban");
     });
     $("backBtn").addEventListener("click", () => Nav.back());
 
@@ -1351,6 +1352,8 @@
       renderHome();
       closeModal($("hello"));
       toast(`안녕, ${WHO[helloPick]}!`);
+      if (window.Deco) Deco.attend();
+      talePing();
     });
   }
 
@@ -1469,13 +1472,16 @@
     Garden.bind({ toast, burst, onChanged() { renderScenePlant(); } });
     Garden.attend();
   }
+  if (window.Deco) Deco.attend();
+  document.addEventListener("hsd:ban", () => {});
   if (window.Cal) Cal.bind({ toast, silently, setPanel, panel: () => state.openPanel });
   if (window.Scene) Scene.init();
   lockScroll();
   renderView();
   startHello();
   talePing();
-  document.addEventListener("hsd:wear", () => talePing());
+  document.addEventListener("hsd:wear", () => { $("closetIco").removeAttribute("src"); talePing(); });
+  document.addEventListener("hsd:layer", () => talePing());
   document.addEventListener("visibilitychange", () => { if (!document.hidden) talePing(); });
 
   // 다른 폰에서 고친 내용이 들어오면 다시 그려요.

@@ -106,21 +106,28 @@
       const by = d.author === "her" ? "her" : "him";
       out.push({ id: "d:" + d.id, at: d.c, by, kind: "diary", head: `${ga(by)} 일기를 썼어요`, lines: [["n", `${call(by)}의 일기: "${cut(d.text || "사진 한 장", 34)}"`], [other(by), pick(["읽었어. 고마워.", "나도 같은 마음이야.", "이 일기 오래 간직할래."], d.id)]] });
     });
+    St.list("cal").forEach((e) => {
+      if (!e.c) return;
+      const by = e.by === "her" ? "her" : "him";
+      const d = /^(\d{4})-(\d{2})-(\d{2})/.exec(e.date || "");
+      const when = d ? `${+d[2]}월 ${+d[3]}일` : "";
+      out.push({ id: "c:" + e.id, at: e.c, by, kind: "cal", head: `${ga(by)} 일정을 적었어요`, lines: [[by, `${when}에 "${cut(e.title, 18)}" 적어 뒀어${e.who === "both" ? ". 같이 하자!" : "."}`], [other(by), pick(["알겠어, 기억할게!", "그날 기대된다.", "달력에 표시해 둘게."], e.id)]] });
+    });
     out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
     // 선물 계산
     const c = { date: 0, food: 0, cafe: 0, travel: 0, anniv: 0, etc: 0, rec: 0, diary: 0, plan: 0, done: 0 };
     const given = {};
+    let extra = 0;
     out.forEach((b) => {
       if (b.id[0] === "e") { c[b.kind] = (c[b.kind] || 0) + 1; c.rec++; }
       else if (b.kind === "plan") c.plan++;
       else if (b.kind === "done") c.done++;
       else if (b.kind === "diary") c.diary++;
-      const g = GIFTS.find((x) => !given[x.id] && x.when(c));
-      if (g) { given[g.id] = 1; b.gift = g.id; }
+      // 선물은 꾸미기(js/deco.js)의 해금 규칙이 따로 챙겨요
     });
     return out;
   }
-  function owned() { const o = []; beats().forEach((b) => { if (b.gift) o.push(b.gift); }); return o; }
+  function owned() { return window.Deco ? Deco.ownedPajamas() : []; }
 
   // ---------- 본 이야기 ----------
   function seenSet() { try { return JSON.parse(localStorage.getItem(SEEN) || "null"); } catch (e) { return null; } }
@@ -143,7 +150,7 @@
   function wearOf(who) {
     const St = window.Store;
     const v = St && St.pair("wear", who);
-    return v && owned().indexOf(v) >= 0 ? v : "";
+    return v && (window.Deco ? Deco.ownedPajamas() : owned()).indexOf(v) >= 0 ? v : "";
   }
   let wearCache = { t: 0, v: {} };
   window.HSWear = (who) => {
@@ -157,7 +164,7 @@
     Store.setPair("wear", me, id || "");
     wearCache.t = 0;
   }
-  const pjName = (id) => { const p = S() && S().PJ[id]; return p ? p.name : ""; };
+  const pjName = (id) => { const p = S() && S().PJ[id]; return p ? p.name + " 잠옷" : ""; };
 
   // ---------- 화면 ----------
   let root = null, queue = [], cur = null, li = 0, typing = 0, onDone = null;
@@ -219,7 +226,7 @@
     const id = cur.gift, P = S().PJ[id];
     $("taleFace").parentNode.hidden = true;
     $("taleName").textContent = "";
-    typeLine(`선물이 도착했어요! 두 사람의 커플 ${P.name}이에요.`);
+    typeLine(`선물이 도착했어요! 두 사람의 커플 ${P.name} 잠옷이에요.`);
     $("taleGift").hidden = false;
     $("taleGift").innerHTML = `<img class="px" alt="" src="${S().charImg("him", "down", 0, "wave1", "happy", id)}"><img class="px" alt="" src="${S().charImg("her", "down", 0, "wave1", "happy", id)}">`;
     $("taleBtns").innerHTML = `<button class="btn" data-tale="later">다음에</button><button class="btn primary" data-tale="wear" data-k="${id}">지금 입기</button>`;
@@ -248,8 +255,6 @@
   function onBtn(k, v) {
     if (k === "wear") { setWear(v); const h = window.HSD; if (h && h.toast) h.toast(`${pjName(v)}을 입었어요`); refreshArt(); }
     if (k === "later" || k === "wear") { advance(); return; }
-    if (k === "closet-wear") { setWear(v); refreshArt(); closet(); return; }
-    if (k === "closet-close") { close(); return; }
     if (k === "ask-yes" || k === "ask-no") { const f = askFn; askFn = null; close(); if (f) f(k === "ask-yes"); return; }
   }
   function refreshArt() { wearCache.t = 0; document.dispatchEvent(new CustomEvent("hsd:wear")); }
@@ -280,6 +285,8 @@
     const me = window.Store && Store.me();
     if (!me || (root && !root.hidden)) return;
     if (document.querySelector(".modal:not([hidden])") || document.body.classList.contains("game-open")) return;
+    const mineCal = unseen().filter((b) => b.kind === "cal" && b.by === me).map((b) => b.id);
+    if (mineCal.length) markSeen(mineCal);
     const list = unseen();
     if (!list.length) { hideBanner(); return; }
     const mine = list.filter((b) => b.by === me && Date.now() - b.at < 60000);
@@ -314,31 +321,8 @@
     $("taleBtns").innerHTML = `<button class="btn" data-tale="ask-no">${esc(no)}</button><button class="btn primary" data-tale="ask-yes">${esc(yes)}</button>`;
   }
 
-  // ---------- 옷장 ----------
-  function closet() {
-    ensure();
-    const me = window.Store && Store.me();
-    if (!me) return;
-    const have = owned();
-    const on = wearOf(me);
-    root.hidden = false;
-    root.classList.add("closet");
-    layer();
-    cur = null;
-    $("taleHead").textContent = "우리 옷장";
-    $("taleFace").parentNode.hidden = true;
-    $("taleName").textContent = "";
-    $("taleLine").textContent = have.length ? "입고 싶은 잠옷을 골라요. 상대 폰에서도 보여요." : "아직 잠옷이 없어요. 같이 기록하고 할 일을 해내면 하나씩 생겨요.";
-    $("taleMore").hidden = true;
-    $("taleGift").hidden = false;
-    $("taleGift").innerHTML = `<div class="closet-grid"><button class="closet-it${on ? "" : " on"}" data-tale="closet-wear" data-k=""><img class="px" alt="" src="${S().charImg(me, "down", 0, "", "", "")}"><small>평소 옷</small></button>${GIFTS.map((g) => {
-      const ok = have.indexOf(g.id) >= 0;
-      return ok
-        ? `<button class="closet-it${on === g.id ? " on" : ""}" data-tale="closet-wear" data-k="${g.id}"><img class="px" alt="" src="${S().charImg(me, "down", 0, "", "", g.id)}"><small>${esc(pjName(g.id).replace(" 잠옷", ""))}</small></button>`
-        : `<span class="closet-it lock"><i>?</i><small>${esc(g.why)}</small></span>`;
-    }).join("")}</div>`;
-    $("taleBtns").innerHTML = `<button class="btn primary" data-tale="closet-close">닫기</button>`;
-  }
+  // 옷장은 꾸미기 창(js/deco.js)에 있어요
+  function closet() { if (window.Deco) Deco.open("pj"); }
 
   window.Tale = { back: () => close(), ask, beats, owned, unseen, markSeen, notify, play, closet, wearOf, setWear, GIFTS, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")) };
 })();

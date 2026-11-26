@@ -31,27 +31,19 @@
     him: { H: "#4a4038", h: "#6e5e52", S: "#fbdcc0", s: "#ecc0a0", E: "#2e221c", W: "#ffffff", C: "#ffaaa8", m: "#e0907a", M: "#c9735f", T: "#8cc0ee", t: "#6a9fd4", P: "#5c6f9c", K: "#4a3a30" },
     her: { H: "#7a5440", h: "#a07458", S: "#fbdcc0", s: "#ecc0a0", E: "#2e221c", W: "#ffffff", C: "#ffaaa8", m: "#e0907a", M: "#c9735f", T: "#ffd978", t: "#f0b54a", P: "#fbdcc0", K: "#c96a52", R: "#ff7aa8", r: "#e05a88" },
   };
-  // 동물 잠옷: U 바탕, u 그늘, b 배, i 귀 안쪽, f 발, 그 밖의 색은 무늬
-  const PAJAMAS = [
-    { id: "bear", name: "곰돌이 잠옷", ear: "round", tail: "puff", c: { U: "#b98a62", u: "#9a6e4c", b: "#ecd2b0", i: "#f2b8a0", f: "#8a6044" } },
-    { id: "bunny", name: "토끼 잠옷", ear: "long", tail: "puff", c: { U: "#fff8f0", u: "#e8dcd6", b: "#ffd8e2", i: "#ffb0c8", f: "#f2c0cc" } },
-    { id: "cat", name: "고양이 잠옷", ear: "point", tail: "long", c: { U: "#98a3b5", u: "#7b879c", b: "#dde2ea", i: "#f2a0b4", f: "#dde2ea" } },
-    { id: "sheep", name: "아기 양 잠옷", ear: "floppy", tail: "puff", top: "wool", c: { U: "#f4ece0", u: "#dcd0c4", b: "#fbe6d2", i: "#f6a8b8", f: "#8a7062", w: "#ffffff" } },
-    { id: "hippo", name: "아기 하마 잠옷", ear: "tiny", tail: "nub", c: { U: "#c9b6e6", u: "#a896cf", b: "#f8d6e6", i: "#ff9ab8", f: "#a896cf" } },
-    { id: "puppy", name: "강아지 잠옷", ear: "floppy", tail: "up", c: { U: "#f2d1a4", u: "#d9a46c", b: "#fff6e6", i: "#d9a46c", f: "#d9a46c" } },
-    { id: "frog", name: "개구리 잠옷", ear: "frog", tail: "", c: { U: "#8cd47a", u: "#68b05a", b: "#d8f2b8", i: "#ffffff", f: "#68b05a" } },
-    { id: "chick", name: "병아리 잠옷", ear: "tuft", tail: "", beak: 1, c: { U: "#ffe066", u: "#f0c040", b: "#fff2b0", i: "#ffe066", f: "#ff9a3c", B: "#ff9a3c" } },
-    { id: "panda", name: "판다 잠옷", ear: "round", tail: "puff", limbs: "k", c: { U: "#ffffff", u: "#e2e2ea", b: "#ffffff", i: "#3a3a44", f: "#3a3a44", k: "#3a3a44" }, earC: "k" },
-    { id: "fox", name: "여우 잠옷", ear: "point", tail: "bushy", c: { U: "#f29a4a", u: "#d07a30", b: "#fff4e6", i: "#fff4e6", f: "#4a3428", k: "#4a3428" } },
-    { id: "tiger", name: "호랑이 잠옷", ear: "round", tail: "long", stripes: 1, c: { U: "#ffb04a", u: "#e08a28", b: "#fff4e6", i: "#fff4e6", f: "#fff4e6", x: "#5a3a28" } },
-    { id: "penguin", name: "펭귄 잠옷", ear: "", tail: "", beak: 1, c: { U: "#3e4a5e", u: "#2e3848", b: "#ffffff", i: "#3e4a5e", f: "#ff9a3c", B: "#ff9a3c" } },
-    { id: "dino", name: "공룡 잠옷", ear: "spikes", tail: "dino", c: { U: "#7cc46e", u: "#5a9e50", b: "#fff2b0", i: "#ffe066", f: "#5a9e50", g: "#ffd34d" } },
-    { id: "pig", name: "아기 돼지 잠옷", ear: "point", tail: "curl", snout: 1, c: { U: "#ffc0cc", u: "#f09aac", b: "#ffe0e6", i: "#ff8aa0", f: "#f09aac", n: "#ff8aa0", q: "#b84a64" } },
-    { id: "koala", name: "코알라 잠옷", ear: "koala", tail: "", c: { U: "#a8b0bc", u: "#8a929e", b: "#e6e8ee", i: "#ffffff", f: "#8a929e", k: "#3a3a44" } },
-    { id: "deer", name: "아기 사슴 잠옷", ear: "deer", tail: "puff", spots: 1, c: { U: "#c98a5a", u: "#a86c40", b: "#fff4e6", i: "#f2b8a0", f: "#6a4a36", A: "#e8c890", W: "#ffffff" } },
-  ];
-  const PJ = {};
-  PAJAMAS.forEach((p) => { PJ[p.id] = p; });
+  // 동물 잠옷: 동물 도감(js/zoo.js)의 종마다 한 벌. U 바탕, u 그늘, b 배, i 귀 안쪽, f 발, x 포인트
+  const Z = window.Zoo || { LIST: [], BY: {} };
+  const PAJAMAS = Z.LIST, PJ = Z.BY;
+  const pjCache = {};
+  function pjView(sp) {
+    if (pjCache[sp.id]) return pjCache[sp.id];
+    const m = sp.m, has = (c) => m.indexOf(c) >= 0;
+    return (pjCache[sp.id] = {
+      id: sp.id, name: sp.name, c: sp.c, ear: sp.ear, tail: sp.tail === "ring" ? "long" : sp.tail,
+      top: has("w") ? "wool" : "", stripes: has("s") || sp.tail === "ring", spots: has("d"), beak: has("k"), snout: has("o"), limbs: has("l") ? "k" : "", earC: has("e") ? "k" : "",
+      mask: has("m"), mane: has("g"), blaze: has("v"), crest: has("c"), horns: has("h"), fin: has("f"), teeth: has("t"), eyes: has("y"), shell: has("q"), wings: has("i"), patch: has("p"),
+    });
+  }
   const HEADS = {
     him: {
       down: ["...HHHHHHHHHH...", "..HHHHhhHHHHHH..", ".HHHHhHHHHHHHHH.", ".HHHHHHHHHHHHHH.", ".HHHHHHHHHHHHHH.", ".HHSHHHSHHHSHHH.", ".HSSSSSSSSSSSSH.", ".HSSWESSSSWESSH.", ".SSSEESSSSEESSS.", ".SCCSSSmmSSSCCS.", "..SSSSSSSSSSSS..", "...SSSSSSSSSS..."],
@@ -80,12 +72,15 @@
     tiny: { at: [3, -1], rows: ["UU", "Ui"] },
     frog: { at: [1, -3], rows: [".UUU.", "UiiiU", "UiEiU", "UUUUU"] },
     koala: { at: [-1, -1], rows: [".UUU.", "UiiiU", "UiiiU", ".UUU."] },
+    big: { at: [-1, -2], rows: ["UUUU", "UiiU", "UiiU", ".UUU"] },
+    horn: { at: [3, -2], rows: ["w.", "ww"] },
+    antenna: { at: [4, -3], rows: ["k.", ".k", ".k"] },
     deer: { at: [2, -4], rows: ["A.A.", "AAA.", ".A..", ".A.."] },
   };
   function charRows(who, dir, frame, pose, face, pj) {
     const g = blank(CH_W, CH_H);
     const girl = who === "her";
-    const P = pj && PJ[pj];
+    const P = pj && PJ[pj] ? pjView(PJ[pj]) : null;
     const crouch = pose === "crouch";
     const oy = TOP + (crouch ? 2 : frame ? 1 : 0);
     const by = oy + 12;
@@ -101,6 +96,7 @@
         else if (P.tail === "curl") { put(g, tx - 1, ty, "U"); put(g, tx - 2, ty - 1, "U"); put(g, tx - 1, ty - 2, "U"); }
         else if (P.tail === "up") { put(g, tx - 1, ty, "U"); put(g, tx - 2, ty - 1, "U"); put(g, tx - 2, ty - 2, "U"); }
         else if (P.tail === "nub") put(g, tx - 1, ty + 1, "U");
+        else if (P.tail === "fish") { put(g, tx - 1, ty + 1, "U"); put(g, tx - 2, ty, "U"); put(g, tx - 2, ty + 2, "U"); put(g, tx - 3, ty - 1, "u"); put(g, tx - 3, ty + 3, "u"); }
       }
     }
     // 여자 뒷머리 (잠옷을 입으면 후드 속에 들어가요)
@@ -164,7 +160,7 @@
       // 후드 테두리
       HOOD_ROWS.forEach(([a, b], y) => { for (let x = a; x <= b; x++) {
         if (faceWin(dir, x, y)) continue;
-        if (faceWin(dir, x - 1, y) || faceWin(dir, x + 1, y) || faceWin(dir, x, y - 1) || faceWin(dir, x, y + 1)) H(x, y, "u");
+        if (faceWin(dir, x - 1, y) || faceWin(dir, x + 1, y) || faceWin(dir, x, y - 1) || faceWin(dir, x, y + 1)) H(x, y, P.mane ? "g" : "u");
       } });
       // 귀
       const mirror = (rs) => rs.map((r) => r.split("").reverse().join(""));
@@ -184,13 +180,24 @@
       if (P.top === "wool") [[3, 1], [6, 0], [9, 0], [12, 1], [5, 2], [10, 2]].forEach(([x, y]) => H(x, y, "w"));
       if (P.stripes && dir !== "side") { [[7, 1], [7, 2], [8, 1], [8, 2], [0, 6], [1, 6], [15, 6], [14, 6]].forEach(([x, y]) => H(x, y, "x")); }
       if (P.stripes && dir === "side") { [[8, 1], [8, 2], [9, 1], [9, 2], [0, 6], [1, 6], [15, 5]].forEach(([x, y]) => H(x, y, "x")); }
-      if (P.spots) { (dir === "side" ? [[1, 4], [2, 8], [13, 3]] : [[2, 3], [13, 3]]).forEach(([x, y]) => H(x, y, "W")); }
+      if (P.spots) { (dir === "side" ? [[1, 4], [2, 8], [13, 3], [5, 1]] : dir === "up" ? [[2, 3], [13, 3], [5, 6], [10, 7], [7, 9], [3, 8], [12, 5]] : [[2, 3], [13, 3], [5, 1], [10, 2]]).forEach(([x, y]) => H(x, y, "x")); }
+      const sx = dir === "side" ? 1 : 0;
+      if (P.patch) { [[2, 1], [3, 1], [2, 2], [3, 2], [4, 2], [1, 3], [2, 3], [12, 0], [13, 1]].forEach(([x, y]) => H(x, y, "x")); if (dir === "up") [[9, 6], [10, 6], [10, 7], [11, 7], [4, 9], [5, 9]].forEach(([x, y]) => H(x, y, "x")); }
+      if (P.blaze && dir !== "up") [[7, 0], [8, 0], [7, 1], [8, 1], [7, 2], [8, 2], [7, 3], [8, 3]].forEach(([x, y]) => H(x + sx, y, "W"));
+      if (P.crest) [[7, -1], [8, -1], [8, -2], [9, -1], [9, -2]].forEach(([x, y]) => H(x + sx, y, "x"));
+      if (P.horns && P.ear !== "horn") [[5, -1], [5, -2], [10, -1], [10, -2]].forEach(([x, y]) => H(x + sx, y, "w"));
+      if (P.fin) [[7, -1], [8, -1], [9, -1], [8, -2], [9, -2], [9, -3]].forEach(([x, y]) => H(x + sx, y, "u"));
+      if (P.teeth && dir !== "up") (dir === "side" ? [[6, 4], [8, 4], [11, 4], [13, 4]] : [[4, 4], [6, 4], [9, 4], [11, 4]]).forEach(([x, y]) => H(x, y, "w"));
+      if (P.eyes && dir !== "up" && P.ear !== "frog") { const ex = dir === "side" ? [5, 11] : [4, 10]; ex.forEach((x) => { H(x, 1, "w"); H(x + 1, 1, "w"); H(x, 2, "w"); H(x + 1, 2, "E"); }); }
+      if (P.shell && dir !== "down") { rect(g, dir === "up" ? 6 : 5, by, dir === "up" ? 6 : 3, 3, "x"); put(g, dir === "up" ? 8 : 6, by + 1, "q"); put(g, dir === "up" ? 9 : 6, by + 1, "q"); }
+      if (P.wings && dir !== "down") { rect(g, 3, by, 2, 2, "w"); put(g, 2, by, "w"); if (dir === "up") { rect(g, 13, by, 2, 2, "w"); put(g, 15, by, "w"); } }
       if (P.beak && dir === "down") { H(7, 4, "B"); H(8, 4, "B"); }
       if (P.beak && dir === "side") { H(9, 4, "B"); H(10, 4, "B"); }
       if (P.snout && dir === "down") { rect(g, HX + 6, oy + 2, 4, 2, "n"); H(7, 3, "q"); H(8, 3, "q"); }
       if (P.snout && dir === "side") { rect(g, HX + 8, oy + 2, 4, 2, "n"); H(9, 3, "q"); H(10, 3, "q"); }
       if (P.ear === "koala" && dir === "down") { H(7, 3, "k"); H(8, 3, "k"); }
       // 예은이는 후드 사이로 머리카락이 살짝 보여요
+      if (P.mask && dir === "down") { H(4, 6, "k"); H(11, 6, "k"); }
       if (girl && dir === "down") { for (let y = 6; y <= 10; y++) { H(2, y, "H"); H(13, y, "H"); } H(3, 6, "H"); H(12, 6, "H"); }
       if (girl && dir === "side") { for (let y = 6; y <= 10; y++) { H(4, y, "H"); H(14, y, "H"); } H(5, 6, "H"); }
     }
@@ -375,6 +382,96 @@
     return A.fromRows(`cat3|${frame}|${face || ""}|${tail ? 1 : 0}`, catRows(frame, face || "", tail), { o: "#3a3a4a", B: "#98a3b5", l: "#b8c0ce", b: "#7b879c", w: "#dde2ea", P: "#f2a0b4", Y: "#f0a030", K: "#2e221c", W: "#ffffff", C: "#f7a8b8", L: "#fff6a0" }).uri;
   }
 
+  // ---------- 그림 속 동물 (도감의 모든 종): 찹쌀떡처럼 동그란 몸에 종마다 귀, 꼬리, 무늬 ----------
+  // frame: stand, walk1, walk2, lie, eat, loaf, stretch, groom / face: "", blink, happy, sleep, yawn, baa, glow, grump, sweat
+  const PET_BALL = mir([".....UUUU", "...UUUUUU", "..UUUUUUU", ".UUUUUUUU", ".UUUUUUUU", "UUUUUUUUU", "UUUUUUUUU", "UUUUUUUUU", "UUUUUUUUU", "UUUUUUUUU", "UUUUUbbbb", "uUUUbbbbb", "uUUUbbbbb", ".uUUUbbbb", "..uuuuuuu"]);
+  const PET_EARS = {
+    round: [[1, -1], [".UU.", "UiiU", "UiiU"]], long: [[3, -5], ["UU.", "UiU", "UiU", "UiU", "UiU", "UUU"]], point: [[1, -2], ["U..", "UU.", "UiU", "UiiU"]], tiny: [[3, 0], ["UU", "Ui"]],
+    frog: [[2, -2], [".UUU.", "UwwwU", "UwEwU", "UUUUU"]], koala: [[-1, 0], [".UUU.", "UiiiU", "UiiiU", ".UUU."]], deer: [[2, -4], ["x.x.", "xxx.", ".x..", ".x.."]],
+    big: [[-1, -2], ["UUUU", "UiiU", "UiiU", ".UUU"]], horn: [[3, -2], ["w.", "ww", "ww"]], antenna: [[5, -3], ["x.", ".x", ".x"]],
+  };
+  const PET_W = 24, PET_H = 23;
+  function petRows(sp, frame, face) {
+    const g = blank(PET_W, PET_H);
+    const m = sp.m, has = (c) => m.indexOf(c) >= 0;
+    const low = frame === "lie" || frame === "loaf" || frame === "groom";
+    const walk = frame === "walk1" || frame === "walk2";
+    const look = walk ? 1 : 0;
+    const body = low ? PET_BALL.filter((r, i) => i !== 6 && i !== 12) : PET_BALL;
+    const ox = 3, oy = 6 + (low ? 2 : 0) + (frame === "eat" ? 1 : 0);
+    const P = (x, y, c) => put(g, ox + x, oy + y, c);
+    const flipRows = (rs) => rs.map((r) => r.split("").reverse().join(""));
+    const st = (rs, x, y) => rs.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] !== ".") P(x + i, y + j, r[i] === "U" && has("e") ? "x" : r[i]); });
+    // 꼬리 (몸 뒤, 오른쪽 아래)
+    const ty = body.length - 6;
+    if (sp.tail === "puff") { P(17, ty + 1, "U"); P(18, ty + 1, "U"); P(18, ty, "U"); P(17, ty + 2, "u"); }
+    else if (sp.tail === "long" || sp.tail === "ring") { [[17, ty + 3], [18, ty + 2], [19, ty + 1], [19, ty], [19, ty - 1], [18, ty - 2]].forEach(([x, y], k) => P(x, y, sp.tail === "ring" && k % 2 ? "x" : "U")); }
+    else if (sp.tail === "bushy") { [[17, ty + 2], [18, ty + 1], [18, ty + 2], [19, ty], [19, ty + 1], [18, ty], [19, ty - 1], [18, ty - 1]].forEach(([x, y]) => P(x, y, "U")); P(19, ty - 1, "b"); P(18, ty - 1, "b"); }
+    else if (sp.tail === "dino") { [[17, ty + 3], [18, ty + 3], [19, ty + 2], [18, ty + 2], [20, ty + 1]].forEach(([x, y]) => P(x, y, "U")); P(19, ty + 1, "x"); }
+    else if (sp.tail === "curl") { P(17, ty + 2, "U"); P(18, ty + 1, "U"); P(18, ty, "U"); P(17, ty, "U"); }
+    else if (sp.tail === "up") { P(17, ty + 2, "U"); P(18, ty + 1, "U"); P(18, ty, "U"); P(18, ty - 1, "U"); }
+    else if (sp.tail === "nub") { P(17, ty + 2, "U"); P(18, ty + 2, "u"); }
+    else if (sp.tail === "fish") { [[17, ty + 1], [18, ty], [18, ty + 2], [19, ty - 1], [19, ty + 3], [18, ty + 1]].forEach(([x, y]) => P(x, y, "U")); P(19, ty - 1, "u"); P(19, ty + 3, "u"); }
+    // 날개, 갈기 (몸 뒤)
+    if (has("i")) { [[-1, 5], [-2, 4], [-2, 5], [-1, 6], [-2, 6], [18, 5], [19, 4], [19, 5], [18, 6], [19, 6]].forEach(([x, y]) => P(x, y, has("k") ? "u" : "w")); }
+    if (has("g")) { for (let a = 0; a < 16; a++) { const t = (a / 16) * Math.PI * 2; P(Math.round(8.5 + Math.cos(t) * 9.6), Math.round(5.5 + Math.sin(t) * 7.2), "x"); P(Math.round(8.5 + Math.cos(t) * 8.8), Math.round(5.5 + Math.sin(t) * 6.6), "x"); } }
+    // 발
+    const last = oy + body.length;
+    if (!low) {
+      const fl = frame === "walk1" ? 1 : 0, fr = frame === "walk2" ? 1 : 0;
+      rect(g, ox + 3, last - fl, 3, 1, "f"); rect(g, ox + 12, last - fr, 3, 1, "f");
+    }
+    stamp(g, body, ox, oy);
+    // 귀
+    if (sp.ear === "floppy") { st(["UU", "Uu", "uU", "uu"], -1, 3); st(["UU", "uU", "Uu", "uu"], 17, 3); }
+    else if (sp.ear === "tuft") { [[7, -1], [8, -2], [8, -1], [9, -2], [9, -1]].forEach(([x, y]) => P(x, y, "U")); }
+    else if (sp.ear === "spikes") { [[3, 0], [6, -1], [8, -2], [9, -2], [11, -1], [14, 0]].forEach(([x, y]) => { P(x, y, "x"); P(x, y + 1, "x"); }); }
+    else if (PET_EARS[sp.ear]) { const [at, rs] = PET_EARS[sp.ear]; st(rs, at[0], at[1]); st(flipRows(rs), 18 - at[0] - rs[0].length, at[1]); }
+    // 무늬
+    if (has("w")) { [[3, 1], [6, 0], [9, 0], [12, 1], [14, 2], [2, 3], [5, 2], [11, 2], [8, 1]].forEach(([x, y]) => P(x, y, "w")); [[1, 9], [16, 9], [3, 12], [14, 12]].forEach(([x, y]) => P(x, y, "w")); }
+    if (has("s")) { [[8, 0], [9, 0], [8, 1], [9, 1], [1, 5], [2, 5], [16, 5], [15, 5], [0, 8], [1, 8], [17, 8], [16, 8], [5, 2], [12, 2]].forEach(([x, y]) => P(x, y, "x")); }
+    if (has("d")) { [[3, 2], [13, 3], [6, 1], [1, 7], [16, 6], [15, 10], [2, 11], [10, 2]].forEach(([x, y]) => P(x, y, "x")); }
+    if (has("p")) { [[2, 2], [3, 2], [4, 2], [2, 3], [3, 3], [1, 4], [2, 4], [3, 1], [13, 9], [14, 9], [15, 9], [14, 10], [15, 10], [15, 8], [11, 1], [12, 1]].forEach(([x, y]) => P(x, y, "x")); }
+    if (has("v")) { [[8, 0], [9, 0], [8, 1], [9, 1], [8, 2], [9, 2], [8, 3], [9, 3], [8, 4], [9, 4]].forEach(([x, y]) => P(x, y, "W")); }
+    if (has("q")) { for (let y = 1; y <= 4; y++) for (let x = 5; x <= 12; x++) if ((x + y) % 2 === 0 && !(y === 4 && (x < 6 || x > 11))) P(x, y, "x"); }
+    if (has("c")) { [[7, -1], [8, -1], [9, -1], [10, -1], [8, -2], [9, -2], [9, -3]].forEach(([x, y]) => P(x, y, "x")); }
+    if (has("h") && sp.ear !== "horn") { [[5, -1], [5, -2], [12, -1], [12, -2]].forEach(([x, y]) => P(x, y, "w")); }
+    if (has("f")) { [[8, -1], [9, -1], [10, -1], [9, -2], [10, -2], [10, -3]].forEach(([x, y]) => P(x, y, "u")); }
+    // 얼굴
+    const ey = low ? 5 : 6;
+    if (has("m")) { rect(g, ox + 2 + look, oy + ey - 1, 4, 4, "x"); rect(g, ox + 12 + look, oy + ey - 1, 4, 4, "x"); }
+    if (has("z")) { rect(g, ox + 6 + look, oy + ey + 1, 6, 3, "b"); rect(g, ox + 7 + look, oy + ey + 4, 4, 1, "b"); }
+    const f = face === "sleep" || face === "yawn" || face === "grump" ? "blink" : face === "baa" || face === "glow" || face === "sweat" ? "" : face;
+    const big = has("y");
+    [3, 13].forEach((x) => {
+      const X = ox + x + look, Y = oy + ey;
+      if (big && f === "") { rect(g, X - 1, Y - 1, 3, 3, "W"); rect(g, X, Y, 2, 2, "K"); put(g, X, Y, "W"); }
+      else eye(g, X, Y, f);
+    });
+    P(1 + look, ey + 2, "C"); P(16 + look, ey + 2, "C");
+    const nx = ox + 8 + look, ny = oy + ey + 2;
+    if (has("k")) { rect(g, nx - 1, ny - 1, 4, 1, "B"); rect(g, nx, ny, 2, 1, "B"); if (face === "baa" || face === "yawn" || face === "happy") rect(g, nx, ny + 1, 2, 1, "M"); }
+    else if (has("o")) { rect(g, nx - 1, ny - 1, 4, 2, "n"); put(g, nx, ny - 1, "q"); put(g, nx + 1, ny - 1, "q"); }
+    else {
+      if (has("n")) { put(g, nx, ny - 1, "N"); put(g, nx + 1, ny - 1, "N"); }
+      if (face === "baa" || face === "yawn") rect(g, nx, ny, 2, 2, "M");
+      else if (face === "happy") { put(g, nx - 1, ny, "M"); put(g, nx + 2, ny, "M"); put(g, nx, ny + 1, "M"); put(g, nx + 1, ny + 1, "M"); }
+      else { put(g, nx - 1, ny + 1, "N"); put(g, nx + 2, ny + 1, "N"); }
+    }
+    if (has("t")) { put(g, nx - 2, ny + 1, "W"); put(g, nx + 3, ny + 1, "W"); }
+    if (face === "sweat") { put(g, ox + 18, oy + 2, "D"); put(g, ox + 18, oy + 3, "D"); put(g, ox + 17, oy + 3, "D"); }
+    if (frame === "eat") { put(g, nx, last, "G"); put(g, nx + 1, last, "G"); put(g, nx - 1, last - 1, "G"); put(g, nx + 2, last - 1, "G"); }
+    return rows(outline(g));
+  }
+  const PET_HAND = { hippo: (f, c) => hippoImg(f === "eat" || f === "loaf" || f === "groom" || f === "stretch" ? "stand" : f, c), sheep: (f, c, w) => sheepImg(f === "loaf" || f === "groom" || f === "stretch" ? "lie" : f, c, w), cat: (f, c, w, t) => catImg(f === "eat" ? "stand" : f === "lie" ? "loaf" : f, c, t) };
+  function petImg(id, frame, face, wet, tail) {
+    if (PET_HAND[id]) return PET_HAND[id](frame || "stand", face || "", wet, tail == null ? 1 : tail);
+    const sp = PJ[id];
+    if (!sp) return "";
+    const fr = frame === "stretch" ? "stand" : frame || "stand";
+    return A.fromRows(`pet|${id}|${fr}|${face || ""}`, petRows(sp, fr, face || ""), Object.assign({ o: Z.shade ? Z.shade(sp.c.U.slice(1), -0.62) : OUT, K: "#2e221c", W: "#ffffff", C: "#ff9ab8", M: "#c0506a", N: Z.shade ? Z.shade(sp.c.U.slice(1), -0.55) : "#3b2a20", D: "#7fc4f0", G: "#5fae5f", E: "#2e221c" }, sp.c)).uri;
+  }
+
   // ---------- 강아지 (찹쌀떡처럼 동그랗게 앞을 봐요) ----------
   // cream: 귀가 축 처진 크림볼 (농장 마루) / bichon: 하얀 솜사탕 비숑 (홈 산책)
   const DOGS = {
@@ -493,5 +590,5 @@
     return o;
   }
 
-  window.FSprites = { PAJAMAS, PJ, CH_W, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
+  window.FSprites = { petImg, PAJAMAS, PJ, CH_W, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
 })();
