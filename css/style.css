@@ -199,7 +199,7 @@ input, select, textarea, .up-item, .dday, .month-label span {
   position: relative; display: block; border: 0; background: none; padding: 0; line-height: 0;
 }
 .bob span { display: block; }
-.bob .ch { display: block; width: 54px; height: auto; image-rendering: pixelated; }
+.bob .ch { display: block; width: 54px; height: auto; margin-top: -9px; image-rendering: pixelated; }
 .bob .ch.flip { transform: scaleX(-1); }
 .bob.b2 { animation-delay: -.8s; }
 .bob.jump .ch-wrap { animation: jump .6s ease-out; }
@@ -1125,7 +1125,7 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 .tale-body { display: flex; gap: 10px; align-items: flex-start; min-height: 66px; }
 .tale-face { flex: 0 0 auto; width: 60px; height: 60px; background: #f3dcae; overflow: hidden; box-shadow: 0 0 0 2px #3b2a20; display: flex; align-items: flex-start; justify-content: center; }
 .tale-face[hidden] { display: none; }
-.tale-face img { width: 72px; height: auto; margin-top: -4px; image-rendering: pixelated; }
+.tale-face img { width: 72px; height: auto; margin-top: -16px; image-rendering: pixelated; }
 .tale-text { flex: 1; min-width: 0; }
 .tale-name { display: block; font-size: 13px; color: #a0622e; margin-bottom: 2px; }
 .tale-text p { font-size: 15.5px; line-height: 1.5; word-break: keep-all; }
@@ -1574,8 +1574,8 @@ button.day-it:active { transform: translateY(1px); }
 .pal.held::before { display: none; }
 
 /* ---------- 기분 500가지 ---------- */
-.mood-tag { top: auto; bottom: calc(100% + 4px); left: 50%; margin-left: 0; transform: translateX(-50%); }
-.bob.has-hat .mood-tag { top: auto; bottom: calc(100% + 18px); }
+.mood-tag { top: auto; bottom: calc(100% + 4px + var(--ear, 0px)); left: 50%; margin-left: 0; transform: translateX(-50%); }
+.bob.has-hat .mood-tag { top: auto; bottom: calc(100% + 18px + var(--ear, 0px)); }
 .mood-tag.boing { animation: moodBoing .5s var(--ease); }
 @keyframes moodBoing { 0% { transform: translateX(-50%) scale(.4); } 60% { transform: translateX(-50%) scale(1.25); } 100% { transform: translateX(-50%) scale(1); } }
 .mood-img { display: block; image-rendering: pixelated; }

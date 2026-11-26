@@ -63,7 +63,8 @@
     if (dir === "down") return (y >= 5 && y <= 10 && x >= 2 && x <= 13) || (y === 11 && x >= 4 && x <= 11);
     return (y >= 5 && y <= 10 && x >= 4 && x <= 14) || (y === 11 && x >= 5 && x <= 12);
   }
-  const CH_W = 18, CH_H = 23, TOP = 3, FOOT = 21, HX = 1;
+  // 머리 위로 6칸을 비워 둬요: 토끼 귀(5칸)와 테두리 한 칸까지 잘리지 않게
+  const CH_W = 18, CH_H = 26, TOP = 6, FOOT = 24, HX = 1;
   // 귀 모양 (왼쪽 귀, 머리 왼쪽 위 기준. 오른쪽은 거울로)
   const EARS = {
     round: { at: [1, -2], rows: [".UU.", "UiiU", "UiiU"] },
@@ -396,7 +397,7 @@
       if (!it || it.kind !== k) return;
       shapes[k] = it.shape; pal[a] = it.c[0]; pal[b] = it.c[1]; pal[c] = k === "neck" && it.shape !== "lace" ? "#ffd34d" : it.c[2];
     });
-    const key = `ch8|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
+    const key = `ch9|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
     return A.fromRows(key, charRows(who, dir, frame, pose || "", face || "", P ? pj : "", shapes), pal).uri;
   }
 
@@ -763,5 +764,10 @@
     return o;
   }
 
-  window.FSprites = { petImg, PAJAMAS, PJ, CH_W, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
+  // 지금 입은 잠옷의 귀가 머리 위로 몇 칸 솟는지 (기분 표시를 그만큼 올려 달려고)
+  function earRise(who) {
+    const P = PJ[wearing(who)];
+    return !P ? 0 : P.ear === "long" ? 3 : P.ear === "deer" ? 2 : 0;
+  }
+  window.FSprites = { earRise, petImg, PAJAMAS, PJ, CH_W, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
 })();

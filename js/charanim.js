@@ -151,7 +151,7 @@
         }
       }
       const src = S.charImg(who, dir, fr, pose, face);
-      if (src !== st.src) { st.img.src = src; st.src = src; }
+      if (src !== st.src) { st.img.src = src; st.src = src; const er = S.earRise(who); if (er !== st.er) { st.er = er; st.el.style.setProperty("--ear", er * 3 + "px"); } }
       st.img.classList.toggle("flip", flip);
       if (Math.abs(dx - st.dx) > 0.2) { st.dx = dx; st.el.style.translate = `${dx.toFixed(1)}px 0`; }
     }
