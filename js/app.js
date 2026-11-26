@@ -471,7 +471,8 @@
         bubbleIdx++;
         return;
       }
-      if (ev.target.closest(".house")) { if (window.Deco) Deco.open("pj"); return; } // 집을 누르면 옷장
+      if (ev.target.closest(".house")) { if (window.Deco) Deco.open("home"); return; } // 집을 누르면 우리 집 이야기
+      if (ev.target.closest("#closet")) { play($("closet"), "boing"); if (window.Deco) Deco.open("pj"); return; } // 빨랫줄을 누르면 옷장
       if (ev.target.closest("#kennel")) { play($("kennel"), "boing"); if (window.Deco) Deco.open("pet"); return; }
     });
   }
@@ -1556,7 +1557,7 @@
   renderView();
   // 누를 수 있는 것들 위에 번갈아 반짝이를 띄워요
   (function sparkles() {
-    const sel = "#plane, #mailbox, #kennel, .house, #banner, .mood-tag.mine, .pal";
+    const sel = "#plane, #mailbox, #kennel, #closet, .house, #banner, .mood-tag.mine, .pal";
     let k = 0;
     setInterval(() => {
       const scene = $("scene");

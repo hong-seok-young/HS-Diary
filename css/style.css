@@ -1638,3 +1638,47 @@ button.day-it:active { transform: translateY(1px); }
 .house.home { transform-origin: 50% 100%; }
 .ul-img.home { width: auto; height: auto; max-width: 240px; }
 .deco-tip { white-space: pre-line; }
+.sc-line { position: absolute; left: 66%; bottom: 40px; z-index: 3; width: 48px; height: 26px; border: 0; padding: 0; background: none; line-height: 0; animation: tapGlow 2.6s ease-in-out -1.6s infinite; }
+.sc-line img { display: block; image-rendering: pixelated; }
+.sc-line::after { content: ""; position: absolute; inset: -6px; }
+.sc-line.boing { animation: boing .5s var(--ease); }
+.night .sc-line { filter: brightness(.8); }
+.deco-grid.homes { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.deco-it.hm img { width: auto; height: auto; max-width: 92px; min-height: 30px; }
+.deco-it.hm img[data-k] { min-height: 40px; }
+
+/* ---------- 선물 화면: 귀엽게 (어두운 배경과 동그란 후광 대신 파스텔, 가랜드, 통통 떠 있는 하트와 별) ---------- */
+.unlock { background: #e9defa; background-image: radial-gradient(#ffffff 2px, transparent 2.5px), linear-gradient(#e6dcfa, #f8e9f6); background-size: 26px 26px, 100% 100%; }
+.unlock[data-step="2"] { background-color: #fff1dc; background-image: radial-gradient(#ffffff 2px, transparent 2.5px), linear-gradient(#fff3d8, #ffe2ec); }
+.ul-rays { display: none; }
+.ul-glow, .unlock[data-step="1"] .ul-glow, .unlock[data-step="2"] .ul-glow { left: 50%; top: 50%; width: 170px; height: 34px; margin: 58px 0 0 -85px; border-radius: 50%; background: rgba(150, 110, 170, .22); animation: none; transition: none; }
+.unlock[data-step="0"] .ul-glow { opacity: 0; }
+.unlock[data-step="1"] .ul-glow { animation: ulShadow .9s ease-in-out infinite; }
+.unlock[data-step="2"] .ul-glow { background: rgba(220, 130, 150, .28); animation: ulShadow2 2.4s ease-in-out .7s infinite; }
+@keyframes ulShadow { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(1.12); } }
+@keyframes ulShadow2 { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.88); } }
+.ul-flash { background: #fff8e6; }
+.unlock.boom .ul-flash { animation: ulFlash .4s ease-out; }
+@keyframes ulFlash { 0% { opacity: .7; } 100% { opacity: 0; } }
+.ul-stage.shake { animation: ulHop .5s cubic-bezier(.3, 1.6, .5, 1); }
+@keyframes ulHop { 0% { transform: translateY(0); } 35% { transform: translateY(-10px); } 70% { transform: translateY(3px); } 100% { transform: none; } }
+.ul-name { color: #8a4a5a; text-shadow: 2px 2px 0 #ffffff; }
+.ul-why { color: #a8705c; }
+.ul-count { color: #9a86b8; }
+.ul-hint { color: #8a76ac; }
+.unlock[data-step="0"] .ul-stage::after { color: #b9a6e6; }
+.unlock[data-step="1"] .ul-art { filter: brightness(0) opacity(.72); }
+.ul-bits { position: absolute; inset: 0; pointer-events: none; }
+.unlock:not([data-step="2"]) .ul-bits, .unlock:not([data-step="2"]) .ul-garland { display: none; }
+.ul-bit { position: absolute; line-height: 0; margin: -8px 0 0 -8px; opacity: 0; animation: ulBitIn .45s cubic-bezier(.2, 1.8, .4, 1) both, ulBitBob 1.8s ease-in-out infinite; }
+@keyframes ulBitIn { 0% { opacity: 0; scale: 0; } 100% { opacity: 1; scale: 1; } }
+@keyframes ulBitBob { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-7px) rotate(6deg); } }
+/* 가랜드: 줄에 매달린 세모 깃발들이 차례로 내려와 살랑살랑 */
+.ul-garland { position: absolute; left: 0; right: 0; top: calc(var(--sa-t, 0px) + 34px); height: 44px; display: flex; justify-content: space-around; align-items: flex-start; padding: 0 6px; border-top: 3px solid #b08a6a; pointer-events: none; }
+.ul-garland b { width: 0; height: 0; border-left: 13px solid transparent; border-right: 13px solid transparent; border-top: 24px solid #ff9ab8; transform-origin: 50% 0; animation: ulFlagIn .45s cubic-bezier(.2, 1.6, .4, 1) both, ulFlagSway 1.6s ease-in-out infinite; }
+.ul-garland b:nth-child(odd) { margin-top: 2px; }
+.ul-garland b:nth-child(4), .ul-garland b:nth-child(5), .ul-garland b:nth-child(6) { margin-top: 7px; }
+@keyframes ulFlagIn { 0% { opacity: 0; translate: 0 -30px; } 100% { opacity: 1; translate: 0 0; } }
+@keyframes ulFlagSway { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+.ul-new { background: #ff7aa0; box-shadow: 0 -2px 0 0 #b84a6c, 0 2px 0 0 #b84a6c, -2px 0 0 0 #b84a6c, 2px 0 0 0 #b84a6c; }
+@media (prefers-reduced-motion: reduce) { .ul-bit, .ul-garland b { animation: none !important; opacity: 1; } }

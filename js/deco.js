@@ -55,12 +55,32 @@
   const ACTS = "출석, 기분 고르기, 질문 답, 하트, 쪽지, 기록, 할 일, 일기, 일정";
   const cut = (t0) => { const t = String(t0 || "").trim(); return t.length > 10 ? t.slice(0, 10) + "…" : t; };
   let cache = null, kNow = 0, needCache = null, giftCount = 0;
+  // 동물이 오는 순서: 예전 규칙으로 받은 것(과 그 뒤 두 마리)까지는 그대로, 그다음부터는 날아다니는 친구와 땅 친구가 번갈아 와요
+  const isFlyer = (id) => { const sp = Z.BY[id]; return !!sp && sp.fam !== "w" && (sp.m.indexOf("i") >= 0 || (/^bd/.test(id) && ["bd54", "bd55", "bd56", "bd62"].indexOf(id) < 0)); };
+  let petsLive = PETS, petsKey = -1;
+  function petStream(L) {
+    if (L === petsKey) return petsLive;
+    const rest = PETS.slice(L), fly = rest.filter(isFlyer), gnd = rest.filter((id) => !isFlyer(id)), mix = [];
+    while (fly.length || gnd.length) { if (fly.length) mix.push(fly.shift()); if (gnd.length) mix.push(gnd.shift()); }
+    petsKey = L; petsLive = PETS.slice(0, L).concat(mix);
+    return petsLive;
+  }
+  // 그 동물이 온 뒤로 받은 선물 수 (이만큼 자라요)
+  function petAge(id) {
+    const us = unlocks();
+    let i = -1;
+    for (let j = 0; j < us.length; j++) if (us[j].cat === "pet" && us[j].item === id) { i = j; break; }
+    if (i < 0) return 999;
+    let n = 0;
+    for (let j = i + 1; j < us.length; j++) if (us[j].cat !== "home") n++;
+    return n;
+  }
   const homeLevel = () => { unlocks(); return window.Home ? Home.levelOf(giftCount) : 0; };
   // 옷장 맨 위에 보이는 우리 집 한 줄
   function homeLine() {
     if (!window.Home) return "";
     const lv = homeLevel(), nx = Home.next(lv);
-    return `우리 집: ${Home.name(lv)}` + (nx ? ` · ${nx[0]}까지 ${nx[1] - giftCount}번` : " · 끝까지 다 지었어요");
+    return `지금 ${Home.name(lv)} (${lv + 1} / ${Home.LEVELS.length})` + (nx ? ` · 다음 "${nx.name}"까지 ${nx.need - giftCount}번` : " · 끝까지 다 지었어요");
   }
   function unlocks() {
     if (cache) return cache;
@@ -91,6 +111,7 @@
       if (o.r) give("item", o.r, o.rw, "기록을 남겨서", `u:${d}:r`);
       if (o.m) give("mood", o.m, o.mw, "그날 처음 출석해서", `u:${d}:m`);
     });
+    SRC.pet = petStream(n.pet + 2);
     // 2) 새 규칙 (T0 부터): 한 번 할 때마다 하나
     const acts = [];
     const PAIR = { "a:": "출석해서", "m:": "오늘의 기분을 골라서", "q:": "오늘의 질문에 답해서", "p:": "하트를 보내서" };
@@ -118,7 +139,8 @@
     giftCount = out.length;
     if (window.Home) {
       const marks = [];
-      Home.LEVELS.forEach((L, i) => { if (i > 0 && giftCount >= L[1]) { const u = out[L[1] - 1]; marks.push({ id: `home:${i}`, lid: "", at: u.at + 1, day: u.day, cat: "home", item: i, who: u.who, why: u.why }); } });
+      // 집 종류가 바뀔 때만 큰 축하 (꾸밈이 하나 늘 때는 그림 속에서 작게 알려 줘요)
+      Home.LEVELS.forEach((L, i) => { if (i > 0 && L.first && giftCount >= L.need) { const u = out[L.need - 1]; marks.push({ id: `hometier:${L.tier}`, lid: "", at: u.at + 1, day: u.day, cat: "home", item: i, who: u.who, why: u.why }); } });
       marks.forEach((m) => out.push(m));
       out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
     }
@@ -344,6 +366,7 @@
   let io = null;
   function srcOf(k) {
     const [kind, id] = k.split("|");
+    if (kind === "home") return Home.img(Number(id)).day;
     if (kind === "item") { const it = Items.BY[id]; if (it && it.kind !== "hand") { const a = {}; a[it.kind] = id; return S().charImg(me() || "him", "down", 0, "", "", "", a); } return Items.uri(id); }
     return kind === "pet" ? S().petImg(id, "stand", "") : S().charImg(me() || "him", "down", 0, "", "", id);
   }
@@ -375,7 +398,7 @@
   function render() {
     const w = me();
     const closet = tab === "pj" || KINDS.indexOf(tab) >= 0;
-    $("decoTitle").textContent = closet ? "옷장" : tab === "pet" ? "동물 친구들" : "이름표";
+    $("decoTitle").textContent = closet ? "옷장" : tab === "pet" ? "동물 친구들" : tab === "home" ? "우리 집" : "이름표";
     // 옷장 안에는 잠옷과 손에 드는 것이 있어요
     $("decoTabs").hidden = !closet;
     $("decoTabs").innerHTML = closet ? [["pj", "잠옷"], ["hand", "손"], ["eye", "눈"], ["hat", "머리"], ["neck", "목"]].map(([k, n]) => `<button class="chip${tab === k ? " active" : ""}" data-d="ctab" data-v="${k}">${n}</button>`).join("") : "";
@@ -384,7 +407,13 @@
     // 누르면 얻는 방법이 글상자로 잠깐 떠요
     const why = { pj: (k) => whyLocked("pj", k), pet: (k) => whyLocked("pet", k), ban: (k) => whyLocked("ban", k), item: (k) => whyLocked("item", k) };
     const locked = (kind, id, left) => `<button class="deco-it lock${kind === "pet" ? " pet" : kind === "item" && Items.BY[id].kind === "hand" ? " item" : ""}" data-d="why" data-v="${esc(why[kind](left))}"><img class="px" alt="" data-k="${kind}|${id}" src="${BLANK}"><small>???</small></button>`;
-    if (tab === "pj") {
+    if (tab === "home") {
+      const lv = homeLevel(), LV = Home.LEVELS;
+      tip = homeLine() + "\n무엇이든 할 때마다 조금씩 지어져요. 꾸밈이 다 차면 다음 집으로 이사해요.";
+      html = `<div class="deco-grid homes">` + LV.map((L, i) => (i <= lv
+        ? `<button class="deco-it hm${i === lv ? " on" : ""}" data-d="why" data-v="${esc(L.name)} · ${i + 1}번째 집"><img class="px" alt="" data-k="home|${i}" src="${BLANK}"><small>${esc(L.name)}</small></button>`
+        : `<button class="deco-it hm lock" data-d="why" data-v="무엇이든 ${L.need - giftCount}번 더 하면 지어져요. (${ACTS})"><img class="px" alt="" data-k="home|${i}" src="${BLANK}"><small>???</small></button>`)).join("") + `</div>`;
+    } else if (tab === "pj") {
       const own = ownedPajamas(), on = window.Tale ? Tale.wearOf(w) : "";
       tip = `잠옷 ${own.length}벌 / ${PJS.length}벌 · 무엇이든 할 때마다 선물이 하나씩 와요`;
       html = `<div class="deco-grid"><button class="deco-it${on ? "" : " on"}" data-d="wear" data-v=""><img class="px" alt="" src="${S().charImg(w, "down", 0, "", "", "")}"><small>평소 옷</small></button>` +
@@ -402,9 +431,10 @@
         rest.map((id, k) => (Items.BY[id].kind === tab ? locked("item", id, k) : "")).join("") + `</div>`;
     } else if (tab === "pet") {
       const own = ownedPets(), mine = placedOf(w) || [], all = placed();
-      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · 무엇이든 할 때마다 선물이 하나씩 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
-      html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : all.indexOf(id) >= 0 ? " other" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" data-k="pet|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") +
-        PETS.slice(own.length).map((id, k) => locked("pet", id, k)).join("") + `</div>`;
+      const stage = (id) => { const P = window.Pals; if (!P || !P.growth) return ""; const g = P.growth(id); return g.label ? ` (${g.label})` : ""; };
+      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · 새 친구는 알이나 아기로 와서 같이 지내면 자라요 · 무엇이든 할 때마다 선물이 하나씩 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
+      html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : all.indexOf(id) >= 0 ? " other" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" data-k="pet|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name + stage(id))}</small></button>`).join("") +
+        petsLive.slice(own.length).map((id, k) => locked("pet", id, k)).join("") + `</div>`;
     } else {
       const n = bannerCount(), b = ban();
       tip = `이름표 ${n}개 / ${BAN.length}개 · 무엇이든 할 때마다 선물이 하나씩 와요`;
@@ -418,7 +448,7 @@
             : `<button class="deco-it bn lock" data-d="why" data-v="${esc(why.ban(i - n))}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>???</small></button>`;
         }).join("") + `</div>`;
     }
-    $("decoTip").textContent = (closet ? homeLine() + "\n" : "") + tip;
+    $("decoTip").textContent = tip;
     const body = $("decoBody"), top = body.scrollTop;
     body.innerHTML = html;
     body.scrollTop = top;
@@ -444,11 +474,11 @@
     }
     // 우리 집이 처음 생긴 폰: 지난 단계들은 건너뛰고 지금 집만 한 번 보여 줘요
     let hm = "1";
-    try { hm = localStorage.getItem(SEEN + ".home"); } catch (e) { /* 그냥 둬요 */ }
+    try { hm = localStorage.getItem(SEEN + ".home2"); } catch (e) { /* 그냥 둬요 */ }
     if (!hm) {
-      const s2 = seenSet(), lv = homeLevel();
-      unlocks().forEach((u) => { if (u.cat === "home" && u.item < lv) s2[u.id] = 1; });
-      try { localStorage.setItem(SEEN, JSON.stringify(s2)); localStorage.setItem(SEEN + ".home", "1"); } catch (e) { /* 그냥 둬요 */ }
+      const s2 = seenSet(), tier = window.Home ? Home.LEVELS[homeLevel()].tier : 0;
+      unlocks().forEach((u) => { if (u.cat === "home" && Home.LEVELS[u.item].tier < tier) s2[u.id] = 1; });
+      try { localStorage.setItem(SEEN, JSON.stringify(s2)); localStorage.setItem(SEEN + ".home2", "1"); } catch (e) { /* 그냥 둬요 */ }
     }
     const s0 = seenSet();
     return unlocks().filter((u) => !s0[u.id]);
@@ -468,7 +498,7 @@
     uroot = document.createElement("div");
     uroot.className = "unlock";
     uroot.hidden = true;
-    uroot.innerHTML = `<div class="ul-flash"></div><div class="ul-stage" id="ulStage"><i class="ul-count" id="ulCount"></i><div class="ul-rays"></div><div class="ul-glow"></div><i class="ul-new" id="ulNew">NEW!</i><div class="ul-art" id="ulArt"></div><b class="ul-name" id="ulName"></b><p class="ul-why" id="ulWhy"></p><i class="ul-hint" id="ulHint"></i></div>
+    uroot.innerHTML = `<div class="ul-flash"></div><div class="ul-stage" id="ulStage"><i class="ul-count" id="ulCount"></i><div class="ul-garland" id="ulGar"></div><div class="ul-glow"></div><div class="ul-bits" id="ulBits"></div><i class="ul-new" id="ulNew">NEW!</i><div class="ul-art" id="ulArt"></div><b class="ul-name" id="ulName"></b><p class="ul-why" id="ulWhy"></p><i class="ul-hint" id="ulHint"></i></div>
       <div class="tale-box ul-box"><div class="tale-head" id="ulHead"></div><div class="tale-body"><span class="tale-face"><img class="px" alt="" id="ulFace"></span><div class="tale-text"><b class="tale-name" id="ulWho"></b><p id="ulLine"></p></div></div><div class="tale-btns" id="ulBtns"></div></div>`;
     document.body.appendChild(uroot);
     uroot.addEventListener("click", (ev) => {
@@ -493,7 +523,7 @@
     const st = styleOf(u.item);
     return `<span class="sc-banner mini big ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span>`;
   }
-  const nameOf = (u) => (u.cat === "home" ? Home.name(u.item) : u.cat === "mood" ? MD.name(u.item) : u.cat === "item" ? Items.BY[u.item].name : u.cat === "ban" ? BAN[u.item].name + " 이름표" : Z.BY[u.item].name + (u.cat === "pj" ? " 잠옷" : ""));
+  const nameOf = (u) => (u.cat === "home" ? Home.TIERS[Home.LEVELS[u.item].tier].name : u.cat === "mood" ? MD.name(u.item) : u.cat === "item" ? Items.BY[u.item].name : u.cat === "ban" ? BAN[u.item].name + " 이름표" : Z.BY[u.item].name + (u.cat === "pj" ? " 잠옷" : ""));
   // 누가 무엇을 해서 받았는지
   function whyOf(u) {
     const d = new Date(u.at), today = dayKey(new Date());
@@ -508,34 +538,36 @@
     clearInterval(uTimer);
     const F = window.FX;
     if (!F) return;
-    const go = () => { if (!ucur || ustep !== 1) { clearInterval(uTimer); return; } const c = artCenter(); F.gather(c[0], c[1], 0.9); F.ring(c[0], c[1], "#b9a6ff", 150, 0, 0.8); };
+    const go = () => { if (!ucur || ustep !== 1) { clearInterval(uTimer); return; } const c = artCenter(); F.cuteGather(c[0], c[1], 0.8); };
     go();
     uTimer = setInterval(go, 900);
+  }
+  // 그림 둘레에 통통 떠 있는 작은 하트, 별, 반짝이 (동그란 후광 대신)
+  const BITS = [[-112, -64, "h"], [-86, 34, "s"], [-58, -118, "k"], [72, -112, "h"], [114, -36, "k"], [98, 46, "h"], [-18, -146, "s"], [34, -152, "k"], [-124, -6, "k"], [128, 6, "s"]];
+  const BIT_COLORS = ["#ff9ab8", "#ffcf6a", "#8ecbff", "#9fe0ae", "#c9aaff"];
+  function bits() {
+    $("ulBits").innerHTML = BITS.map(([x, y, k], i) => `<i class="ul-bit" style="left:calc(50% + ${x}px);top:calc(50% + ${y}px);color:${BIT_COLORS[i % 5]};animation-delay:${(0.2 + i * 0.07).toFixed(2)}s, ${(0.9 + i * 0.13).toFixed(2)}s">${k === "h" ? PIXEL.sprite("heartOn", i % 2 ? 2 : 3) : PIXEL.icon(k === "s" ? "star" : "spark", i % 2 ? 3 : 2)}</i>`).join("");
+    $("ulGar").innerHTML = ["#ff9ab8", "#ffcf6a", "#8ecbff", "#9fe0ae", "#c9aaff", "#ff9ab8", "#ffcf6a", "#8ecbff", "#9fe0ae"].map((c, i) => `<b style="border-top-color:${c};animation-delay:${(i * 0.05).toFixed(2)}s, ${(0.6 + i * 0.11).toFixed(2)}s"></b>`).join("");
   }
   function party(u) {
     clearInterval(uTimer);
     const F = window.FX;
     const st = $("ulStage");
+    bits();
     uroot.classList.remove("boom"); void uroot.offsetWidth; uroot.classList.add("boom");
     if (!F) return;
     F.clear();
-    const c = artCenter(), cx = c[0], cy = c[1], sz = F.size(), w = sz.w, h = sz.h, pal = F.PALETTE, pk = F.pick, rnd = F.rnd;
-    const pat = { home: "willow", pet: "star", pj: "peony", ban: "ring", item: "double", mood: "heart" }[u.cat] || "peony";
-    F.flash(cx, cy, "#fff6c8", 70, 760);
-    F.ring(cx, cy, "#fff27a", 340); F.ring(cx, cy, "#ffffff", 230, 0.08, 0.5); F.ring(cx, cy, pk(pal), 460, 0.16, 0.9);
-    F.explode(cx, cy, pat, [pk(pal), pk(pal)], 1);
-    F.explode(cx, cy, "pixel", pal, 0.7, 0.1);
-    // 양쪽 아래에서 파티 폭죽
-    F.popper(-8, h * 0.74, -Math.PI * 0.3, 0.12);
-    F.popper(w + 8, h * 0.74, -Math.PI * 0.7, 0.22);
-    // 쏘아 올리는 불꽃
-    const pats = ["peony", "star", "ring", "willow", "crossette", "double", "heart"];
-    for (let i = 0; i < 4; i++) F.rocket(rnd(w * 0.2, w * 0.8), h + 10, rnd(w * 0.12, w * 0.88), rnd(h * 0.08, h * 0.32), pk(pats), [pk(pal), pk(pal)], 0.4 + i * 0.3, 0.8);
-    F.confettiRain(34, 0.7);
-    if (u.cat === "mood" || u.cat === "pj") F.hearts(cx, cy, 10, 120, 0.25);
-    if (u.cat === "pet") F.fountain(cx, c[2].bottom + 6, 0.9, 0.1);
-    if (u.cat === "home") { F.balloons(8, 0.3); F.fountain(cx - 70, c[2].bottom, 1.2, 0.2); F.fountain(cx + 70, c[2].bottom, 1.2, 0.35); }
-    if (u.cat === "ban") F.ribbons(cx, cy, -Math.PI / 2, 1.2, 8, [300, 560], 0.1);
+    const c = artCenter(), cx = c[0], cy = c[1], sz = F.size(), w = sz.w, h = sz.h;
+    // 가운데서 톡, 둘레에서 톡톡톡
+    F.cutePop(cx, cy, 1.3);
+    F.cutePop(cx - 96, cy - 70, 0.7, 0.22); F.cutePop(cx + 100, cy - 84, 0.7, 0.36); F.cutePop(cx + 6, cy - 150, 0.7, 0.5);
+    // 양쪽 아래에서 파스텔 색종이와 리본
+    F.cutePopper(-8, h * 0.74, -Math.PI * 0.3, 0.12);
+    F.cutePopper(w + 8, h * 0.74, -Math.PI * 0.7, 0.24);
+    // 하트와 별이 살랑살랑
+    F.sprinkle(u.cat === "mood" || u.cat === "pj" ? 30 : 22, 0.5);
+    if (u.cat === "home") F.pastelBalloons(9, 0.3);
+    if (u.cat === "ban") F.ribbons(cx, cy, -Math.PI / 2, 1.2, 6, [280, 520], 0.1, F.PASTEL);
     if (st) { st.classList.remove("shake"); void st.offsetWidth; st.classList.add("shake"); }
   }
   function ushow() {
@@ -566,8 +598,8 @@
       $("ulName").innerHTML = Array.from(nameOf(u)).map((ch, i) => `<span style="animation-delay:${(0.25 + i * 0.045).toFixed(3)}s">${ch === " " ? "&nbsp;" : esc(ch)}</span>`).join("");
       $("ulFace").parentNode.hidden = true;
       $("ulWho").textContent = "";
-      $("ulWhy").textContent = u.cat === "home" ? `둘이 함께 ${Home.LEVELS[u.item][1]}번을 채워서` : `${whyOf(u)} 받은 선물`;
-      utypeLine(u.cat === "home" ? (u.item === 1 ? `황무지에 ${nameOf(u)}${batchim(nameOf(u)) ? "이" : "가"} 생겼어요!` : `우리 집이 ${nameOf(u)}${batchim(nameOf(u)) ? "이" : "가"} 됐어요!`) : `${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
+      $("ulWhy").textContent = u.cat === "home" ? `둘이 함께 ${Home.LEVELS[u.item].need}번을 채워서` : `${whyOf(u)} 받은 선물`;
+      utypeLine(u.cat === "home" ? (Home.LEVELS[u.item].tier === 1 ? `빈터에 ${nameOf(u)}${batchim(nameOf(u)) ? "을" : "를"} 쳤어요!` : `우리 집이 ${nameOf(u)}${batchim(nameOf(u)) ? "이" : "가"} 됐어요! 이제 하나씩 꾸며 가요.`) : `${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
       const actName = u.cat === "mood" ? "오늘 기분으로" : u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? (Items.BY[u.item].kind === "hand" ? "손에 들기" : "지금 하기") : "달기";
       $("ulBtns").innerHTML = u.cat === "home" ? `<button class="btn primary" data-u="next">${uq.length ? "다음" : "좋아"}</button>` : `<button class="btn" data-u="next">${uq.length ? "다음" : "좋아"}</button><button class="btn primary" data-u="use">${actName}</button>`;
       party(u);
@@ -615,6 +647,6 @@
   window.Deco = {
     open, back: close, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")),
     bindDrag, justDragged: () => { const el = $("banner"); return !!(el && Date.now() - Number(el.dataset.moved || 0) < 400); }, tab: () => tab,
-    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, whyLocked, need, homeLevel, homeLine, gifts: () => { unlocks(); return giftCount; }, ownedMoods, MOODS, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
+    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, petAge, whyLocked, need, homeLevel, homeLine, gifts: () => { unlocks(); return giftCount; }, ownedMoods, MOODS, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
   };
 })();

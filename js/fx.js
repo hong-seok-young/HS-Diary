@@ -279,20 +279,20 @@
     });
   }
   // 색종이: 한 점에서 각도 범위로
-  function confetti(x, y, angle, spread, n, speed, delay) {
+  function confetti(x, y, angle, spread, n, speed, delay, colors) {
     for (let i = 0; i < n; i++) {
       const a = angle + rnd(-spread, spread), v = rnd(speed[0], speed[1]);
-      add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 380, drag: 0.18, max: rnd(2.2, 3.4), size: rnd(6, 10), color: pick(PALETTE), shape: "confetti", rot: rnd(0, 6), vrot: rnd(-8, 8), flutter: rnd(6, 14), sway: 40, add: false, delay: (delay || 0) + rnd(0, 0.08) });
+      add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 380, drag: 0.18, max: rnd(2.2, 3.4), size: rnd(6, 10), color: pick(colors || PALETTE), shape: "confetti", rot: rnd(0, 6), vrot: rnd(-8, 8), flutter: rnd(6, 14), sway: 40, add: false, delay: (delay || 0) + rnd(0, 0.08) });
     }
   }
   function confettiRain(n, delay) {
     for (let i = 0; i < n; i++) add({ x: rnd(0, W), y: rnd(-80, -10), vx: rnd(-30, 30), vy: rnd(60, 160), g: 60, drag: 0.6, max: rnd(3, 4.5), size: rnd(6, 10), color: pick(PALETTE), shape: "confetti", rot: rnd(0, 6), vrot: rnd(-6, 6), flutter: rnd(6, 12), sway: 60, add: false, delay: (delay || 0) + rnd(0, 1.2) });
   }
   // 리본 테이프: 한 점에서 쏘아 올려 구불구불 떨어져요
-  function ribbons(x, y, angle, spread, n, speed, delay) {
+  function ribbons(x, y, angle, spread, n, speed, delay, colors) {
     for (let i = 0; i < n; i++) {
       const a = angle + rnd(-spread, spread), v = rnd(speed[0], speed[1]);
-      add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 300, drag: 0.22, max: rnd(2.2, 3.2), size: rnd(3, 4.5), color: pick(PALETTE), shape: "ribbon", rot: rnd(0, 6), trailLen: 16, sway: 70, add: false, delay: (delay || 0) + rnd(0, 0.1) });
+      add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 300, drag: 0.22, max: rnd(2.2, 3.2), size: rnd(3, 4.5), color: pick(colors || PALETTE), shape: "ribbon", rot: rnd(0, 6), trailLen: 16, sway: 70, add: false, delay: (delay || 0) + rnd(0, 0.1) });
     }
   }
   // 파티 폭죽: 색종이 + 리본 + 반짝이를 한 번에 팡
@@ -323,7 +323,38 @@
   function gather(x, y, dur, color) {
     add({ x, y, shape: "none", max: dur || 1.2, emit: (p) => { for (let i = 0; i < 2; i++) { const a = rnd(0, Math.PI * 2), d = rnd(90, 170), T = rnd(0.45, 0.7); add({ x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, vx: (-Math.cos(a) * d) / T, vy: (-Math.sin(a) * d) / T, max: T, size: rnd(1.4, 2.2), color: color || pick(["#fff2b8", "#c8b8ff", "#ffffff"]), shape: "dot", twinkle: true }); } } });
   }
+  // ---------- 귀여운 쪽 (도트 하트, 별, 네모가 통통. 빛나는 불꽃 대신 이걸 써요) ----------
+  const PASTEL = ["#ff9ab8", "#ffcf6a", "#8ecbff", "#9fe0ae", "#c9aaff", "#ffb08a", "#fff08a", "#ff8f8f"];
+  // 한 점에서 하트, 별, 네모가 톡 터져서 둥실 떨어져요
+  function cutePop(x, y, scale, delay) {
+    scale = scale || 1; delay = delay || 0;
+    const n = Math.round(18 * scale);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rnd(-0.25, 0.25), v = rnd(90, 230) * scale;
+      const shape = i % 3 === 0 ? "heart" : i % 3 === 1 ? "star" : "square";
+      add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 60 * scale, g: 260, drag: 0.16, max: rnd(0.9, 1.5), size: shape === "heart" ? rnd(10, 16) : shape === "star" ? rnd(7, 11) : rnd(4, 7), color: shape === "heart" ? pick(["#ff7aa8", "#ff9ab8", "#ffb3c8"]) : pick(PASTEL), shape, sway: 20, add: false, delay: delay + rnd(0, 0.05) });
+    }
+    // 톡 하고 퍼지는 작은 고리 둘 (도트 네모로)
+    for (let k = 0; k < 2; k++) for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2, v = (k ? 150 : 90) * scale; add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, drag: 0.05, max: 0.42, size: 4, color: k ? "#ffffff" : "#ffe27a", shape: "square", add: false, delay: delay + k * 0.06 }); }
+  }
+  // 위에서 하트와 별이 살랑살랑 내려와요
+  function sprinkle(n, delay) {
+    mount();
+    for (let i = 0; i < n; i++) { const heart = i % 2 === 0; add({ x: rnd(0, W), y: rnd(-60, -10), vx: rnd(-14, 14), vy: rnd(50, 110), g: 16, drag: 0.8, max: rnd(3, 4.6), size: heart ? rnd(9, 15) : rnd(6, 10), color: heart ? pick(["#ff7aa8", "#ff9ab8", "#ffb3c8"]) : pick(PASTEL), shape: heart ? "heart" : "star", sway: 46, add: false, delay: (delay || 0) + rnd(0, 1.4) }); }
+  }
+  // 귀여운 파티 폭죽: 파스텔 색종이와 가는 리본 조금, 별 몇 개
+  function cutePopper(x, y, angle, delay) {
+    delay = delay || 0;
+    confetti(x, y, angle, 0.5, 30, [280, 640], delay, PASTEL);
+    ribbons(x, y, angle, 0.4, 4, [380, 660], delay, PASTEL);
+    for (let i = 0; i < 8; i++) { const a = angle + rnd(-0.5, 0.5), v = rnd(220, 520); add({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 280, drag: 0.3, max: rnd(0.9, 1.5), size: rnd(7, 10), color: pick(["#fff08a", "#ffffff", "#ffcf6a"]), shape: "star", add: false, delay: delay + rnd(0, 0.06) }); }
+  }
+  // 한 점으로 작은 하트와 별이 모여들어요 (무언가 나타나기 직전)
+  function cuteGather(x, y, dur) {
+    add({ x, y, shape: "none", max: dur || 1, emit: (p) => { if (Math.random() < 0.5) return; const a = rnd(0, Math.PI * 2), d = rnd(80, 150), T = rnd(0.5, 0.8); add({ x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, vx: (-Math.cos(a) * d) / T, vy: (-Math.sin(a) * d) / T, max: T, size: rnd(5, 8), color: pick(PASTEL), shape: Math.random() < 0.5 ? "star" : "square", add: false }); } });
+  }
+  function pastelBalloons(n, delay) { for (let i = 0; i < n; i++) add({ x: rnd(20, W - 20), y: H + rnd(20, 60), vx: rnd(-10, 10), vy: rnd(-140, -90), max: rnd(4.5, 6), size: rnd(12, 17), color: pick(PASTEL), shape: "balloon", sway: 25, add: false, rot: rnd(0, 6), delay: (delay || 0) + rnd(0, 0.8) }); }
   function clear() { ps = []; }
 
-  window.FX = { PALETTE, pick, rnd, flash, ring, explode, rocket, confetti, confettiRain, ribbons, popper, hearts, heartRain, balloons, fountain, gather, clear, size: () => { mount(); return { w: W, h: H }; } };
+  window.FX = { PASTEL, cutePop, sprinkle, cutePopper, cuteGather, pastelBalloons, PALETTE, pick, rnd, flash, ring, explode, rocket, confetti, confettiRain, ribbons, popper, hearts, heartRain, balloons, fountain, gather, clear, size: () => { mount(); return { w: W, h: H }; } };
 })();
