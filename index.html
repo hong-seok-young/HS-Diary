@@ -16,8 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="preload" href="fonts/neodgm.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/game.css">
-  <link rel="stylesheet" href="css/farm.css">
+  <link rel="stylesheet" href="css/idle.css">
 </head>
 <body>
   <!-- ==================== 홈 ==================== -->
@@ -45,7 +44,9 @@
             <span class="sc-flower f5 tap" data-sprite="flowerA" data-scale="2"></span>
             <canvas class="sc-fx back" id="fxBack" aria-hidden="true"></canvas>
             <div class="sc-deco" id="deco"></div>
-            <button class="sc-plant" id="plant" aria-label="같이 키우는 나무"></button>
+            <button class="sc-plant" id="plant" aria-label="우리 텃밭"></button>
+            <button class="sc-quest" id="questSign" aria-label="오늘의 질문"><i></i></button>
+            <button class="sc-dice" id="dice" aria-label="뭐 하지 뽑기"><i></i></button>
             <div class="sc-tint" id="tint"></div>
             <div class="couple" id="couple">
               <button class="bob" data-who="him" aria-label="석영"><i class="mood-tag" id="moodHim"></i><i class="prop-top" id="topHim"></i><span class="ch-wrap"><img class="px ch" alt="" draggable="false"></span></button>
@@ -56,14 +57,11 @@
             <div class="sc-flash" id="flash"></div>
             <button class="weather-chip" id="weatherChip" aria-label="날씨"></button>
             <span class="phase-chip" id="phaseChip"></span>
+            <button class="sc-banner" id="banner" aria-label="우리 이름표"><b id="diaryTitle">석영이와 예은이</b><span id="dday">D+0</span></button>
+            <i class="sync-dot" id="syncDot" hidden></i>
             <button class="closet-chip" id="btnCloset" aria-label="옷장" hidden><img class="px" alt="" id="closetIco"></button>
           </div>
           <div class="bubble" id="bubble" role="status"></div>
-        </div>
-        <div class="hero-row">
-          <button class="dday" id="dday" aria-label="함께한 날">D+0</button>
-          <h1 id="diaryTitle">석영이와 예은이</h1>
-          <button class="gear" id="btnSync" aria-label="저장 상태"><span data-icon="heart"></span><i class="sync-dot" id="syncDot"></i></button>
         </div>
       </div>
     </header>
@@ -75,27 +73,7 @@
         <button class="btn small primary" id="btnInstall">설치</button>
       </div>
 
-      <nav class="tiles" id="menu">
-        <button class="tile" data-panel="mood" aria-expanded="false"><span data-icon="smile" data-scale="3"></span><b>기분</b><i id="tileMood"></i></button>
-        <button class="tile" data-panel="poke" aria-expanded="false"><span data-sprite="heartOn" data-scale="3"></span><b>하트</b><i id="tilePoke"></i></button>
-        <button class="tile" data-panel="quest" aria-expanded="false"><span data-icon="quest" data-scale="3"></span><b>질문</b><i id="tileQuest"></i></button>
-        <button class="tile" data-panel="pick" aria-expanded="false"><span data-icon="dice" data-scale="3"></span><b>뽑기</b><i></i></button>
-        <button class="tile" data-panel="upcoming" aria-expanded="false"><span data-icon="calendar" data-scale="3"></span><b>기념일</b><i id="tileUp"></i></button>
-        <button class="tile" data-game="garden"><span data-icon="leaf" data-scale="3"></span><b>농장</b><i id="tileGarden"></i></button>
-      </nav>
-
-      <div class="home-garden box" id="homeGarden" hidden></div>
-
-      <div class="peeks">
-        <button class="peek box" data-go="plans">
-          <h2><span data-icon="todo"></span>할 거<i id="peekPlansCount"></i></h2>
-          <div id="peekPlans"></div>
-        </button>
-        <button class="peek box" data-go="diary">
-          <h2><span data-icon="book"></span>일기<i id="peekDiaryCount"></i></h2>
-          <div id="peekDiary"></div>
-        </button>
-      </div>
+      <div class="home-cal box" id="homeCal"></div>
     </main>
 
     <!-- 타일을 누르면 아래에서 올라오는 창 -->
@@ -105,14 +83,6 @@
         <h2>오늘의 기분</h2>
         <div class="mood-now" id="moodNow"></div>
         <div id="moodPick"></div>
-      </div></section>
-
-      <section class="panel" id="panel-poke"><div class="panel-box box">
-        <h2>하트 보내기</h2>
-        <div class="poke-wrap">
-          <button class="poke-btn" id="btnPoke" aria-label="하트 보내기"><span data-sprite="heartOn" data-scale="8"></span></button>
-        </div>
-        <div class="poke-count" id="pokeCount"></div>
       </div></section>
 
       <section class="panel" id="panel-quest"><div class="panel-box box">
@@ -131,10 +101,15 @@
         </div>
       </div></section>
 
-      <section class="panel" id="panel-upcoming"><div class="panel-box box">
-        <h2>기념일</h2>
-        <div class="since" id="sinceBox"></div>
-        <div class="upcoming-list" id="upcomingList"></div>
+      <section class="panel" id="panel-day"><div class="panel-box box">
+        <h2 class="day-title" id="dayTitle"></h2>
+        <div class="day-list" id="dayList"></div>
+        <form class="quick-add day-form" id="dayForm">
+          <input type="text" id="dayText" placeholder="일정 적기" maxlength="40" autocomplete="off">
+          <input type="time" id="dayTime" aria-label="시간">
+          <button class="btn primary" type="submit">추가</button>
+        </form>
+        <div class="day-who" id="dayWho"></div>
       </div></section>
 
     </div>
@@ -193,6 +168,7 @@
   </section>
 
   <button class="fab" id="btnAdd" aria-label="추가" hidden>+</button>
+  <button class="back-btn" id="backBtn" aria-label="뒤로" hidden><i></i></button>
 
   <nav class="nav" id="nav">
     <button class="nav-btn active" data-go="home"><span data-icon="home" data-scale="3"></span><b>홈</b></button>
@@ -336,13 +312,10 @@
   <script src="js/morph.js"></script>
   <script src="js/pixel.js"></script>
   <script src="js/store.js"></script>
-  <script src="js/g/story.js"></script>
   <script src="js/g/art.js"></script>
-  <script src="js/g/memory.js"></script>
-  <script src="js/f/crops.js"></script>
-  <script src="js/f/farm.js"></script>
   <script src="js/f/sprites.js"></script>
-  <script src="js/f/ui.js"></script>
+  <script src="js/idle.js"></script>
+  <script src="js/cal.js"></script>
   <script src="js/tale.js"></script>
   <script src="js/charanim.js"></script>
   <script src="js/pals.js"></script>

@@ -39,6 +39,9 @@ export class Couple extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, type TEXT, data BLOB)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reqs (id TEXT PRIMARY KEY, who TEXT, at INTEGER, status TEXT, tok TEXT, ua TEXT)`);
   }
+  webSocketMessage() { /* 폰은 듣기만 해요 */ }
+  webSocketClose(ws) { try { ws.close(); } catch (e) { /* 이미 닫힘 */ } }
+  webSocketError() { /* 다시 이으면 돼요 */ }
   get(k) { const r = this.sql.exec(`SELECT v FROM kv WHERE k = ?`, k).toArray()[0]; return r ? r.v : null; }
   set(k, v) { this.sql.exec(`INSERT INTO kv (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v`, k, v); }
   device(req, url) {
@@ -85,6 +88,14 @@ export class Couple extends DurableObject {
     const dev = this.device(req, url);
     if (!dev && !admin) return json({ error: "auth" }, 401);
 
+    // ---- 실시간: 누가 저장하면 이어져 있는 폰들에 바로 알려요 ----
+    if (p === "/live") {
+      if (req.headers.get("Upgrade") !== "websocket") return json({ error: "upgrade" }, 426);
+      const pair = new WebSocketPair();
+      this.ctx.acceptWebSocket(pair[1]);
+      return new Response(null, { status: 101, webSocket: pair[0] });
+    }
+
     // ---- 허락 ----
     if (p === "/pending" && req.method === "GET") {
       const since = Date.now() - 3 * 86400000;
@@ -113,6 +124,7 @@ export class Couple extends DurableObject {
       if (text.length > 1900000) return json({ error: "too big" }, 413);
       this.set("db", text);
       this.set("v", String(v + 1));
+      this.ctx.getWebSockets().forEach((w) => { try { w.send(String(v + 1)); } catch (e) { /* 끊긴 줄 */ } });
       return json({ v: v + 1 });
     }
 
@@ -131,6 +143,11 @@ export class Couple extends DurableObject {
         this.sql.exec(`INSERT INTO photos (name, type, data) VALUES (?, ?, ?) ON CONFLICT(name) DO NOTHING`, name, req.headers.get("Content-Type") || "image/jpeg", buf);
         return json({ ok: true });
       }
+    }
+    // 관리용: 다 비우기 (시험 서버에서만 써요)
+    if (p === "/reset" && admin && req.method === "POST") {
+      ["kv", "devices", "photos", "reqs"].forEach((t) => this.sql.exec(`DELETE FROM ${t}`));
+      return json({ ok: true });
     }
     if (p === "/devices" && admin) {
       return json({ list: this.sql.exec(`SELECT who, at, seen FROM devices`).toArray(), reqs: this.sql.exec(`SELECT id, who, at, status FROM reqs`).toArray(), v: this.get("v"), photos: this.sql.exec(`SELECT COUNT(*) AS n FROM photos`).toArray()[0].n });

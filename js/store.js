@@ -9,7 +9,7 @@
   "use strict";
 
   const KEY = { db: "hsd.db", dev: "hsd.dev", join: "hsd.join", me: "hsd.me", old: "hs-diary-local-entries" };
-  const COLS = ["entries", "plans", "diary", "garden"];
+  const COLS = ["entries", "plans", "diary", "garden", "cal"];
   const cfg = typeof DIARY_CONFIG !== "undefined" ? DIARY_CONFIG : {};
 
   const API = String(cfg.api || "").replace(/\/+$/, "");
@@ -24,7 +24,7 @@
     return null;
   }
   function emptyDb() {
-    return { v: 1, entries: {}, plans: {}, diary: {}, garden: {}, pairs: {} };
+    return { v: 1, entries: {}, plans: {}, diary: {}, garden: {}, cal: {}, pairs: {} };
   }
   function normalize(db) {
     const out = emptyDb();
@@ -268,6 +268,28 @@
     } catch (e) { /* 다음에 다시 봐요 */ }
   }
 
+  // ---------- 실시간 ----------
+  // 서버와 줄을 하나 이어 두고, 상대 폰이 저장하면 바로 받아 와요. 줄이 끊기면 알아서 다시 이어요.
+  let ws = null, wsTimer = 0, wsWait = 1000, lastV = -1;
+  function live() {
+    if (!API || !token() || ws || document.visibilityState !== "visible") return;
+    let sock;
+    try { sock = new WebSocket(API.replace(/^http/, "ws") + "/live?k=" + encodeURIComponent(token())); } catch (e) { return; }
+    ws = sock;
+    sock.onopen = () => { wsWait = 1000; };
+    sock.onmessage = (ev) => { const v = Number(ev.data); if (!(v === lastV)) schedule(0); };
+    sock.onclose = sock.onerror = () => {
+      if (ws === sock) ws = null;
+      clearTimeout(wsTimer);
+      wsTimer = setTimeout(live, wsWait);
+      wsWait = Math.min(30000, wsWait * 2);
+    };
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") live();
+    else if (ws) { const s0 = ws; ws = null; try { s0.close(); } catch (e) { /* 이미 닫힘 */ } }
+  });
+
   let syncing = false;
   let again = false;
   let timer = null;
@@ -285,6 +307,7 @@
       }
       for (let attempt = 0; attempt < 4; attempt++) {
         const remote = await fetchRemote();
+        lastV = remote.v;
         const merged = merge(remote.db, db);
         if (!same(merged, db)) {
           db = merged;
@@ -294,7 +317,7 @@
         await uploadPending();
         if (same(merged, remote.db)) break;
         const res = await putDb(sorted(merged), remote.v);
-        if (res.ok) break;
+        if (res.ok) { lastV = remote.v + 1; break; }
         if (res.status === 401) throw authErr();
         // 409: 그사이 다른 폰이 먼저 저장함 → 다시 받아서 합쳐요.
         if (res.status !== 409) throw new Error("write " + res.status);
@@ -302,6 +325,7 @@
       }
       await checkPending();
       setStatus("ok");
+      live();
     } catch (e) {
       if (e && e.auth) { ls(KEY.dev, null); setStatus("local"); schedule(3000); }
       else if (!navigator.onLine) setStatus("offline");
@@ -313,9 +337,15 @@
       if (again) { again = false; schedule(300); }
     }
   }
+  // 더 빨리 잡혀 있는 예약이 있으면 그걸 그대로 둬요. (늦은 예약이 빠른 예약을 밀어내지 않게)
+  let due = 0;
   function schedule(ms) {
+    ms = ms == null ? 500 : ms;
+    const at = Date.now() + ms;
+    if (due && due <= at) return;
     clearTimeout(timer);
-    timer = setTimeout(sync, ms == null ? 1500 : ms);
+    due = at;
+    timer = setTimeout(() => { due = 0; sync(); }, ms);
   }
   function changed() {
     clearTimeout(saveTimer);
@@ -323,18 +353,12 @@
     emit();
     schedule();
   }
-  // 게임처럼 아주 자주 바뀌는 값: 화면은 바로, 폰 저장은 잠깐 모았다가, 올리기는 가끔.
+  // 게임처럼 아주 자주 바뀌는 값: 화면은 바로, 폰 저장은 잠깐 모았다가, 올리기는 10초마다.
   let saveTimer = 0;
-  let fastSyncAt = 0;
   function changedFast() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(saveLocal, 400);
-    const now = Date.now();
-    if (!fastSyncAt || fastSyncAt < now) {
-      fastSyncAt = now + 20000;
-      clearTimeout(timer);
-      timer = setTimeout(sync, 20000);
-    }
+    schedule(10000);
   }
   function flushFast() {
     if (!saveTimer) return;
@@ -346,7 +370,7 @@
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       flushFast();
-      if (token() && fastSyncAt > Date.now()) schedule(0);
+      if (token() && due) schedule(0);
     }
   });
 
@@ -356,8 +380,8 @@
   });
   window.addEventListener("online", () => schedule(200));
   setInterval(() => {
-    if (document.visibilityState === "visible" && token()) schedule(0);
-  }, 60000);
+    if (document.visibilityState === "visible" && token() && !ws) schedule(0);
+  }, 15000);
 
   // ---------- 밖에서 쓰는 기능 ----------
   window.Store = {
@@ -449,6 +473,7 @@
       emit();
     },
     sync,
+    syncSoon() { schedule(600); },
     status() {
       return status;
     },

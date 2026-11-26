@@ -257,9 +257,12 @@
     clearInterval(typing); typing = 0;
     if (root) { root.classList.add("closing"); setTimeout(() => { root.hidden = true; root.classList.remove("closing", "closet"); }, 160); }
     cur = null;
+    askFn = null;
     hideBanner();
+    setTimeout(() => document.dispatchEvent(new Event("hsd:layer")), 170);
     const f = onDone; onDone = null; if (f) f();
   }
+  const layer = () => document.dispatchEvent(new Event("hsd:layer"));
   function play(list) {
     if (!list.length) return;
     ensure();
@@ -267,6 +270,7 @@
     root.hidden = false;
     root.classList.remove("closet");
     openBeat(list[0]);
+    layer();
   }
 
   // ---------- 알림 (못 본 이야기) ----------
@@ -298,6 +302,7 @@
     ensure();
     askFn = fn;
     root.hidden = false;
+    layer();
     root.classList.add("closet");
     cur = null;
     $("taleHead").textContent = "알림";
@@ -318,6 +323,7 @@
     const on = wearOf(me);
     root.hidden = false;
     root.classList.add("closet");
+    layer();
     cur = null;
     $("taleHead").textContent = "우리 옷장";
     $("taleFace").parentNode.hidden = true;
@@ -334,5 +340,5 @@
     $("taleBtns").innerHTML = `<button class="btn primary" data-tale="closet-close">닫기</button>`;
   }
 
-  window.Tale = { ask, beats, owned, unseen, markSeen, notify, play, closet, wearOf, setWear, GIFTS, isOpen: () => !!(root && !root.hidden) };
+  window.Tale = { back: () => close(), ask, beats, owned, unseen, markSeen, notify, play, closet, wearOf, setWear, GIFTS, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")) };
 })();
