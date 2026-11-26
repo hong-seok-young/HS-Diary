@@ -209,18 +209,19 @@
   }
 
   // ---------- 그림에 둔 동물 ----------
-  const MAXP = 3;
-  function placedOf(w) {
-    const v = window.Store && Store.pair("pets", w);
+  // 그림에 둘 동물은 둘이 같이 정하는 한 묶음이에요. 누가 바꾸든 가장 나중에 바꾼 것이 두 폰에 똑같이 보여요.
+  const MAXP = 4;
+  function sharedPets() {
+    if (!window.Store) return null;
+    let v = null, t = -1;
+    ["him", "her"].forEach((w) => { const x = Store.pair("pets", w), at = Store.pairTime("pets", w); if (Array.isArray(x) && at > t) { v = x; t = at; } });
+    if (!v) return null;
     const own = ownedPets();
-    return Array.isArray(v) ? v.filter((id) => own.indexOf(id) >= 0).slice(0, MAXP) : null;
+    return v.filter((id) => own.indexOf(id) >= 0).slice(0, MAXP);
   }
+  const placedOf = () => sharedPets();
   function placed() {
-    const a = placedOf("him"), b = placedOf("her");
-    if (!a && !b) return ownedPets().slice(0, MAXP); // 아직 아무도 안 골랐으면 먼저 온 친구들
-    const out = [];
-    (a || []).concat(b || []).forEach((id) => { if (out.indexOf(id) < 0) out.push(id); });
-    return out;
+    return sharedPets() || ownedPets().slice(0, MAXP); // 아직 아무도 안 골랐으면 먼저 온 친구들
   }
 
   // ---------- 이름표 ----------
@@ -350,7 +351,7 @@
     if (k === "ctab") { tab = closetTab = v; render(); $("decoBody").scrollTop = 0; return; }
     if (k === "wear") { if (window.Tale) Tale.setWear(v); document.dispatchEvent(new CustomEvent("hsd:wear")); render(); return; }
     if (k === "pet") {
-      let list = placedOf(w) || [];
+      let list = placed().slice();
       if (list.indexOf(v) >= 0) list = list.filter((x) => x !== v);
       else { if (list.length >= MAXP) list = list.slice(1); list = list.concat(v); }
       Store.setPair("pets", w, list);
@@ -433,10 +434,10 @@
         own.slice().reverse().map((id) => `<button class="deco-it${cls}${on === id ? " on" : ""}" data-d="acc" data-kind="${tab}" data-v="${id}"><img class="px" alt="" data-k="item|${id}" src="${BLANK}"><small>${esc(Items.BY[id].name)}</small></button>`).join("") +
         rest.map((id, k) => (Items.BY[id].kind === tab ? locked("item", id, k) : "")).join("") + `</div>`;
     } else if (tab === "pet") {
-      const own = ownedPets(), mine = placedOf(w) || [], all = placed();
+      const own = ownedPets(), mine = placed();
       const stage = (id) => { const P = window.Pals; if (!P || !P.growth) return ""; const g = P.growth(id); return g.label ? ` (${g.label})` : ""; };
-      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · 새 친구는 알이나 아기로 와서 같이 지내면 자라요 · 무엇이든 할 때마다 선물이 하나씩 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
-      html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : all.indexOf(id) >= 0 ? " other" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" data-k="pet|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name + stage(id))}</small></button>`).join("") +
+      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · 새 친구는 알이나 아기로 와서 같이 지내면 자라요 · 무엇이든 할 때마다 선물이 하나씩 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요. 둘이 같이 정하는 거라, 한 사람이 바꾸면 두 폰이 똑같이 바뀌어요`;
+      html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" data-k="pet|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name + stage(id))}</small></button>`).join("") +
         petsLive.slice(own.length).map((id, k) => locked("pet", id, k)).join("") + `</div>`;
     } else {
       const n = bannerCount(), b = ban();
@@ -618,7 +619,7 @@
     if (!u) return;
     if (k === "use") {
       if (u.cat === "mood") { Store.setPair("m:" + dayKey(new Date()), w, u.item); document.dispatchEvent(new CustomEvent("hsd:mood")); }
-      else if (u.cat === "pet") { let list = placedOf(w) || placed().slice(0, MAXP - 1); list = list.filter((x) => x !== u.item); if (list.length >= MAXP) list = list.slice(1); Store.setPair("pets", w, list.concat(u.item)); document.dispatchEvent(new CustomEvent("hsd:pets")); }
+      else if (u.cat === "pet") { let list = placed().slice(); list = list.filter((x) => x !== u.item); if (list.length >= MAXP) list = list.slice(1); Store.setPair("pets", w, list.concat(u.item)); document.dispatchEvent(new CustomEvent("hsd:pets")); }
       else if (u.cat === "pj") { if (window.Tale) Tale.setWear(u.item); document.dispatchEvent(new CustomEvent("hsd:wear")); }
       else if (u.cat === "item") setAcc(Items.BY[u.item].kind, u.item);
       else setBan({ d: u.item });
