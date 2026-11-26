@@ -388,6 +388,10 @@
     list(col) {
       return Object.values(db[col] || {}).filter((r) => r && !r.del);
     },
+    // 지운 것까지 모두 (선물은 지운 기록 몫도 그대로 남겨요)
+    listAll(col) {
+      return Object.values(db[col] || {}).filter((r) => r);
+    },
     get(col, id) {
       const r = (db[col] || {})[id];
       return r && !r.del ? r : null;
@@ -407,7 +411,10 @@
       return db[col][id];
     },
     remove(col, id) {
+      const prev = db[col][id];
       db[col][id] = { id, del: true, t: Date.now() };
+      // 처음 만든 때와 만든 사람은 남겨요 (이 기록으로 받은 선물이 사라지지 않게)
+      if (prev && prev.c) { db[col][id].c = prev.c; if (prev.by) db[col][id].by = prev.by; if (prev.from) db[col][id].from = prev.from; if (prev.dn) { db[col][id].dn = prev.dn; db[col][id].dby = prev.dby; } }
       changed();
     },
     // 두 사람이 따로 적는 값 (하트, 기분, 답변, 보낸 하트 수)

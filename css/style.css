@@ -1591,3 +1591,40 @@ button.day-it:active { transform: translateY(1px); }
 .ul-img.mood { width: 96px; }
 @media (max-height: 620px) { .mood-pick { max-height: 196px; } }
 @media (max-width: 340px) { .mood-btn { min-height: 42px; } }
+
+/* ---------- 축하 효과 (불꽃, 색종이, 리본) ---------- */
+.fx-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 450; }
+.ul-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
+.unlock.boom .ul-flash { animation: ulFlash .55s ease-out; }
+@keyframes ulFlash { 0% { opacity: .95; } 100% { opacity: 0; } }
+.ul-rays { position: absolute; left: 50%; top: 50%; width: 560px; height: 560px; margin: -294px 0 0 -280px; border-radius: 50%; opacity: 0; transform: scale(.2);
+  background: repeating-conic-gradient(rgba(255, 240, 170, .26) 0 9deg, transparent 9deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0, #000 28%, transparent 68%); mask-image: radial-gradient(circle, #000 0, #000 28%, transparent 68%); pointer-events: none; }
+.unlock[data-step="2"] .ul-rays { opacity: 1; transform: none; animation: ulRaysIn .5s cubic-bezier(.2, 1.4, .4, 1), ulRot 18s linear .5s infinite; }
+@keyframes ulRaysIn { 0% { opacity: 0; transform: scale(.2) rotate(-40deg); } 100% { opacity: 1; transform: none; } }
+@keyframes ulRot { to { transform: rotate(360deg); } }
+.unlock[data-step="1"] .ul-art { animation: ulThump .9s ease-in-out infinite; }
+@keyframes ulThump { 0%, 100% { transform: scale(1) rotate(-3deg); } 20% { transform: scale(1.1) rotate(3deg); } 40% { transform: scale(.97) rotate(-4deg); } 60% { transform: scale(1.08) rotate(4deg); } 80% { transform: scale(1) rotate(-2deg); } }
+.unlock[data-step="1"] .ul-glow { background: radial-gradient(circle, rgba(190, 170, 255, .35) 0, transparent 68%); animation: ulBreath .9s ease-in-out infinite; }
+@keyframes ulBreath { 0%, 100% { transform: scale(.85); opacity: .6; } 50% { transform: scale(1.1); opacity: 1; } }
+.unlock[data-step="2"] .ul-art { animation: ulPop2 .7s cubic-bezier(.2, 1.7, .4, 1), ulFloat 2.4s ease-in-out .7s infinite; }
+@keyframes ulPop2 { 0% { transform: scale(.2) rotate(-18deg); } 55% { transform: scale(1.28) rotate(6deg); } 78% { transform: scale(.94) rotate(-2deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes ulFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+.ul-stage.shake { animation: ulShake .45s ease-out; }
+@keyframes ulShake { 0% { transform: translate(0, 0); } 15% { transform: translate(-5px, 3px); } 30% { transform: translate(5px, -3px); } 45% { transform: translate(-4px, -2px); } 60% { transform: translate(3px, 2px); } 80% { transform: translate(-1px, 1px); } 100% { transform: none; } }
+.ul-new { position: absolute; left: 50%; top: 50%; margin: -118px 0 0 46px; padding: 0 8px; font-style: normal; font-size: 15px; line-height: 24px; color: #fff; background: #e8364a; box-shadow: 0 -2px 0 0 #7a1420, 0 2px 0 0 #7a1420, -2px 0 0 0 #7a1420, 2px 0 0 0 #7a1420; opacity: 0; transform: scale(0) rotate(12deg); z-index: 2; pointer-events: none; }
+.unlock[data-step="2"] .ul-new { opacity: 1; animation: ulStamp .45s cubic-bezier(.2, 1.8, .4, 1) .35s both, ulWag 1.2s ease-in-out .9s infinite; }
+@keyframes ulStamp { 0% { opacity: 0; transform: scale(2.6) rotate(-20deg); } 100% { opacity: 1; transform: scale(1) rotate(12deg); } }
+@keyframes ulWag { 0%, 100% { transform: scale(1) rotate(12deg); } 50% { transform: scale(1.12) rotate(6deg); } }
+.ul-name span { display: inline-block; opacity: 0; animation: ulLetter .45s cubic-bezier(.2, 1.7, .4, 1) both; }
+@keyframes ulLetter { 0% { opacity: 0; transform: translateY(-26px) scale(.4); } 60% { opacity: 1; transform: translateY(4px) scale(1.15); } 100% { opacity: 1; transform: none; } }
+.ul-why { min-height: 18px; margin: -6px 0 0; font-size: 13px; line-height: 18px; color: #ffe6a8; text-align: center; word-break: keep-all; opacity: 0; }
+.unlock[data-step="2"] .ul-why { animation: fadeIn .4s ease .7s both; }
+.unlock[data-step="2"] .ul-box { animation: ulBoxUp .45s cubic-bezier(.2, 1.5, .4, 1) .15s both; }
+@keyframes ulBoxUp { 0% { transform: translateY(40px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.unlock[data-step="2"] .ul-box .btn { animation: ulBtn .4s cubic-bezier(.2, 1.7, .4, 1) .75s both; }
+.unlock[data-step="2"] .ul-box .btn.primary { animation: ulBtn .4s cubic-bezier(.2, 1.7, .4, 1) .9s both, ulWagBtn 1.6s ease-in-out 1.5s infinite; }
+@keyframes ulBtn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+@keyframes ulWagBtn { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.unlock .tale-head { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .ul-rays, .ul-new, .ul-name span, .unlock .ul-art, .unlock .ul-box, .unlock .ul-box .btn { animation: none !important; opacity: 1; } }

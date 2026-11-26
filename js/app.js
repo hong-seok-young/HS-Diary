@@ -694,8 +694,8 @@
       hideMoodPop();
       const tile = (n, lazy) => `<button class="mood-btn" data-mood="${n}" aria-label="${esc(Moods.name(n))}">${lazy ? `<img class="px mood-img" alt="" data-n="${n}" src="${BLANK_IMG}" style="width:36px;height:36px">` : Moods.html(n, true)}<b>${MOODS[moodFeel(n)]}</b></button>`;
       const lock = (n, left) => `<button class="mood-btn lock" data-mood-why="${left}"><img class="px mood-img" alt="" data-n="${n}" src="${BLANK_IMG}" style="width:36px;height:36px"><b>???</b></button>`;
-      $("moodPick").innerHTML = `<p class="mood-tip">기분 ${own.length}개 / ${Moods.COUNT}개 · 둘 중 한 사람이라도 앱을 연 날마다 하나씩 생겨요</p><div class="mood-pick">` +
-        own.slice().reverse().map((n, i) => tile(n, i >= 20)).join("") + all.slice(own.length).map((n, k) => lock(n, k + 1)).join("") + `</div>`;
+      $("moodPick").innerHTML = `<p class="mood-tip">기분 ${own.length}개 / ${Moods.COUNT}개 · 무엇이든 할 때마다 선물이 하나씩 와요</p><div class="mood-pick">` +
+        own.slice().reverse().map((n, i) => tile(n, i >= 20)).join("") + all.slice(own.length).map((n, k) => lock(n, k)).join("") + `</div>`;
       // 그림은 화면에 보일 때 그려요 (수백 개를 한꺼번에 그리지 않게)
       const box = $("moodPick").querySelector(".mood-pick");
       const imgs = box.querySelectorAll("img[data-n]");
@@ -1199,7 +1199,7 @@
       const t = ev.target;
       hideMoodPop();
       const why = t.closest("[data-mood-why]");
-      if (why) { showMoodPop(why, `앱을 연 날이 ${why.dataset.moodWhy}번 더 쌓이면 받아요. (하루에 하나, 둘 중 한 사람만 열어도 돼요)`); return; }
+      if (why) { showMoodPop(why, window.Deco ? Deco.whyLocked("mood", Number(why.dataset.moodWhy)) : ""); return; }
       const mood = t.closest("[data-mood]");
       if (mood) {
         const me = Store.me();

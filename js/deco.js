@@ -1,11 +1,8 @@
 // ============================================================
 // 꾸미기: 잠옷, 그림 속 동물, 이름표
 // - 무엇이 열렸는지는 저장된 기록에서 계산해요. 그래서 두 폰이 늘 같고, 한 사람이 열면 둘 다 가져요.
-// - 하루에 많아야 다섯 개가 열려요.
-//   · 석영이 출석: 동물 한 마리 / 예은이 출석: 잠옷 한 벌
-//   · 오늘의 질문에 답하거나 하트를 보내면: 이름표 하나
-//   · 그날 처음 기록, 할 일, 일기, 일정을 남기면: 장식품 하나
-//   · 둘 중 한 사람이라도 출석하면: 기분 얼굴 하나 (처음엔 하나도 없어요)
+// - 선물은 한 번 할 때마다 하나예요 (출석, 기분, 질문 답, 하트, 쪽지, 기록, 할 일, 일기, 일정). 하루 한도는 없어요.
+// - 열릴 때는 누가 무엇을 해서 받았는지 알려 줘요.
 // - 열릴 때는 검은 그림자와 대화가 먼저 나오고, 누르면 폭죽과 함께 모습이 드러나요.
 // - 고른 것(입은 잠옷, 그림에 둔 동물, 이름표)은 상대 폰에도 바로 보여요.
 // ============================================================
@@ -48,33 +45,81 @@
   const PETS = FIRST_PET.concat(shuffled(ids.filter((id) => FIRST_PET.indexOf(id) < 0), 19970929));
 
   // ---------- 무엇이 열렸나 ----------
-  let cache = null;
+  // 선물은 "한 번 할 때마다 하나"예요. 하루 한도가 없어서, 많이 쓰면 많이 받아요.
+  //   출석, 오늘의 기분 고르기, 오늘의 질문 답, 하트 보내기 (사람마다 하루 한 번씩)
+  //   쪽지, 기록, 할 일, 할 일 해내기, 일기, 일정 (할 때마다)
+  // 무엇을 받는지는 차례로 돌아가요 (장식품이 가장 많아서 두 번에 한 번꼴).
+  // T0 전의 것은 예전 규칙(하루에 종류마다 하나)으로 셈해서, 이미 받은 것은 그대로예요.
+  const T0 = 1795692000000; // 2026-11-26 20:20 (한국 시간)
+  const PATTERN = ["item", "pet", "mood", "item", "pj", "ban"];
+  const ACTS = "출석, 기분 고르기, 질문 답, 하트, 쪽지, 기록, 할 일, 일기, 일정";
+  const cut = (t0) => { const t = String(t0 || "").trim(); return t.length > 10 ? t.slice(0, 10) + "…" : t; };
+  let cache = null, kNow = 0, needCache = null;
   function unlocks() {
     if (cache) return cache;
     const St = window.Store;
     if (!St) return [];
+    const all = (col) => (St.listAll ? St.listAll(col) : St.list(col));
+    const SRC = { pet: PETS, pj: PJS, ban: BAN, item: ITEMS, mood: MOODS };
+    const n = { pet: 0, pj: 0, ban: 1, item: 0, mood: 0 };
+    const out = [];
+    const give = (cat, at, who, why, lid) => {
+      if (n[cat] >= SRC[cat].length) return false;
+      const item = cat === "ban" ? n.ban : SRC[cat][n[cat]];
+      n[cat]++;
+      out.push({ id: `${cat}:${item}`, lid: lid || "", at, day: dayKey(new Date(at)), cat, item, who: who || "", why });
+      return true;
+    };
+    // 1) 예전 규칙 (T0 전)
     const days = {};
     const day = (d) => (days[d] = days[d] || {});
-    St.pairKeys("a:").forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) { const o = day(k.slice(2)), t = St.pairTime(k, w) || 1; o["a_" + w] = t; if (!o.m || t < o.m) o.m = t; } }); });
-    St.pairKeys("q:").concat(St.pairKeys("p:")).forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) { const o = day(k.slice(2)), t = St.pairTime(k, w) || 1; if (!o.q || t < o.q) { o.q = t; o.qk = k[0]; } } }); });
-    ["entries", "plans", "diary", "cal"].forEach((col) => St.list(col).forEach((r) => { if (!r.c) return; const o = day(dayKey(new Date(r.c))); if (!o.r || r.c < o.r) o.r = r.c; }));
-    const n = { pet: 0, pj: 0, ban: 1, item: 0, mood: 0 };
-    const src = { pet: PETS, pj: PJS, ban: null, item: ITEMS, mood: MOODS };
-    const out = [];
+    St.pairKeys("a:").forEach((k) => { ["him", "her"].forEach((w) => { const t = St.pairTime(k, w) || 1; if (St.pair(k, w) && t < T0) { const o = day(k.slice(2)); o["a_" + w] = t; if (!o.m || t < o.m) { o.m = t; o.mw = w; } } }); });
+    St.pairKeys("q:").concat(St.pairKeys("p:")).forEach((k) => { ["him", "her"].forEach((w) => { const t = St.pairTime(k, w) || 1; if (St.pair(k, w) && t < T0) { const o = day(k.slice(2)); if (!o.q || t < o.q) { o.q = t; o.qk = k[0]; o.qw = w; } } }); });
+    ["entries", "plans", "diary", "cal"].forEach((col) => St.list(col).forEach((r) => { if (!r.c || r.c >= T0) return; const o = day(dayKey(new Date(r.c))); if (!o.r || r.c < o.r) { o.r = r.c; o.rw = r.by || ""; } }));
     Object.keys(days).sort().forEach((d) => {
       const o = days[d];
-      [["a_him", "pet", "출석 선물"], ["a_her", "pj", "출석 선물"], ["q", "ban", o.qk === "p" ? "하트 선물" : "질문 선물"], ["r", "item", "기록 선물"], ["m", "mood", "기분 선물"]].forEach(([slot, cat, why]) => {
-        if (!o[slot]) return;
-        const item = cat === "ban" ? (n.ban < BAN.length ? n.ban : -1) : src[cat][n[cat]];
-        if (item === undefined || item === -1) return;
-        n[cat]++;
-        out.push({ id: `u:${d}:${slot}`, at: o[slot], cat, item, why });
-      });
+      if (o.a_him) give("pet", o.a_him, "him", "출석해서", `u:${d}:a_him`);
+      if (o.a_her) give("pj", o.a_her, "her", "출석해서", `u:${d}:a_her`);
+      if (o.q) give("ban", o.q, o.qw, o.qk === "p" ? "하트를 보내서" : "오늘의 질문에 답해서", `u:${d}:q`);
+      if (o.r) give("item", o.r, o.rw, "기록을 남겨서", `u:${d}:r`);
+      if (o.m) give("mood", o.m, o.mw, "그날 처음 출석해서", `u:${d}:m`);
     });
+    // 2) 새 규칙 (T0 부터): 한 번 할 때마다 하나
+    const acts = [];
+    const PAIR = { "a:": "출석해서", "m:": "오늘의 기분을 골라서", "q:": "오늘의 질문에 답해서", "p:": "하트를 보내서" };
+    Object.keys(PAIR).forEach((pre) => St.pairKeys(pre).forEach((k) => ["him", "her"].forEach((w) => { const t = St.pairTime(k, w); if (St.pair(k, w) && t >= T0) acts.push({ t, k: k + w, who: w, why: PAIR[pre] }); })));
+    const REC = {
+      notes: (r) => "쪽지를 보내서",
+      entries: (r) => (r.title || r.place ? `'${cut(r.title || r.place)}' 기록을 남겨서` : "기록을 남겨서"),
+      plans: (r) => (r.title ? `'${cut(r.title)}' 할 일을 적어서` : "할 일을 적어서"),
+      diary: (r) => "일기를 써서",
+      cal: (r) => (r.title ? `'${cut(r.title)}' 일정을 적어서` : "일정을 적어서"),
+    };
+    Object.keys(REC).forEach((col) => all(col).forEach((r) => {
+      if (r.c && r.c >= T0) acts.push({ t: r.c, k: col + r.id, who: r.from || r.by || "", why: REC[col](r) });
+      if (col === "plans" && r.dn && r.dn >= T0) acts.push({ t: r.dn, k: "done" + r.id, who: r.dby || "", why: r.title ? `'${cut(r.title)}' 할 일을 해내서` : "할 일을 해내서" });
+    }));
+    acts.sort((a, b) => a.t - b.t || (a.k < b.k ? -1 : 1));
+    let k = 0;
+    acts.forEach((a) => {
+      for (let tries = 0; tries < PATTERN.length; tries++) { const cat = PATTERN[k % PATTERN.length]; k++; if (give(cat, a.t, a.who, a.why)) break; }
+    });
+    kNow = k;
+    needCache = null;
     out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
     cache = out;
     return out;
   }
+  // 아직 못 받은 것까지 몇 번 남았나: need(cat)[i] = 그 종류의 i번째 다음 선물까지 해야 하는 횟수
+  function need(cat) {
+    unlocks();
+    if (!needCache) {
+      needCache = { pet: [], pj: [], ban: [], item: [], mood: [] };
+      for (let i = 0; i < 4200; i++) needCache[PATTERN[(kNow + i) % PATTERN.length]].push(i + 1);
+    }
+    return needCache[cat] || [];
+  }
+  const whyLocked = (cat, nth) => { const v = need(cat)[nth]; return `무엇이든 ${v || "여러"}번 더 하면 받아요. (${ACTS} · 하루에 몇 번을 해도 그때마다 선물이 하나씩 와요)`; };
   const ownedItems = () => unlocks().filter((u) => u.cat === "item").map((u) => u.item);
   const ownedMoods = () => unlocks().filter((u) => u.cat === "mood").map((u) => u.item);
   // 손에 든 것 (사람마다 따로 골라요)
@@ -322,37 +367,32 @@
     let html = "", tip = "";
     // 아직 못 얻은 것도 검은 그림자로 다 보여요. 이름은 ???, 아래에 얻는 방법.
     // 누르면 얻는 방법이 글상자로 잠깐 떠요
-    const why = {
-      pj: (n) => `${call("her")}가 ${n}번 더 출석하면 받아요. (하루에 한 벌)`,
-      pet: (n) => `${call("him")}가 ${n}번 더 출석하면 만나요. (하루에 한 마리)`,
-      ban: (n) => `오늘의 질문에 답하거나 하트를 보낸 날이 ${n}번 더 쌓이면 받아요. (하루에 하나)`,
-      item: (n) => `기록, 할 일, 일기, 일정 중 하나라도 남긴 날이 ${n}번 더 쌓이면 받아요. (장식품은 종류 상관없이 하루에 하나)`,
-    };
+    const why = { pj: (k) => whyLocked("pj", k), pet: (k) => whyLocked("pet", k), ban: (k) => whyLocked("ban", k), item: (k) => whyLocked("item", k) };
     const locked = (kind, id, left) => `<button class="deco-it lock${kind === "pet" ? " pet" : kind === "item" && Items.BY[id].kind === "hand" ? " item" : ""}" data-d="why" data-v="${esc(why[kind](left))}"><img class="px" alt="" data-k="${kind}|${id}" src="${BLANK}"><small>???</small></button>`;
     if (tab === "pj") {
       const own = ownedPajamas(), on = window.Tale ? Tale.wearOf(w) : "";
-      tip = `잠옷 ${own.length}벌 / ${PJS.length}벌 · ${call("her")}가 출석하면 하루에 한 벌씩 생겨요`;
+      tip = `잠옷 ${own.length}벌 / ${PJS.length}벌 · 무엇이든 할 때마다 선물이 하나씩 와요`;
       html = `<div class="deco-grid"><button class="deco-it${on ? "" : " on"}" data-d="wear" data-v=""><img class="px" alt="" src="${S().charImg(w, "down", 0, "", "", "")}"><small>평소 옷</small></button>` +
         own.slice().reverse().map((id) => `<button class="deco-it${on === id ? " on" : ""}" data-d="wear" data-v="${id}"><img class="px" alt="" data-k="pj|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") +
-        PJS.slice(own.length).map((id, k) => locked("pj", id, k + 1)).join("") + `</div>`;
+        PJS.slice(own.length).map((id, k) => locked("pj", id, k)).join("") + `</div>`;
     } else if (KINDS.indexOf(tab) >= 0) {
       const KN = { hand: "손에 드는 것", eye: "눈 장식", hat: "머리 장식", neck: "목 장식" };
       const ownAll = ownedItems(), own = ownAll.filter((id) => Items.BY[id].kind === tab), on = accOf(w)[tab];
       const rest = ITEMS.slice(ownAll.length);
       const total = ITEMS.filter((id) => Items.BY[id].kind === tab).length;
-      tip = `${KN[tab]} ${own.length}개 / ${total}개 · 장식품은 모두 ${ITEMS.length}개. 기록, 할 일, 일기, 일정을 남긴 날마다 하나씩 생겨요` + (tab === "hat" ? " · 동물 잠옷을 입으면 머리 장식은 후드에 가려져요" : "");
+      tip = `${KN[tab]} ${own.length}개 / ${total}개 · 장식품은 모두 ${ITEMS.length}개. 무엇이든 할 때마다 선물이 하나씩 와요` + (tab === "hat" ? " · 동물 잠옷을 입으면 머리 장식은 후드에 가려져요" : "");
       const cls = tab === "hand" ? " item" : "";
       html = `<div class="deco-grid"><button class="deco-it${cls}${on ? "" : " on"}" data-d="acc" data-kind="${tab}" data-v=""><i class="empty-hand"></i><small>없음</small></button>` +
         own.slice().reverse().map((id) => `<button class="deco-it${cls}${on === id ? " on" : ""}" data-d="acc" data-kind="${tab}" data-v="${id}"><img class="px" alt="" data-k="item|${id}" src="${BLANK}"><small>${esc(Items.BY[id].name)}</small></button>`).join("") +
-        rest.map((id, k) => (Items.BY[id].kind === tab ? locked("item", id, k + 1) : "")).join("") + `</div>`;
+        rest.map((id, k) => (Items.BY[id].kind === tab ? locked("item", id, k) : "")).join("") + `</div>`;
     } else if (tab === "pet") {
       const own = ownedPets(), mine = placedOf(w) || [], all = placed();
-      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · ${call("him")}가 출석하면 하루에 한 마리씩 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
+      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · 무엇이든 할 때마다 선물이 하나씩 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
       html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : all.indexOf(id) >= 0 ? " other" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" data-k="pet|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") +
-        PETS.slice(own.length).map((id, k) => locked("pet", id, k + 1)).join("") + `</div>`;
+        PETS.slice(own.length).map((id, k) => locked("pet", id, k)).join("") + `</div>`;
     } else {
       const n = bannerCount(), b = ban();
-      tip = `이름표 ${n}개 / ${BAN.length}개 · 오늘의 질문에 답하거나 하트를 보낸 날마다 하나씩 생겨요`;
+      tip = `이름표 ${n}개 / ${BAN.length}개 · 무엇이든 할 때마다 선물이 하나씩 와요`;
       html = `<form class="deco-form"><input type="text" id="decoText" maxlength="14" placeholder="이름표에 쓸 글자" value="${esc(b.t)}" autocomplete="off"><button class="btn small primary" type="submit">바꾸기</button></form>
         <p class="deco-tip">이름표를 끌면 그림 안 어디로든 옮길 수 있어요</p>
         <div class="deco-row">${MODES.map((t, i) => `<button class="chip${b.m === i ? " active" : ""}" data-d="mode" data-v="${i}">${t}</button>`).join("")}</div>
@@ -360,7 +400,7 @@
           const st = styleOf(i);
           return i < n
             ? `<button class="deco-it bn${b.d === i ? " on" : ""}" data-d="ban" data-v="${i}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>${esc(x.name)}</small></button>`
-            : `<button class="deco-it bn lock" data-d="why" data-v="${esc(why.ban(i - n + 1))}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>???</small></button>`;
+            : `<button class="deco-it bn lock" data-d="why" data-v="${esc(why.ban(i - n))}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>???</small></button>`;
         }).join("") + `</div>`;
     }
     $("decoTip").textContent = tip;
@@ -371,27 +411,21 @@
   }
 
   // ---------- 새로 열릴 때: 그림자, 대화, 폭죽 ----------
-  const SEEN = "hsd.useen";
+  // 본 선물은 "종류:물건"으로 적어 둬요. 선물마다 연출은 딱 한 번만 나와요.
+  const SEEN_OLD = "hsd.useen", SEEN = "hsd.useen3";
   function seenSet() { try { return JSON.parse(localStorage.getItem(SEEN) || "{}") || {}; } catch (e) { return {}; } }
   function markSeen(id) { const s0 = seenSet(); s0[id] = 1; try { localStorage.setItem(SEEN, JSON.stringify(s0)); } catch (e) { /* 그냥 둬요 */ } }
   function unseen() {
     let raw = null;
     try { raw = localStorage.getItem(SEEN); } catch (e) { /* 없으면 처음 */ }
     if (raw === null) {
-      // 이 폰에서 처음이면, 오늘보다 전에 열린 것들은 이미 본 걸로 해요 (가진 건 그대로예요)
-      const today = "u:" + dayKey(new Date());
+      // 처음 한 번: 예전 표시를 옮겨요. 이 폰이 처음이면 오늘보다 전에 열린 것은 이미 본 걸로 해요 (가진 건 그대로예요).
+      let old = null;
+      try { old = JSON.parse(localStorage.getItem(SEEN_OLD) || "null"); } catch (e) { old = null; }
+      const today = dayKey(new Date());
       const s1 = {};
-      unlocks().forEach((u) => { if (u.id.slice(0, today.length) < today) s1[u.id] = 1; });
+      unlocks().forEach((u) => { if (old ? (u.lid && old[u.lid]) || (u.cat === "mood" && u.lid && u.day < today) : u.day < today) s1[u.id] = 1; });
       try { localStorage.setItem(SEEN, JSON.stringify(s1)); } catch (e) { /* 그냥 둬요 */ }
-    }
-    // 기분 얼굴 선물이 생기기 전에 출석했던 날들 몫은 이미 본 걸로 해요 (한꺼번에 줄줄이 뜨지 않게)
-    let old = "1";
-    try { old = localStorage.getItem(SEEN + ".m2"); } catch (e) { /* 그냥 둬요 */ }
-    if (!old) {
-      const today = "u:" + dayKey(new Date());
-      const s2 = seenSet();
-      unlocks().forEach((u) => { if (u.cat === "mood" && u.id.slice(0, today.length) < today) s2[u.id] = 1; });
-      try { localStorage.setItem(SEEN, JSON.stringify(s2)); localStorage.setItem(SEEN + ".m2", "1"); } catch (e) { /* 그냥 둬요 */ }
     }
     const s0 = seenSet();
     return unlocks().filter((u) => !s0[u.id]);
@@ -410,7 +444,7 @@
     uroot = document.createElement("div");
     uroot.className = "unlock";
     uroot.hidden = true;
-    uroot.innerHTML = `<div class="ul-stage"><i class="ul-count" id="ulCount"></i><div class="ul-glow"></div><div class="ul-art" id="ulArt"></div><b class="ul-name" id="ulName"></b><i class="ul-hint" id="ulHint"></i></div>
+    uroot.innerHTML = `<div class="ul-flash"></div><div class="ul-stage" id="ulStage"><i class="ul-count" id="ulCount"></i><div class="ul-rays"></div><div class="ul-glow"></div><i class="ul-new" id="ulNew">NEW!</i><div class="ul-art" id="ulArt"></div><b class="ul-name" id="ulName"></b><p class="ul-why" id="ulWhy"></p><i class="ul-hint" id="ulHint"></i></div>
       <div class="tale-box ul-box"><div class="tale-head" id="ulHead"></div><div class="tale-body"><span class="tale-face"><img class="px" alt="" id="ulFace"></span><div class="tale-text"><b class="tale-name" id="ulWho"></b><p id="ulLine"></p></div></div><div class="tale-btns" id="ulBtns"></div></div>`;
     document.body.appendChild(uroot);
     uroot.addEventListener("click", (ev) => {
@@ -435,40 +469,82 @@
     return `<span class="sc-banner mini big ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span>`;
   }
   const nameOf = (u) => (u.cat === "mood" ? MD.name(u.item) : u.cat === "item" ? Items.BY[u.item].name : u.cat === "ban" ? BAN[u.item].name + " 이름표" : Z.BY[u.item].name + (u.cat === "pj" ? " 잠옷" : ""));
+  // 누가 무엇을 해서 받았는지
+  function whyOf(u) {
+    const d = new Date(u.at), today = dayKey(new Date());
+    const when = u.day === today ? "" : `${d.getMonth() + 1}월 ${d.getDate()}일에 `;
+    const who = u.who === "him" || u.who === "her" ? `${call(u.who)}가 ` : "";
+    return `${when}${who}${u.why}`;
+  }
+  // 축하 연출: 번쩍, 고리, 불꽃, 파티 폭죽(색종이와 리본), 쏘아 올리는 불꽃, 색종이 비
+  let uTimer = 0;
+  const artCenter = () => { const r = $("ulArt").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r]; };
+  function tease() {
+    clearInterval(uTimer);
+    const F = window.FX;
+    if (!F) return;
+    const go = () => { if (!ucur || ustep !== 1) { clearInterval(uTimer); return; } const c = artCenter(); F.gather(c[0], c[1], 0.9); F.ring(c[0], c[1], "#b9a6ff", 150, 0, 0.8); };
+    go();
+    uTimer = setInterval(go, 900);
+  }
+  function party(u) {
+    clearInterval(uTimer);
+    const F = window.FX;
+    const st = $("ulStage");
+    uroot.classList.remove("boom"); void uroot.offsetWidth; uroot.classList.add("boom");
+    if (!F) return;
+    F.clear();
+    const c = artCenter(), cx = c[0], cy = c[1], sz = F.size(), w = sz.w, h = sz.h, pal = F.PALETTE, pk = F.pick, rnd = F.rnd;
+    const pat = { pet: "star", pj: "peony", ban: "ring", item: "double", mood: "heart" }[u.cat] || "peony";
+    F.flash(cx, cy, "#fff6c8", 70, 760);
+    F.ring(cx, cy, "#fff27a", 340); F.ring(cx, cy, "#ffffff", 230, 0.08, 0.5); F.ring(cx, cy, pk(pal), 460, 0.16, 0.9);
+    F.explode(cx, cy, pat, [pk(pal), pk(pal)], 1);
+    F.explode(cx, cy, "pixel", pal, 0.7, 0.1);
+    // 양쪽 아래에서 파티 폭죽
+    F.popper(-8, h * 0.74, -Math.PI * 0.3, 0.12);
+    F.popper(w + 8, h * 0.74, -Math.PI * 0.7, 0.22);
+    // 쏘아 올리는 불꽃
+    const pats = ["peony", "star", "ring", "willow", "crossette", "double", "heart"];
+    for (let i = 0; i < 4; i++) F.rocket(rnd(w * 0.2, w * 0.8), h + 10, rnd(w * 0.12, w * 0.88), rnd(h * 0.08, h * 0.32), pk(pats), [pk(pal), pk(pal)], 0.4 + i * 0.3, 0.8);
+    F.confettiRain(34, 0.7);
+    if (u.cat === "mood" || u.cat === "pj") F.hearts(cx, cy, 10, 120, 0.25);
+    if (u.cat === "pet") F.fountain(cx, c[2].bottom + 6, 0.9, 0.1);
+    if (u.cat === "ban") F.ribbons(cx, cy, -Math.PI / 2, 1.2, 8, [300, 560], 0.1);
+    if (st) { st.classList.remove("shake"); void st.offsetWidth; st.classList.add("shake"); }
+  }
   function ushow() {
     const u = ucur;
     const talk = TALK[u.cat][(u.at + u.item.toString().length) % TALK[u.cat].length];
-    const first = u.id.indexOf(":a_her") > 0 ? "her" : "him";
+    const first = u.who === "her" ? "her" : "him";
     const who = ustep === 0 ? first : first === "him" ? "her" : "him";
     $("ulCount").textContent = utotal > 1 ? `${utotal - uq.length} / ${utotal}` : "";
-    $("ulHead").textContent = u.why;
+    $("ulHead").textContent = whyOf(u);
     uroot.dataset.step = String(ustep);
+    uroot.dataset.cat = u.cat;
     if (ustep < 2) {
+      uroot.classList.remove("boom");
       $("ulArt").innerHTML = artOf(u);
       $("ulName").textContent = "";
+      $("ulWhy").textContent = "";
       $("ulHint").textContent = ustep === 1 ? "눌러서 확인하기" : "";
       $("ulFace").parentNode.hidden = false;
       $("ulFace").src = S().charImg(who, "down", 0, "", ustep ? "happy" : "");
       $("ulWho").textContent = NAME[who];
       $("ulBtns").innerHTML = "";
       utypeLine(talk[ustep]);
+      if (ustep === 1) tease(); else clearInterval(uTimer);
     } else {
       // 짜잔
       $("ulHint").textContent = "";
-      $("ulName").textContent = nameOf(u);
+      // 이름은 한 글자씩 통통 떨어져요
+      $("ulName").innerHTML = Array.from(nameOf(u)).map((ch, i) => `<span style="animation-delay:${(0.25 + i * 0.045).toFixed(3)}s">${ch === " " ? "&nbsp;" : esc(ch)}</span>`).join("");
+      $("ulWhy").textContent = `${whyOf(u)} 받은 선물`;
       $("ulFace").parentNode.hidden = true;
       $("ulWho").textContent = "";
       utypeLine(`${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
       const actName = u.cat === "mood" ? "오늘 기분으로" : u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? (Items.BY[u.item].kind === "hand" ? "손에 들기" : "지금 하기") : "달기";
       $("ulBtns").innerHTML = `<button class="btn" data-u="next">${uq.length ? "다음" : "좋아"}</button><button class="btn primary" data-u="use">${actName}</button>`;
-      const h = window.HSD;
-      if (h && h.burst) {
-        const r = $("ulArt").getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        h.burst(cx, cy, 22, "spark");
-        setTimeout(() => h.burst(cx - 70, cy - 40, 12, "heart"), 160);
-        setTimeout(() => h.burst(cx + 70, cy - 50, 12, "spark"), 300);
-        setTimeout(() => h.burst(cx, cy - 90, 14, "spark"), 460);
-      }
+      party(u);
     }
   }
   function unext() {
@@ -487,8 +563,11 @@
       else setBan({ d: u.item });
     }
     markSeen(u.id);
+    clearInterval(uTimer);
+    if (window.FX) FX.clear();
     if (uq.length) { ucur = uq.shift(); ustep = 0; ushow(); return; }
     ucur = null;
+    uroot.classList.remove("boom");
     uroot.classList.add("closing");
     setTimeout(() => { uroot.hidden = true; uroot.classList.remove("closing"); layer(); }, 180);
     document.dispatchEvent(new CustomEvent("hsd:pets"));
@@ -510,6 +589,6 @@
   window.Deco = {
     open, back: close, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")),
     bindDrag, justDragged: () => { const el = $("banner"); return !!(el && Date.now() - Number(el.dataset.moved || 0) < 400); }, tab: () => tab,
-    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, ownedMoods, MOODS, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
+    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, whyLocked, need, ownedMoods, MOODS, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
   };
 })();
