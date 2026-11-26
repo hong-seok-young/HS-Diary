@@ -1386,17 +1386,19 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
    쪽지: 종이비행기와 우체통
    ============================================================ */
 .phase-chip { display: none !important; }
-.sc-plane { position: absolute; left: 0; top: 0; z-index: 8; width: 26px; height: 20px; border: 0; padding: 0; background: none; animation: planeFly 34s ease-in-out infinite; }
+.sc-plane { position: absolute; left: 0; top: 34%; z-index: 8; width: 30px; height: 18px; border: 0; padding: 0; background: none; line-height: 0; animation: planeX 46s ease-in-out infinite; }
 .sc-plane[hidden], .sc-mailbox[hidden] { display: none; }
-.sc-plane::after { content: ""; position: absolute; inset: -12px; }
-.sc-plane u { position: absolute; left: 0; top: 2px; width: 26px; height: 16px; background: #fff; clip-path: polygon(0 38%, 100% 0, 62% 100%, 46% 60%); filter: drop-shadow(1px 0 0 #6a7a8a) drop-shadow(-1px 0 0 #6a7a8a) drop-shadow(0 1px 0 #6a7a8a) drop-shadow(0 -1px 0 #6a7a8a) drop-shadow(0 2px 0 rgba(60, 40, 30, .3)); animation: planeBob 1.6s ease-in-out infinite; }
-.sc-plane u::after { content: ""; position: absolute; inset: 0; background: #d6dde6; clip-path: polygon(46% 60%, 100% 0, 62% 100%); }
-.sc-plane.boing u { animation: boing .5s var(--ease); }
-.sc-plane.fly { animation: none; pointer-events: none; z-index: 12; }
-@keyframes planeFly { 0% { transform: translate(12cqw, 58px); } 25% { transform: translate(52cqw, 44px) rotate(-6deg); } 50% { transform: translate(78cqw, 66px) rotate(4deg); } 50.01% { transform: translate(78cqw, 66px) scaleX(-1); } 75% { transform: translate(40cqw, 50px) scaleX(-1) rotate(-5deg); } 99.99% { transform: translate(12cqw, 58px) scaleX(-1); } 100% { transform: translate(12cqw, 58px); } }
-@keyframes planeBob { 50% { transform: translateY(-4px) rotate(-3deg); } }
+.sc-plane::after { content: ""; position: absolute; inset: -14px; }
+.sc-plane span { display: block; animation: planeFlip 46s steps(1) infinite; }
+.sc-plane img { display: block; width: 30px; height: 18px; image-rendering: pixelated; animation: planeBob 4.2s ease-in-out infinite alternate, tapGlow 2.6s ease-in-out infinite; }
+.sc-plane.boing img { animation: boing .5s var(--ease); }
+.sc-plane.fly { top: 0; animation: none; pointer-events: none; z-index: 12; }
+.sc-plane.fly span, .sc-plane.fly img { animation: none; }
+/* 천천히 오른쪽으로 갔다가 돌아서 왼쪽으로. 위아래로는 살짝 떠올랐다 내려앉아요. */
+@keyframes planeX { 0%, 100% { transform: translateX(8cqw); } 50% { transform: translateX(calc(92cqw - 30px)); } }
+@keyframes planeFlip { 0% { transform: scaleX(1); } 50% { transform: scaleX(-1); } }
+@keyframes planeBob { 0% { transform: translateY(-7px) rotate(-5deg); } 100% { transform: translateY(7px) rotate(4deg); } }
 .scene { container-type: inline-size; }
-.night .sc-plane u { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .4)) brightness(.9); }
 .sc-mailbox { position: absolute; left: calc(50% + 96px); bottom: 12px; z-index: 5; width: 22px; height: 32px; border: 0; padding: 0; background: none; }
 .sc-mailbox::before { content: ""; position: absolute; left: 9px; bottom: 0; width: 4px; height: 16px; background: #8a5f3f; box-shadow: 0 0 0 2px #4a3428; }
 .sc-mailbox i { position: absolute; left: 1px; top: 2px; width: 20px; height: 14px; background: #e8504f; box-shadow: 0 0 0 2px #4a3428, inset 0 -3px 0 0 #c0392b, inset 0 3px 0 0 #ff8a80; }
@@ -1464,3 +1466,34 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 .sc-plant { left: calc(50% + 58px) !important; }
 .sc-kennel { left: auto; right: 4px; }
 .sc-mailbox { left: calc(50% + 98px); }
+
+/* 도감: 아직 못 얻은 것은 검은 그림자 */
+.deco-it.lock { background: #eadcc0; color: #9a8470; justify-content: flex-end; min-height: 0; }
+.deco-it.lock img, .deco-it.lock .sc-banner { filter: brightness(0); opacity: .55; }
+.deco-it.lock.bn { justify-content: center; }
+.deco-it em { max-width: 100%; font-style: normal; font-size: 9.5px; line-height: 12px; color: #a08a70; text-align: center; word-break: keep-all; }
+.deco-it img[data-k] { min-height: 52px; }
+.deco-it.pet img[data-k] { min-height: 50px; }
+.deco-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); }
+
+.deco-pop { position: absolute; z-index: 5; padding: 8px 10px; font-size: 13px; line-height: 18px; color: #fff6dc; background: #4a3428; box-shadow: 0 -2px 0 0 #2a1c14, 0 2px 0 0 #2a1c14, -2px 0 0 0 #2a1c14, 2px 0 0 0 #2a1c14, 0 6px 0 0 rgba(40, 28, 20, .25); word-break: keep-all; animation: pop .2s var(--ease) both; pointer-events: none; }
+button.deco-it.lock:active { transform: scale(.95); }
+
+/* ============================================================
+   누를 수 있는 것들: 은은한 테두리 빛과 반짝임
+   ============================================================ */
+@keyframes tapGlow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0)); } 50% { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 3px rgba(255, 244, 180, .9)); } }
+@keyframes tapHop { 0%, 86%, 100% { transform: translateY(0); } 90% { transform: translateY(-4px); } 94% { transform: translateY(0); } 97% { transform: translateY(-2px); } }
+.sc-mailbox, .sc-kennel, .sc-plant, .scene .house { animation: tapGlow 2.6s ease-in-out infinite, tapHop 6s ease-in-out infinite; }
+.sc-kennel { animation-delay: -.8s, -2s; }
+.sc-plant { animation-delay: -1.6s, -4s; }
+.scene .house.h2 { animation-delay: -1.2s, -3s; }
+.sc-mailbox.boing, .sc-kennel.boing, .sc-plant.boing, .scene .house.boing { animation: boing .5s var(--ease); }
+.sc-banner { animation: tapShine 5s ease-in-out infinite; }
+@keyframes tapShine { 0%, 80%, 100% { box-shadow: 0 -2px 0 0 var(--b2), 0 2px 0 0 var(--b2), -2px 0 0 0 var(--b2), 2px 0 0 0 var(--b2), 0 5px 0 0 rgba(60, 40, 30, .18); } 90% { box-shadow: 0 -2px 0 0 var(--b2), 0 2px 0 0 var(--b2), -2px 0 0 0 var(--b2), 2px 0 0 0 var(--b2), 0 0 0 4px rgba(255, 255, 255, .9), 0 5px 0 0 rgba(60, 40, 30, .18); } }
+.sc-banner.bn-s3, .sc-banner.bn-s6, .sc-banner.bn-s7, .sc-banner.bn-s9, .sc-banner.bn-s10 { animation: none; }
+.sc-banner.boing { animation: boing .5s var(--ease); }
+/* 반짝이: 누를 수 있는 것 위에 번갈아 떠요 */
+.tap-spark { position: absolute; z-index: 11; width: 3px; height: 3px; background: #fff; pointer-events: none; box-shadow: 0 -3px 0 0 #fff, 0 3px 0 0 #fff, -3px 0 0 0 #fff, 3px 0 0 0 #fff, 0 -6px 0 0 #fff6b0, 0 6px 0 0 #fff6b0, -6px 0 0 0 #fff6b0, 6px 0 0 0 #fff6b0; animation: sparkTw .9s steps(6) forwards; }
+@keyframes sparkTw { 0% { transform: scale(0) rotate(0); opacity: 0; } 35% { transform: scale(1) rotate(45deg); opacity: 1; } 70% { transform: scale(.7) rotate(90deg); opacity: 1; } 100% { transform: scale(0) rotate(135deg); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sc-mailbox, .sc-kennel, .sc-plant, .scene .house, .sc-banner, .sc-plane img { animation: none; } .tap-spark { display: none; } }

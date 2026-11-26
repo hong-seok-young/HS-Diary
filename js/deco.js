@@ -196,6 +196,7 @@
     tab = t || "pj";
     root.hidden = false;
     root.classList.remove("closing");
+    hidePop();
     render();
     layer();
   }
@@ -207,7 +208,9 @@
   }
   function onClick(ev) {
     const b = ev.target.closest("[data-d]");
+    hidePop();
     if (!b) return;
+    if (b.dataset.d === "why") { showPop(b, b.dataset.v); return; }
     const k = b.dataset.d, v = b.dataset.v, w = me();
     if (k === "close") { history.back(); return; }
     if (k === "tab") { tab = v; render(); $("decoBody").scrollTop = 0; return; }
@@ -225,30 +228,74 @@
     if (k === "mode") { setBan({ m: Number(v) }); render(); return; }
   }
   if (window.Store) Store.onChange(() => { cache = null; });
-  function lockTiles(n, total, how) { return n < total ? `<span class="deco-it lock wide"><b>+${total - n}</b><small>${how}</small></span>` : ""; }
+  // 그림은 화면에 보일 때 그려요 (수백 개를 한꺼번에 그리지 않게)
+  let io = null;
+  function srcOf(k) {
+    const [kind, id] = k.split("|");
+    return kind === "pet" ? S().petImg(id, "stand", "") : S().charImg(me() || "him", "down", 0, "", "", id);
+  }
+  // 얻는 방법 글상자: 잠깐 떴다가 사라지고, 다른 곳을 눌러도 사라져요
+  let popT = 0;
+  function hidePop() { clearTimeout(popT); const p = root && root.querySelector(".deco-pop"); if (p) p.remove(); }
+  function showPop(tile, text) {
+    const box = root.querySelector(".deco-box");
+    const p = document.createElement("div");
+    p.className = "deco-pop";
+    p.textContent = text;
+    box.appendChild(p);
+    const br = box.getBoundingClientRect(), tr = tile.getBoundingClientRect();
+    const w = Math.min(240, br.width - 16);
+    p.style.width = w + "px";
+    p.style.left = Math.max(8, Math.min(br.width - w - 8, tr.left - br.left + tr.width / 2 - w / 2)) + "px";
+    const above = tr.top - br.top > 90;
+    p.style.top = above ? tr.top - br.top - p.offsetHeight - 8 + "px" : tr.bottom - br.top + 8 + "px";
+    popT = setTimeout(hidePop, 3600);
+  }
+  function lazy() {
+    const body = $("decoBody");
+    if (!window.IntersectionObserver) { body.querySelectorAll("img[data-k]").forEach((im) => { im.src = srcOf(im.dataset.k); }); return; }
+    if (io) io.disconnect();
+    io = new IntersectionObserver((list) => { list.forEach((e) => { if (e.isIntersecting) { const im = e.target; im.src = srcOf(im.dataset.k); io.unobserve(im); } }); }, { root: body, rootMargin: "200px" });
+    body.querySelectorAll("img[data-k]").forEach((im) => io.observe(im));
+  }
+  const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
   function render() {
     const w = me();
     $("decoTitle").textContent = tab === "pj" ? "옷장" : tab === "pet" ? "동물 친구들" : "이름표";
     let html = "", tip = "";
+    // 아직 못 얻은 것도 검은 그림자로 다 보여요. 이름은 ???, 아래에 얻는 방법.
+    // 누르면 얻는 방법이 글상자로 잠깐 떠요
+    const why = { pj: (n) => `${call("her")}가 ${n}번 더 출석하면 받아요. 사흘에 한 번은 그날 첫 기록(기록, 할 일, 일기, 일정)으로도 한 벌씩 당겨져요.`, pet: (n) => `${call("him")}가 ${n}번 더 출석하면 만나요. 사흘에 한 번은 그날 첫 기록으로도 한 마리씩 당겨져요.`, ban: (n) => `오늘의 질문에 답하거나 하트를 보낸 날이 ${n}번 더 쌓이면 받아요. 사흘에 한 번은 그날 첫 기록으로도 하나씩 당겨져요.` };
+    const locked = (kind, id, left) => `<button class="deco-it lock${kind === "pet" ? " pet" : ""}" data-d="why" data-v="${esc(why[kind](left))}"><img class="px" alt="" data-k="${kind}|${id}" src="${BLANK}"><small>???</small></button>`;
     if (tab === "pj") {
       const own = ownedPajamas(), on = window.Tale ? Tale.wearOf(w) : "";
-      tip = `잠옷 ${own.length}벌 / ${PJS.length}벌 · ${call("her")}가 출석하거나 기록을 남기면 생겨요`;
+      tip = `잠옷 ${own.length}벌 / ${PJS.length}벌 · ${call("her")}가 출석하면 한 벌, 사흘에 한 번은 그날 첫 기록(기록, 할 일, 일기, 일정)으로도 한 벌`;
       html = `<div class="deco-grid"><button class="deco-it${on ? "" : " on"}" data-d="wear" data-v=""><img class="px" alt="" src="${S().charImg(w, "down", 0, "", "", "")}"><small>평소 옷</small></button>` +
-        own.slice().reverse().map((id) => `<button class="deco-it${on === id ? " on" : ""}" data-d="wear" data-v="${id}"><img class="px" alt="" loading="lazy" src="${S().charImg(w, "down", 0, "", "", id)}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") + lockTiles(own.length, Z.LIST.length, "아직 못 만난 잠옷") + `</div>`;
+        own.slice().reverse().map((id) => `<button class="deco-it${on === id ? " on" : ""}" data-d="wear" data-v="${id}"><img class="px" alt="" data-k="pj|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") +
+        PJS.slice(own.length).map((id, k) => locked("pj", id, k + 1)).join("") + `</div>`;
     } else if (tab === "pet") {
       const own = ownedPets(), mine = placedOf(w) || [], all = placed();
-      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · ${call("him")}가 출석하거나 기록을 남기면 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
-      html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : all.indexOf(id) >= 0 ? " other" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" loading="lazy" src="${S().petImg(id, "stand", mine.indexOf(id) >= 0 ? "happy" : "")}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") + (own.length ? "" : `<p class="deco-empty">아직 아무도 안 왔어요. 곧 첫 친구가 찾아와요</p>`) + lockTiles(own.length, PETS.length, "아직 못 만난 친구") + `</div>`;
+      tip = `동물 ${own.length}마리 / ${PETS.length}마리 · ${call("him")}가 출석하면 한 마리, 사흘에 한 번은 그날 첫 기록으로도 한 마리. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
+      html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : all.indexOf(id) >= 0 ? " other" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" data-k="pet|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") +
+        PETS.slice(own.length).map((id, k) => locked("pet", id, k + 1)).join("") + `</div>`;
     } else {
       const n = bannerCount(), b = ban();
-      tip = `이름표 ${n}개 / ${BAN.length}개 · 오늘의 질문에 답하거나 하트를 보내면 하루 하나씩 생겨요`;
+      tip = `이름표 ${n}개 / ${BAN.length}개 · 오늘의 질문에 답하거나 하트를 보낸 날마다 하나, 사흘에 한 번은 그날 첫 기록으로도 하나`;
       html = `<form class="deco-form"><input type="text" id="decoText" maxlength="14" placeholder="이름표에 쓸 글자" value="${esc(b.t)}" autocomplete="off"><button class="btn small primary" type="submit">바꾸기</button></form>
         <p class="deco-tip">이름표를 끌면 그림 안 어디로든 옮길 수 있어요</p>
         <div class="deco-row">${MODES.map((t, i) => `<button class="chip${b.m === i ? " active" : ""}" data-d="mode" data-v="${i}">${t}</button>`).join("")}</div>
-        <div class="deco-grid ban">` + BAN.slice(0, n).map((x, i) => { const st = styleOf(i); return `<button class="deco-it bn${b.d === i ? " on" : ""}" data-d="ban" data-v="${i}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>${esc(x.name)}</small></button>`; }).join("") + lockTiles(n, BAN.length, "아직 못 받은 이름표") + `</div>`;
+        <div class="deco-grid ban">` + BAN.map((x, i) => {
+          const st = styleOf(i);
+          return i < n
+            ? `<button class="deco-it bn${b.d === i ? " on" : ""}" data-d="ban" data-v="${i}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>${esc(x.name)}</small></button>`
+            : `<button class="deco-it bn lock" data-d="why" data-v="${esc(why.ban(i - n + 1))}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>???</small></button>`;
+        }).join("") + `</div>`;
     }
     $("decoTip").textContent = tip;
-    $("decoBody").innerHTML = html;
+    const body = $("decoBody"), top = body.scrollTop;
+    body.innerHTML = html;
+    body.scrollTop = top;
+    lazy();
   }
 
   // ---------- 새로 열릴 때: 그림자, 대화, 폭죽 ----------

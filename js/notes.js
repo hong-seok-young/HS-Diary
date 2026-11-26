@@ -16,6 +16,23 @@
   const batchim = (s) => { const c = String(s).charCodeAt(String(s).length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; };
   const call = (w) => (batchim(NAME[w]) ? NAME[w] + "이" : NAME[w]);
 
+  // 종이비행기 도트 그림 (오른쪽을 봐요)
+  const PLANE = ["WW...........", ".WWWW........", "..WWWWWWW....", "...WWWWWWWWWW", "....GGGGGWW..", ".....GGG.....", "......G......"];
+  let planeSrc = "";
+  function planeImg() {
+    if (planeSrc || !window.GArt) return planeSrc;
+    const g = PLANE.map((r) => ("." + r + ".").split(""));
+    g.unshift(new Array(g[0].length).fill(".")); g.push(new Array(g[0].length).fill("."));
+    const add = [];
+    for (let y = 0; y < g.length; y++) for (let x = 0; x < g[0].length; x++) {
+      if (g[y][x] !== ".") continue;
+      if ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([a, b]) => g[b] && g[b][a] && g[b][a] !== "." && g[b][a] !== "o")) add.push([x, y]);
+    }
+    add.forEach(([x, y]) => { g[y][x] = "o"; });
+    planeSrc = GArt.fromRows("paperplane", g.map((r) => r.join("")), { o: "#5b6b80", W: "#ffffff", G: "#cfd8e4" }).uri;
+    return planeSrc;
+  }
+  const planeHtml = () => `<span><img class="px" alt="" src="${planeImg()}" draggable="false"></span>`;
   let H = {}, tab = "q", known = null, knownQ = null;
   const qKey = () => "q:" + (H.todayKey ? H.todayKey() : "");
   const myAnswer = () => Store.pair(qKey(), me());
@@ -39,6 +56,7 @@
     const w = me();
     box.hidden = plane.hidden = !w;
     if (!w) return;
+    if (!plane.firstChild.firstChild) plane.innerHTML = planeHtml();
     const n = unread().length + (myAnswer() ? 0 : 1);
     box.classList.toggle("has", n > 0);
     box.dataset.n = n > 9 ? "9+" : n ? String(n) : "";
@@ -61,7 +79,7 @@
     // 종이비행기가 우체통으로 날아와요
     const f = document.createElement("i");
     f.className = "sc-plane fly";
-    f.innerHTML = "<u></u>";
+    f.innerHTML = planeHtml();
     scene.appendChild(f);
     const sr = scene.getBoundingClientRect(), br = box.getBoundingClientRect();
     const tx = br.left - sr.left, ty = br.top - sr.top;
@@ -108,7 +126,7 @@
       const sr = scene.getBoundingClientRect(), pr = plane.getBoundingClientRect(), tr = target.getBoundingClientRect();
       const f = document.createElement("i");
       f.className = "sc-plane fly";
-      f.innerHTML = "<u></u>";
+      f.innerHTML = planeHtml();
       scene.appendChild(f);
       const x0 = pr.left - sr.left, y0 = pr.top - sr.top, x1 = tr.left - sr.left + tr.width / 2 - 10, y1 = tr.top - sr.top;
       plane.style.visibility = "hidden";

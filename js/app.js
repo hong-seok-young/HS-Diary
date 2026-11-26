@@ -1526,6 +1526,25 @@
   if (window.Scene) Scene.init();
   lockScroll();
   renderView();
+  // 누를 수 있는 것들 위에 번갈아 반짝이를 띄워요
+  (function sparkles() {
+    const sel = "#plane, #mailbox, #plant, #kennel, .house, #banner, .mood-tag.mine, .pal";
+    let k = 0;
+    setInterval(() => {
+      const scene = $("scene");
+      if (!scene || document.hidden || state.view !== "home" || document.body.classList.contains("game-open")) return;
+      const list = Array.from(scene.querySelectorAll(sel)).filter((e) => !e.hidden && e.offsetWidth);
+      if (!list.length) return;
+      const el = list[k++ % list.length];
+      const r = el.getBoundingClientRect(), sr = scene.getBoundingClientRect();
+      const s0 = document.createElement("i");
+      s0.className = "tap-spark";
+      s0.style.left = (r.left - sr.left + r.width * (0.55 + Math.random() * 0.4)).toFixed(0) + "px";
+      s0.style.top = (r.top - sr.top + r.height * (0.05 + Math.random() * 0.3)).toFixed(0) + "px";
+      scene.appendChild(s0);
+      setTimeout(() => s0.remove(), 950);
+    }, 800);
+  })();
   startHello();
   restoreUi();
   talePing();
