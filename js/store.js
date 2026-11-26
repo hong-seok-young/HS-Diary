@@ -23,6 +23,25 @@
     } catch (e) { /* 저장 공간이 막혀 있어도 화면은 떠야 해요 */ }
     return null;
   }
+  // ---------- 처음부터 다시 시작 ----------
+  // 설정의 resetAt 이 이 폰이 기억하는 때보다 늦으면, 이 폰에 남은 것을 모두 지워요 (기록, 누구 폰인지, 본 선물, 화면 상태).
+  // 그 전에 적힌 것은 다른 폰이나 서버에서 다시 들어와도 버려요. 그래서 한 번 비우면 되살아나지 않아요.
+  const RESET = Number((typeof DIARY_CONFIG !== "undefined" && DIARY_CONFIG.resetAt) || 0);
+  (function wipeOnce() {
+    if (!RESET) return;
+    let seen = 0;
+    try { seen = Number(localStorage.getItem("hsd.epoch")) || 0; } catch (e) { return; }
+    if (seen >= RESET) return;
+    try {
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && (k.indexOf("hsd.") === 0 || k === "hs-diary-local-entries")) keys.push(k); }
+      keys.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem("hsd.epoch", String(RESET));
+    } catch (e) { /* 저장소를 못 쓰면 그냥 둬요 */ }
+    try { const ks = []; for (let i = 0; i < sessionStorage.length; i++) { const k = sessionStorage.key(i); if (k && k.indexOf("hsd.") === 0) ks.push(k); } ks.forEach((k) => sessionStorage.removeItem(k)); } catch (e) { /* 괜찮아요 */ }
+    try { if (window.indexedDB) indexedDB.deleteDatabase("hsd"); } catch (e) { /* 괜찮아요 */ }
+  })();
+  const fresh = (t) => !RESET || (Number(t) || 0) >= RESET;
   function emptyDb() {
     return { v: 1, entries: {}, plans: {}, diary: {}, garden: {}, cal: {}, notes: {}, pairs: {} };
   }
@@ -32,6 +51,13 @@
     COLS.concat("pairs").forEach((c) => {
       if (db[c] && typeof db[c] === "object" && !Array.isArray(db[c])) out[c] = db[c];
     });
+    if (RESET) {
+      // 다시 시작하기 전의 것은 버려요
+      COLS.forEach((c) => { const o = {}; Object.keys(out[c]).forEach((id) => { const r = out[c][id]; if (r && fresh(r.t)) o[id] = r; }); out[c] = o; });
+      const ps = {};
+      Object.keys(out.pairs).forEach((k) => { const v = out.pairs[k] || {}, o = {}; ["him", "her"].forEach((w) => { if (v[w] && fresh(v[w][1])) o[w] = v[w]; }); if (o.him || o.her) ps[k] = o; });
+      out.pairs = ps;
+    }
     return out;
   }
   function sorted(v) {

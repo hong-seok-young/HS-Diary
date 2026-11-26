@@ -14,4 +14,7 @@ const DIARY_CONFIG = {
   title: "석영이와 예은이",
   // 두 사람 전용 저장 서버 (server/worker.js)
   api: "https://hs-diary.goldenbrain93.workers.dev",
+  // 처음부터 다시 시작한 때. 이 값을 지금 시각으로 바꿔 올리면, 두 폰에 남은 기록과 이 폰이 누구 것인지까지
+  // 모두 지워지고 그 전에 적은 것은 어디서 다시 올라와도 버려져요. (서버도 같이 비워야 해요)
+  resetAt: 1795696082000,
 };
