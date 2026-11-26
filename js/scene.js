@@ -965,6 +965,8 @@
     else { px(ctx, x + u, y, u, u, c); px(ctx, x, y + u, u * 3, u, c); px(ctx, x + u, y + 2 * u, u, u, c); }
   }
   function drawFront(time) {
+    // 그림판 크기가 어긋나 있으면 (폰이 판을 새로 만들었을 때) 다시 맞춰요
+    if (front.width !== Math.round(S.W * S.dpr) || front.height !== Math.round(S.H * S.dpr) || back.width !== front.width) { S.W = 0; S.H = 0; resize(); }
     const ctx = fctx;
     // 폰이 앱을 쉬게 했다가 깨우면 그림판의 배율이 풀릴 수 있어요. 그릴 때마다 다시 맞추고, 판 전체를 지워요.
     ctx.setTransform(1, 0, 0, 1, 0, 0);

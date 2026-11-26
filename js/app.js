@@ -863,11 +863,17 @@
           ${galleryHtml(e.photos, e.title)}
           ${e.memo ? `<p class="card-memo">${esc(e.memo)}</p>` : ""}
           ${(e.tags || []).length ? `<div class="tags">${e.tags.map((t) => `<button class="tag" data-tag="${esc(t)}">#${esc(t)}</button>`).join("")}</div>` : ""}
+          ${feedbackHtml(e.id)}
           <div class="card-actions"><button class="btn small" data-edit>수정</button></div>
         </div>`;
   }
   function renderLog() {
     talePing();
+    try { localStorage.setItem("hsd.lseen", String(Date.now())); } catch (e2) { /* 그냥 둬요 */ }
+    renderDiaryDot();
+    // 댓글을 쓰는 중이면 목록을 통째로 다시 그리지 않고, 반응과 댓글만 새로 고쳐요 (쓰던 글이 지워지지 않게)
+    const typing = document.activeElement && document.activeElement.closest && document.activeElement.closest("#timeline .cmt-form");
+    if (typing && document.activeElement.value) { refreshFb(""); return; }
     $("logTabs").innerHTML = catTabs(Object.keys(CATS), state.cat, "data-cat");
     const parts = [];
     if (state.q.trim()) parts.push(`"${state.q.trim()}"`);
@@ -971,17 +977,28 @@
     return out.sort((a, b) => a.t - b.t);
   }
   function stamp(t) { const d = new Date(t), p2 = (n) => String(n).padStart(2, "0"); return `${d.getMonth() + 1}.${d.getDate()} ${p2(d.getHours())}:${p2(d.getMinutes())}`; }
+  // 반응과 댓글 칸 (일기와 기록이 같이 써요). 위쪽(fb-view)만 다시 그려서, 쓰던 댓글은 지워지지 않아요.
+  function fbView(id) {
+    const me = Store.me();
+    const mine = me ? reactOf(id, me) : 0;
+    const faces = ["him", "her"].map((w) => { const r = reactOf(id, w); return r && window.Moods ? `<span class="pr ${w}">${Moods.html(r, false)}<i>${esc(WHO[w])}</i></span>` : ""; }).join("");
+    const own = window.Deco ? Deco.ownedMoods() : [];
+    const pick = reactOpen === id
+      ? `<div class="react-pick">${own.length ? own.slice().reverse().map((n) => `<button type="button" class="react-btn${mine === n ? " active" : ""}" data-react="${n}" aria-label="${esc(Moods.name(n))}">${Moods.html(n, false)}</button>`).join("") + (mine ? '<button type="button" class="link" data-react="0">지우기</button>' : "") : '<p class="react-none">아직 기분 얼굴이 없어요. 선물로 받으면 여기서 고를 수 있어요.</p>'}</div>`
+      : "";
+    const cs = commentsOf(id);
+    return `<div class="post-react">${faces}${me ? `<button type="button" class="link" data-react-open>${reactOpen === id ? "닫기" : mine ? "반응 바꾸기" : "반응 남기기"}</button>` : ""}</div>${pick}` +
+      (cs.length ? `<div class="post-cmts">${cs.map((c) => `<div class="cmt ${c.w}"><b>${esc(WHO[c.w])}</b><p>${esc(c.x)}</p><small>${stamp(c.t)}</small>${c.w === me ? `<button type="button" class="cmt-del" data-cdel="${esc(c.i)}" aria-label="댓글 지우기">×</button>` : ""}</div>`).join("")}</div>` : "");
+  }
+  function feedbackHtml(id) {
+    return `<div class="fb" data-fb="${esc(id)}"><div class="fb-view">${fbView(id)}</div>${Store.me() ? `<form class="cmt-form" data-cform><input type="text" maxlength="200" placeholder="댓글 쓰기" autocomplete="off" aria-label="댓글"><button class="btn small" type="submit">남기기</button></form>` : ""}</div>`;
+  }
+  function refreshFb(id) {
+    document.querySelectorAll(".fb").forEach((el) => { if (el.dataset.fb === id || !id) { const v = el.querySelector(".fb-view"); if (v) v.innerHTML = fbView(el.dataset.fb); } });
+  }
   function postHtml(p, i) {
     const who = p.author === "her" ? "her" : "him";
     const long = (p.text || "").length > 120 || (p.text || "").split("\n").length > 4;
-    const me = Store.me();
-    const mine = me ? reactOf(p.id, me) : 0;
-    const faces = ["him", "her"].map((w) => { const r = reactOf(p.id, w); return r && window.Moods ? `<span class="pr ${w}">${Moods.html(r, false)}<i>${esc(WHO[w])}</i></span>` : ""; }).join("");
-    const own = window.Deco ? Deco.ownedMoods() : [];
-    const pick = reactOpen === p.id
-      ? `<div class="react-pick">${own.length ? own.slice().reverse().map((n) => `<button class="react-btn${mine === n ? " active" : ""}" data-react="${n}" aria-label="${esc(Moods.name(n))}">${Moods.html(n, false)}</button>`).join("") + (mine ? '<button class="link" data-react="0">지우기</button>' : "") : '<p class="react-none">아직 기분 얼굴이 없어요. 선물로 받으면 여기서 고를 수 있어요.</p>'}</div>`
-      : "";
-    const cs = commentsOf(p.id);
     return `
       <article class="post box" data-id="${esc(p.id)}" style="--i:${Math.min(i || 0, 8)}">
         <header class="post-head">
@@ -991,30 +1008,30 @@
         </header>
         ${galleryHtml(p.photos, "일기 사진")}
         ${p.text ? `<p class="post-text${long ? " clamp" : ""}">${esc(p.text)}</p>${long ? '<button class="link more" data-more>더 보기</button>' : ""}` : ""}
-        <div class="post-react">${faces}${me ? `<button class="link" data-react-open>${reactOpen === p.id ? "닫기" : mine ? "반응 바꾸기" : "반응 남기기"}</button>` : ""}</div>
-        ${pick}
-        ${cs.length ? `<div class="post-cmts">${cs.map((c) => `<div class="cmt ${c.w}"><b>${esc(WHO[c.w])}</b><p>${esc(c.x)}</p><small>${stamp(c.t)}</small>${c.w === me ? `<button class="cmt-del" data-cdel="${esc(c.i)}" aria-label="댓글 지우기">×</button>` : ""}</div>`).join("")}</div>` : ""}
-        ${me ? `<form class="cmt-form" data-cform><input type="text" maxlength="200" placeholder="댓글 쓰기" autocomplete="off" aria-label="댓글"><button class="btn small" type="submit">남기기</button></form>` : ""}
+        ${feedbackHtml(p.id)}
       </article>`;
   }
-  // 상대가 남긴 댓글과 반응 중 아직 못 본 것
-  function diaryNews() {
-    const me = Store.me();
-    if (!me) return 0;
+  // 상대가 남긴 댓글과 반응 중 아직 못 본 것 (일기 것, 기록 것 따로)
+  function fbNews() {
+    const me = Store.me(), out = { diary: 0, log: 0 };
+    if (!me) return out;
     const o = partnerOf(me);
-    let seen = 0;
-    try { seen = Number(localStorage.getItem("hsd.dseen")) || 0; } catch (e) { /* 그냥 둬요 */ }
-    let n = 0;
-    Store.pairKeys("dc:").forEach((k) => { const v = Store.pair(k, o); if (Array.isArray(v)) v.forEach((c) => { if (c && !c.d && c.t > seen) n++; }); });
-    Store.pairKeys("dr:").forEach((k) => { if (Store.pair(k, o) && Store.pairTime(k, o) > seen) n++; });
-    return n;
+    const seen = { diary: 0, log: 0 };
+    try { seen.diary = Number(localStorage.getItem("hsd.dseen")) || 0; seen.log = Number(localStorage.getItem("hsd.lseen")) || 0; } catch (e) { /* 그냥 둬요 */ }
+    const where = (id) => (Store.get("entries", id) ? "log" : "diary");
+    Store.pairKeys("dc:").forEach((k) => { const v = Store.pair(k, o), wh = where(k.slice(3)); if (Array.isArray(v)) v.forEach((c) => { if (c && !c.d && c.t > seen[wh]) out[wh]++; }); });
+    Store.pairKeys("dr:").forEach((k) => { const wh = where(k.slice(3)); if (Store.pair(k, o) && Store.pairTime(k, o) > seen[wh]) out[wh]++; });
+    return out;
   }
-  let diaryTold = 0;
+  let fbTold = 0;
   function renderDiaryDot() {
-    const n = diaryNews(), b = document.querySelector('.nav-btn[data-go="diary"]');
-    if (b) b.classList.toggle("dot", n > 0 && state.view !== "diary");
-    if (n > diaryTold && state.view !== "diary") toast(`${WHO[partnerOf(Store.me())]}${batchimOf(WHO[partnerOf(Store.me())]) ? "이" : ""}가 일기에 ${n === 1 ? "댓글이나 반응을" : `댓글·반응 ${n}개를`} 남겼어요`);
-    diaryTold = n;
+    const n = fbNews(), me = Store.me();
+    const bd = document.querySelector('.nav-btn[data-go="diary"]'), bl = document.querySelector('.nav-btn[data-go="log"]');
+    if (bd) bd.classList.toggle("dot", n.diary > 0 && state.view !== "diary");
+    if (bl) bl.classList.toggle("dot", n.log > 0 && state.view !== "log");
+    const total = (state.view === "diary" ? 0 : n.diary) + (state.view === "log" ? 0 : n.log);
+    if (me && total > fbTold) { const o = WHO[partnerOf(me)]; toast(`${o}${batchimOf(o) ? "이" : ""}가 ${n.diary && n.log ? "일기와 기록" : n.log ? "기록" : "일기"}에 ${total === 1 ? "댓글이나 반응을" : `댓글·반응 ${total}개를`} 남겼어요`); }
+    fbTold = total;
   }
   function batchimOf(w) { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; }
   function renderDiary() {
@@ -1025,7 +1042,6 @@
     $("postEmpty").hidden = list.length > 0;
     // 일기장을 보고 있으면 상대가 남긴 것은 본 걸로
     try { localStorage.setItem("hsd.dseen", String(Date.now())); } catch (e) { /* 그냥 둬요 */ }
-    diaryTold = 0;
     renderDiaryDot();
   }
 
@@ -1403,37 +1419,42 @@
         more.textContent = clamp ? "더 보기" : "접기";
         return;
       }
-      const me = Store.me(), id = post.dataset.id;
+    });
+    // 반응과 댓글 (일기와 기록 어디서든)
+    document.addEventListener("click", (ev) => {
+      const fb = ev.target.closest(".fb");
+      if (!fb) return;
+      const me = Store.me(), id = fb.dataset.fb;
       if (!me) return;
-      if (ev.target.closest("[data-react-open]")) { reactOpen = reactOpen === id ? "" : id; renderDiary(); return; }
+      if (ev.target.closest("[data-react-open]")) { reactOpen = reactOpen === id ? "" : id; refreshFb(""); return; }
       const rb = ev.target.closest("[data-react]");
       if (rb) {
         const n = Number(rb.dataset.react) || 0;
         silently(() => Store.setPair("dr:" + id, me, n));
         reactOpen = "";
-        renderDiary();
-        if (n) { const el = document.querySelector(`.post[data-id="${id}"] .pr.${me}`); if (el) { play(el, "boing"); burstAt(el, 6, "heart"); } }
+        refreshFb(id);
+        if (n) { const el = fb.querySelector(`.pr.${me}`); if (el) { play(el, "boing"); burstAt(el, 6, "heart"); } }
         return;
       }
       const del = ev.target.closest("[data-cdel]");
       if (del) {
         const cur = (Store.pair("dc:" + id, me) || []).map((c) => (c.i === del.dataset.cdel ? { i: c.i, t: c.t, d: 1 } : c));
         silently(() => Store.setPair("dc:" + id, me, cur));
-        renderDiary();
+        refreshFb(id);
       }
     });
-    $("postList").addEventListener("submit", (ev) => {
+    document.addEventListener("submit", (ev) => {
       const f = ev.target.closest("[data-cform]");
       if (!f) return;
       ev.preventDefault();
-      const post = f.closest(".post"), me = Store.me(), inp = f.querySelector("input");
+      const fb = f.closest(".fb"), me = Store.me(), inp = f.querySelector("input");
       const text = inp.value.trim().slice(0, 200);
-      if (!post || !me || !text) { inp.focus(); return; }
-      const cur = (Store.pair("dc:" + post.dataset.id, me) || []).slice();
+      if (!fb || !me || !text) { inp.focus(); return; }
+      const cur = (Store.pair("dc:" + fb.dataset.fb, me) || []).slice();
       cur.push({ i: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), t: Date.now(), x: text });
       inp.value = "";
-      silently(() => Store.setPair("dc:" + post.dataset.id, me, cur));
-      renderDiary();
+      silently(() => Store.setPair("dc:" + fb.dataset.fb, me, cur));
+      refreshFb(fb.dataset.fb);
     });
     $("dWho").addEventListener("click", (ev) => {
       const c = ev.target.closest("[data-who]");
