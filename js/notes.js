@@ -16,23 +16,71 @@
   const batchim = (s) => { const c = String(s).charCodeAt(String(s).length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; };
   const call = (w) => (batchim(NAME[w]) ? NAME[w] + "이" : NAME[w]);
 
-  // 종이비행기 도트 그림 (오른쪽을 봐요)
-  const PLANE = ["WW...........", ".WWWW........", "..WWWWWWW....", "...WWWWWWWWWW", "....GGGGGWW..", ".....GGG.....", "......G......"];
-  let planeSrc = "";
-  function planeImg() {
-    if (planeSrc || !window.GArt) return planeSrc;
-    const g = PLANE.map((r) => ("." + r + ".").split(""));
-    g.unshift(new Array(g[0].length).fill(".")); g.push(new Array(g[0].length).fill("."));
+  // ---------- 종이비행기 도트 그림 ----------
+  // 위에서 본 화살 모양 종이비행기. 날아가는 방향(16방향)마다 따로 그려요.
+  // 밝은 날개, 그늘진 날개, 가운데 접힌 선. 그늘은 늘 아래쪽 날개에 져요.
+  const DIRS = 16, PS = 19;
+  const planeCache = {};
+  function planeImg(dir) {
+    dir = ((dir % DIRS) + DIRS) % DIRS;
+    if (planeCache[dir] || !window.GArt) return planeCache[dir] || "";
+    const th = (dir / DIRS) * Math.PI * 2; // 0 = 오른쪽, 시계 방향
+    const rot = ([x, y]) => [PS / 2 + x * Math.cos(th) - y * Math.sin(th), PS / 2 + x * Math.sin(th) + y * Math.cos(th)];
+    // 코, 왼 날개 끝, 꼬리 홈, 오른 날개 끝 (오른쪽을 보는 모양)
+    const nose = rot([8, 0]), tipA = rot([-6.5, -5.6]), notch = rot([-3.4, 0]), tipB = rot([-6.5, 5.6]);
+    const inTri = (p, a, b, c) => {
+      const d = (u, v, w) => (u[0] - w[0]) * (v[1] - w[1]) - (v[0] - w[0]) * (u[1] - w[1]);
+      const d1 = d(p, a, b), d2 = d(p, b, c), d3 = d(p, c, a);
+      return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+    };
+    const aLow = tipA[1] > tipB[1]; // 화면에서 더 아래에 있는 날개가 그늘
+    const g = [];
+    for (let y = 0; y < PS; y++) { const r = []; for (let x = 0; x < PS; x++) { const p = [x + 0.5, y + 0.5]; r.push(inTri(p, nose, tipA, notch) ? (aLow ? "G" : "W") : inTri(p, nose, notch, tipB) ? (aLow ? "W" : "G") : "."); } g.push(r); }
+    // 가운데 접힌 선
+    for (let k = 0; k <= 24; k++) { const x = Math.floor(nose[0] + (notch[0] - nose[0]) * (k / 24)), y = Math.floor(nose[1] + (notch[1] - nose[1]) * (k / 24)); if (g[y] && g[y][x] && g[y][x] !== "." && k > 3) g[y][x] = "D"; }
     const add = [];
-    for (let y = 0; y < g.length; y++) for (let x = 0; x < g[0].length; x++) {
+    for (let y = 0; y < PS; y++) for (let x = 0; x < PS; x++) {
       if (g[y][x] !== ".") continue;
       if ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([a, b]) => g[b] && g[b][a] && g[b][a] !== "." && g[b][a] !== "o")) add.push([x, y]);
     }
     add.forEach(([x, y]) => { g[y][x] = "o"; });
-    planeSrc = GArt.fromRows("paperplane", g.map((r) => r.join("")), { o: "#5b6b80", W: "#ffffff", G: "#cfd8e4" }).uri;
-    return planeSrc;
+    planeCache[dir] = GArt.fromRows("paperplane" + dir, g.map((r) => r.join("")), { o: "#4f5d70", W: "#ffffff", G: "#cdd6e2", D: "#9aa8ba" }).uri;
+    return planeCache[dir];
   }
-  const planeHtml = () => `<span><img class="px" alt="" src="${planeImg()}" draggable="false"></span>`;
+  const dirOf = (vx, vy) => Math.round((Math.atan2(vy, vx) / (Math.PI * 2)) * DIRS);
+  const planeHtml = (dir) => `<span><img class="px" alt="" src="${planeImg(dir || 0)}" draggable="false"></span>`;
+  // 오른쪽에서 나타나 천천히 활공하며 왼쪽으로 사라지고, 잠시 뒤 다시 오른쪽에서 나와요.
+  // 지날 때마다 높이, 빠르기, 오르내림이 조금씩 달라요.
+  let flyRaf = 0, flyLast = 0, flyDir = -1;
+  const fl = { x: null, base: 0, amp: 0, k: 0, ph: 0, sp: 0, wait: 0 };
+  function newPass(w, h) {
+    fl.x = w + 24;
+    fl.base = 58 + Math.random() * Math.max(10, h * 0.4 - 58);
+    fl.amp = 6 + Math.random() * 9;
+    fl.k = (Math.PI * 2) / (150 + Math.random() * 120);
+    fl.ph = Math.random() * 6.28;
+    fl.sp = 11 + Math.random() * 6;
+    fl.wait = 1.5 + Math.random() * 3;
+  }
+  function fly(ts) {
+    flyRaf = requestAnimationFrame(fly);
+    const plane = $("plane"), scene = $("scene");
+    if (!plane || plane.hidden || document.hidden || !scene || !scene.offsetWidth) { flyLast = 0; return; }
+    const dt = flyLast ? Math.min(0.1, (ts - flyLast) / 1000) : 0.016;
+    flyLast = ts;
+    const w = scene.clientWidth, h = scene.clientHeight;
+    if (fl.x === null) { newPass(w, h); fl.x = w * (0.3 + Math.random() * 0.5); fl.wait = 0; }
+    if (fl.wait > 0) { fl.wait -= dt; plane.style.visibility = "hidden"; return; }
+    plane.style.visibility = "";
+    fl.x -= fl.sp * dt;
+    if (fl.x < -PS * 2 - 6) { newPass(w, h); return; }
+    const y = fl.base + fl.amp * Math.sin(fl.ph + fl.x * fl.k);
+    const vy = -fl.sp * fl.amp * fl.k * Math.cos(fl.ph + fl.x * fl.k);
+    plane.style.transform = `translate(${fl.x.toFixed(1)}px, ${(y - PS).toFixed(1)}px)`;
+    // 오르내릴 때 코가 살짝 들리고 숙여져요 (기울기를 조금 크게 보여 줘요)
+    const d = dirOf(-fl.sp, vy * 2.2);
+    if (d !== flyDir) { flyDir = d; const im = plane.querySelector("img"); if (im) im.src = planeImg(d); }
+  }
   let H = {}, tab = "q", known = null, knownQ = null;
   const qKey = () => "q:" + (H.todayKey ? H.todayKey() : "");
   const myAnswer = () => Store.pair(qKey(), me());
@@ -56,7 +104,8 @@
     const w = me();
     box.hidden = plane.hidden = !w;
     if (!w) return;
-    if (!plane.firstChild.firstChild) plane.innerHTML = planeHtml();
+    if (!plane.firstChild.firstChild) plane.innerHTML = planeHtml(0);
+    if (!flyRaf) flyRaf = requestAnimationFrame(fly);
     const n = unread().length + (myAnswer() ? 0 : 1);
     box.classList.toggle("has", n > 0);
     box.dataset.n = n > 9 ? "9+" : n ? String(n) : "";
@@ -79,11 +128,11 @@
     // 종이비행기가 우체통으로 날아와요
     const f = document.createElement("i");
     f.className = "sc-plane fly";
-    f.innerHTML = planeHtml();
     scene.appendChild(f);
     const sr = scene.getBoundingClientRect(), br = box.getBoundingClientRect();
     const tx = br.left - sr.left, ty = br.top - sr.top;
-    f.animate([{ transform: `translate(${sr.width + 20}px, 10px) rotate(-8deg)` }, { transform: `translate(${tx + 60}px, ${ty - 46}px) rotate(8deg)`, offset: 0.6 }, { transform: `translate(${tx + 2}px, ${ty - 2}px) rotate(40deg) scale(.5)`, opacity: 0.2 }], { duration: 1500, easing: "ease-in-out" }).onfinish = () => {
+    f.innerHTML = planeHtml(dirOf(tx - sr.width, ty - 10));
+    f.animate([{ transform: `translate(${sr.width + 20}px, 10px)` }, { transform: `translate(${tx + 60}px, ${ty - 46}px)`, offset: 0.6 }, { transform: `translate(${tx + 2}px, ${ty - 2}px) scale(.5)`, opacity: 0.2 }], { duration: 1500, easing: "ease-in-out" }).onfinish = () => {
       f.remove();
       box.animate([{ transform: "scale(1.25, .8)" }, { transform: "scale(.9, 1.15)" }, { transform: "none" }], { duration: 320 });
       if (H.burstAt) H.burstAt(box, 6, "heart");
@@ -126,13 +175,12 @@
       const sr = scene.getBoundingClientRect(), pr = plane.getBoundingClientRect(), tr = target.getBoundingClientRect();
       const f = document.createElement("i");
       f.className = "sc-plane fly";
-      f.innerHTML = planeHtml();
       scene.appendChild(f);
       const x0 = pr.left - sr.left, y0 = pr.top - sr.top, x1 = tr.left - sr.left + tr.width / 2 - 10, y1 = tr.top - sr.top;
-      plane.style.visibility = "hidden";
-      f.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${(x0 + x1) / 2}px, ${Math.min(y0, y1) - 30}px) rotate(-14deg)`, offset: 0.5 }, { transform: `translate(${x1}px, ${y1}px) rotate(30deg) scale(.6)`, opacity: 0.3 }], { duration: 1100, easing: "ease-in-out" }).onfinish = () => {
+      f.innerHTML = planeHtml(dirOf(x1 - x0, y1 - y0));
+      fl.wait = 1.4; // 날아간 동안은 잠깐 자리를 비워요
+      f.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${(x0 + x1) / 2}px, ${Math.min(y0, y1) - 30}px)`, offset: 0.5 }, { transform: `translate(${x1}px, ${y1}px) scale(.6)`, opacity: 0.3 }], { duration: 1100, easing: "ease-in-out" }).onfinish = () => {
         f.remove();
-        plane.style.visibility = "";
         if (H.burstAt) H.burstAt(target, 7, "heart");
         if (H.play) H.play(target, "jump");
       };
