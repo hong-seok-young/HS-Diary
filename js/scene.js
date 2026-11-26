@@ -284,8 +284,10 @@
     const H = Math.max(80, Math.round(r.height));
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     if (W === S.W && H === S.H && dpr === S.dpr && front.width) return;
-    const oldW = S.W;
+    const oldW = S.W, oldH = S.H;
     S.W = W; S.H = H; S.dpr = dpr;
+    // 그림 높이가 바뀌면 바닥에 쌓인 낙엽과 물웅덩이도 같이 내려가거나 올라가요
+    if (oldH && oldH !== H) { S.rest.forEach((l) => { l.y += H - oldH; }); S.puddles.forEach((p) => { p.y += H - oldH; }); }
     [front, back].forEach((c) => {
       c.width = Math.round(W * dpr);
       c.height = Math.round(H * dpr);
@@ -929,7 +931,10 @@
   function drawBack() {
     S.backDirty = false;
     const ctx = bctx;
-    ctx.clearRect(0, 0, S.W, S.H);
+    // 폰이 앱을 쉬게 했다가 깨우면 그림판의 배율이 풀릴 수 있어요. 그릴 때마다 다시 맞추고, 판 전체를 지워요.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
     const u = S.u;
     const gt = groundTop();
     // 웅덩이
@@ -961,7 +966,10 @@
   }
   function drawFront(time) {
     const ctx = fctx;
-    ctx.clearRect(0, 0, S.W, S.H);
+    // 폰이 앱을 쉬게 했다가 깨우면 그림판의 배율이 풀릴 수 있어요. 그릴 때마다 다시 맞추고, 판 전체를 지워요.
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
     const u = S.u;
     const night = S.dark > 0.55;
     for (const p of S.parts) {
@@ -1348,6 +1356,11 @@
     back = $("fxBack");
     fctx = front.getContext("2d");
     bctx = back.getContext("2d");
+    // 폰이 그림판을 비웠다가 돌려주면(앱을 오래 쉬게 했을 때) 크기와 배율을 다시 맞추고 쌓인 것을 다시 그려요
+    const again = () => { S.W = 0; S.H = 0; try { resize(); } catch (e) { /* 다음 그리기에서 맞춰져요 */ } S.backDirty = true; };
+    [front, back].forEach((c) => { c.addEventListener("contextrestored", again); c.addEventListener("contextlost", (ev) => ev.preventDefault()); });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (front.width !== Math.round(S.W * S.dpr) || back.width !== Math.round(S.W * S.dpr)) again(); S.backDirty = true; } });
+    window.addEventListener("pageshow", () => { S.backDirty = true; });
     buildVillage();
     resize();
     restore();
