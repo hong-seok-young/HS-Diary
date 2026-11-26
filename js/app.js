@@ -1030,8 +1030,7 @@
     if (bd) bd.classList.toggle("dot", n.diary > 0 && state.view !== "diary");
     if (bl) bl.classList.toggle("dot", n.log > 0 && state.view !== "log");
     const total = (state.view === "diary" ? 0 : n.diary) + (state.view === "log" ? 0 : n.log);
-    if (me && total > fbTold) { const o = WHO[partnerOf(me)]; toast(`${o}${batchimOf(o) ? "이" : ""}가 ${n.diary && n.log ? "일기와 기록" : n.log ? "기록" : "일기"}에 ${total === 1 ? "댓글이나 반응을" : `댓글·반응 ${total}개를`} 남겼어요`); }
-    fbTold = total;
+    fbTold = total; // 알림 글은 js/notify.js 가 띄워요
   }
   function batchimOf(w) { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; }
   function renderDiary() {

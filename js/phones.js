@@ -31,7 +31,7 @@
     try { pwa = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches; } catch (e) { /* 모르면 아님 */ }
     let noti = "none";
     try { if (window.Notification) noti = Notification.permission; } catch (e) { /* 지원하지 않음 */ }
-    return { pf, os, br, pwa, noti };
+    return { pf, os, br, pwa, noti, push: !!window.__pushOn };
   }
   const key = () => "st:" + did();
   // 바뀐 게 있거나 마지막으로 적은 지 10분이 지났으면 적어요
@@ -43,7 +43,7 @@
     const v = Object.assign({ first: now, n: 0 }, old || {}, cur);
     if (cur.pwa && !(old && old.pwaAt)) v.pwaAt = now;
     if (!old || old.noti !== cur.noti) { v.notiAt = now; }
-    const changed = !old || old.pwa !== cur.pwa || old.noti !== cur.noti || old.br !== cur.br || old.pf !== cur.pf || old.os !== cur.os;
+    const changed = !old || old.pwa !== cur.pwa || old.noti !== cur.noti || !!old.push !== cur.push || old.br !== cur.br || old.pf !== cur.pf || old.os !== cur.os;
     if (!changed && !force && now - (old.seen || 0) < 600000) return;
     if (force || !old || now - (old.seen || 0) > 600000) v.n = (old ? old.n || 0 : 0) + 1;
     v.seen = now;

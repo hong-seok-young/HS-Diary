@@ -184,7 +184,7 @@
     if (H.toast) H.toast(text);
     // 다른 앱을 보고 있어도 알려 줘요 (알림을 허락했을 때)
     try {
-      if (document.hidden && window.Notification && Notification.permission === "granted") {
+      if (document.hidden && window.Notification && Notification.permission === "granted" && !(window.Notify && Notify.pushOn())) {
         const body = String(n.text || "").slice(0, 60);
         if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then((reg) => reg.showNotification(text, { body, icon: "icons/icon-192.png", tag: "hsd-note" })).catch(() => {});
         else new Notification(text, { body, icon: "icons/icon-192.png", tag: "hsd-note" });

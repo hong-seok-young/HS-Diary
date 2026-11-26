@@ -1,6 +1,6 @@
 // 서비스 워커: 홈 화면 앱으로 설치할 수 있게 하고, 인터넷이 없을 때는 마지막으로 본 화면을 보여 줘요.
 // 항상 인터넷에서 먼저 받아 오기 때문에 새로 배포한 내용이 바로 보여요.
-const CACHE = "hsd-v45";
+const CACHE = "hsd-v46";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
@@ -28,4 +28,18 @@ self.addEventListener("fetch", (e) => {
       })
       .catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match("./", { ignoreSearch: true })))
   );
+});
+
+// 폰 알림: 서버가 보낸 알림을 띄워요. 누르면 앱을 열어요.
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: "석영이와 예은이", body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "석영이와 예은이", { body: d.body || "", tag: d.tag || undefined, icon: "icons/icon-192.png", badge: "icons/icon-192.png", data: { url: d.url || "" } }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+    for (const c of list) { if ("focus" in c) return c.focus(); }
+    return self.clients.openWindow("./");
+  }));
 });

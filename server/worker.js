@@ -23,6 +23,40 @@ export default {
   },
 };
 
+// ---------- 폰 알림 (Web Push) ----------
+// 한 사람이 무언가 남기면, 그 폰이 "상대에게 알릴 말"을 같이 올려요. 서버는 상대 폰들에 그대로 전해요.
+// 알림 내용은 폰만 풀 수 있게 잠가서 보내요 (RFC 8291, aes128gcm). 보내는 쪽 증명은 VAPID (RFC 8292).
+const b64u = (buf) => { const a = new Uint8Array(buf); let s = ""; for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i]); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
+const unb64u = (str) => { const s = atob(String(str).replace(/-/g, "+").replace(/_/g, "/")); const a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; };
+const cat = (...xs) => { const n = xs.reduce((m, x) => m + x.length, 0), o = new Uint8Array(n); let p = 0; xs.forEach((x) => { o.set(x, p); p += x.length; }); return o; };
+const utf8 = (s) => new TextEncoder().encode(s);
+async function hmac(key, data) { const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]); return new Uint8Array(await crypto.subtle.sign("HMAC", k, data)); }
+// 알림 내용 잠그기. opts.salt, opts.key(보내는 쪽 임시 열쇠 쌍)는 시험할 때만 넣어요.
+export async function encryptPush(payload, p256dh, auth, opts) {
+  const ua = unb64u(p256dh), secret = unb64u(auth);
+  const pair = (opts && opts.key) || (await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]));
+  const as = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+  const uaKey = await crypto.subtle.importKey("raw", ua, { name: "ECDH", namedCurve: "P-256" }, false, []);
+  const ecdh = new Uint8Array(await crypto.subtle.deriveBits({ name: "ECDH", public: uaKey }, pair.privateKey, 256));
+  const ikm = await hmac(await hmac(secret, ecdh), cat(utf8("WebPush: info\0"), ua, as, new Uint8Array([1])));
+  const salt = (opts && opts.salt) || crypto.getRandomValues(new Uint8Array(16));
+  const prk = await hmac(salt, ikm);
+  const cek = (await hmac(prk, cat(utf8("Content-Encoding: aes128gcm\0"), new Uint8Array([1])))).slice(0, 16);
+  const nonce = (await hmac(prk, cat(utf8("Content-Encoding: nonce\0"), new Uint8Array([1])))).slice(0, 12);
+  const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+  const body = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, key, cat(payload, new Uint8Array([2]))));
+  return cat(salt, new Uint8Array([0, 0, 16, 0, as.length]), as, body);
+}
+// 보내는 쪽 증명 (ES256 으로 서명한 짧은 표)
+export async function vapidAuth(endpoint, jwk, sub) {
+  const key = await crypto.subtle.importKey("jwk", jwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
+  const head = b64u(utf8(JSON.stringify({ typ: "JWT", alg: "ES256" })));
+  const body = b64u(utf8(JSON.stringify({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub })));
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, utf8(head + "." + body)));
+  const pub = b64u(cat(new Uint8Array([4]), unb64u(jwk.x), unb64u(jwk.y)));
+  return `vapid t=${head}.${body}.${b64u(sig)}, k=${pub}`;
+}
+
 function rid(n) {
   const a = new Uint8Array(n || 24);
   crypto.getRandomValues(a);
@@ -38,6 +72,7 @@ export class Couple extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS devices (tok TEXT PRIMARY KEY, who TEXT, at INTEGER, seen INTEGER)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, type TEXT, data BLOB)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reqs (id TEXT PRIMARY KEY, who TEXT, at INTEGER, status TEXT, tok TEXT, ua TEXT)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS subs (endpoint TEXT PRIMARY KEY, who TEXT, p256dh TEXT, auth TEXT, at INTEGER, ok INTEGER, fail TEXT)`);
   }
   webSocketMessage() { /* 폰은 듣기만 해요 */ }
   webSocketClose(ws) { try { ws.close(); } catch (e) { /* 이미 닫힘 */ } }
@@ -52,6 +87,25 @@ export class Couple extends DurableObject {
     if (!r) return null;
     this.sql.exec(`UPDATE devices SET seen = ? WHERE tok = ?`, Date.now(), tok);
     return { tok, who: r.who };
+  }
+  // (보낸 사람) 말고 다른 사람의 폰들에 알림을 보내요
+  async pushOthers(from, list) {
+    let jwk = null;
+    try { jwk = JSON.parse(this.env.VAPID_JWK || "null"); } catch (e) { jwk = null; }
+    if (!jwk) return;
+    const subs = this.sql.exec(`SELECT endpoint, p256dh, auth FROM subs WHERE who != ?`, from).toArray();
+    const msgs = list.slice(-4).map((m) => ({ title: String(m.title || "").slice(0, 60), body: String(m.body || "").slice(0, 180), tag: String(m.tag || "").slice(0, 40), url: String(m.url || "").slice(0, 40) }));
+    for (const s of subs) {
+      for (const m of msgs) {
+        try {
+          const body = await encryptPush(utf8(JSON.stringify(m)), s.p256dh, s.auth);
+          const res = await fetch(s.endpoint, { method: "POST", headers: { "Content-Encoding": "aes128gcm", "Content-Type": "application/octet-stream", TTL: "86400", Urgency: "high", Authorization: await vapidAuth(s.endpoint, jwk, this.env.VAPID_SUB || "https://hong-seok-young.github.io/HS-Diary/") }, body });
+          if (res.status === 404 || res.status === 410) { this.sql.exec(`DELETE FROM subs WHERE endpoint = ?`, s.endpoint); break; }
+          if (res.ok) this.sql.exec(`UPDATE subs SET ok = ?, fail = '' WHERE endpoint = ?`, Date.now(), s.endpoint);
+          else this.sql.exec(`UPDATE subs SET fail = ? WHERE endpoint = ?`, `${res.status} ${(await res.text()).slice(0, 80)}`, s.endpoint);
+        } catch (e) { this.sql.exec(`UPDATE subs SET fail = ? WHERE endpoint = ?`, String(e && e.message).slice(0, 80), s.endpoint); }
+      }
+    }
   }
   newDevice(who) {
     const tok = rid(24);
@@ -125,7 +179,33 @@ export class Couple extends DurableObject {
       this.set("db", text);
       this.set("v", String(v + 1));
       this.ctx.getWebSockets().forEach((w) => { try { w.send(String(v + 1)); } catch (e) { /* 끊긴 줄 */ } });
+      // 상대에게 알릴 말이 같이 왔으면 상대 폰들에 알림을 보내요 (답은 기다리지 않고 먼저 돌려줘요)
+      if (dev && Array.isArray(b.push) && b.push.length) this.ctx.waitUntil(this.pushOthers(dev.who, b.push));
       return json({ v: v + 1 });
+    }
+
+    // ---- 폰 알림 받기 등록 ----
+    if (p === "/push/key" && req.method === "GET") {
+      let jwk = null;
+      try { jwk = JSON.parse(this.env.VAPID_JWK || "null"); } catch (e) { jwk = null; }
+      return json({ key: jwk ? b64u(cat(new Uint8Array([4]), unb64u(jwk.x), unb64u(jwk.y))) : "" });
+    }
+    if (p === "/push/sub" && req.method === "POST" && dev) {
+      const b = await req.json().catch(() => ({}));
+      const k = b.keys || {};
+      if (!/^https:\/\//.test(String(b.endpoint || "")) || !k.p256dh || !k.auth) return json({ error: "body" }, 400);
+      this.sql.exec(`INSERT INTO subs (endpoint, who, p256dh, auth, at, ok, fail) VALUES (?, ?, ?, ?, ?, 0, '') ON CONFLICT(endpoint) DO UPDATE SET who = excluded.who, p256dh = excluded.p256dh, auth = excluded.auth`, String(b.endpoint), dev.who, String(k.p256dh), String(k.auth), Date.now());
+      return json({ ok: true });
+    }
+    if (p === "/push/unsub" && req.method === "POST" && dev) {
+      const b = await req.json().catch(() => ({}));
+      this.sql.exec(`DELETE FROM subs WHERE endpoint = ?`, String(b.endpoint || ""));
+      return json({ ok: true });
+    }
+    // 시험: 내 폰들에 알림 한 번 보내 보기
+    if (p === "/push/test" && req.method === "POST" && dev) {
+      await this.pushOthers(dev.who === "him" ? "her" : "him", [{ title: "알림 시험", body: "이 알림이 보이면 잘 되는 거예요", tag: "test" }]);
+      return json({ ok: true, subs: this.sql.exec(`SELECT who, ok, fail FROM subs`).toArray() });
     }
 
     // ---- 사진 ----
@@ -146,11 +226,11 @@ export class Couple extends DurableObject {
     }
     // 관리용: 다 비우기 (시험 서버에서만 써요)
     if (p === "/reset" && admin && req.method === "POST") {
-      ["kv", "devices", "photos", "reqs"].forEach((t) => this.sql.exec(`DELETE FROM ${t}`));
+      ["kv", "devices", "photos", "reqs", "subs"].forEach((t) => this.sql.exec(`DELETE FROM ${t}`));
       return json({ ok: true });
     }
     if (p === "/devices" && admin) {
-      return json({ list: this.sql.exec(`SELECT who, at, seen FROM devices`).toArray(), reqs: this.sql.exec(`SELECT id, who, at, status FROM reqs`).toArray(), v: this.get("v"), photos: this.sql.exec(`SELECT COUNT(*) AS n FROM photos`).toArray()[0].n });
+      return json({ list: this.sql.exec(`SELECT who, at, seen FROM devices`).toArray(), reqs: this.sql.exec(`SELECT id, who, at, status FROM reqs`).toArray(), v: this.get("v"), photos: this.sql.exec(`SELECT COUNT(*) AS n FROM photos`).toArray()[0].n, subs: this.sql.exec(`SELECT who, at, ok, fail, substr(endpoint, 9, 28) AS host FROM subs`).toArray() });
     }
     return json({ error: "not found" }, 404);
   }

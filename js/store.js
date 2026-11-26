@@ -269,8 +269,10 @@
     const j = await res.json();
     return { db: normalize(j.db || {}), v: j.v || 0 };
   }
-  async function putDb(data, v) {
-    return fetch(`${API}/db`, { method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, auth()), body: JSON.stringify({ db: data, v }) });
+  // push: 상대 폰에 알릴 말 (서버가 상대 폰들에 알림으로 전해요)
+  let outbox = null;
+  async function putDb(data, v, push) {
+    return fetch(`${API}/db`, { method: "PUT", headers: Object.assign({ "Content-Type": "application/json" }, auth()), body: JSON.stringify(push && push.length ? { db: data, v, push } : { db: data, v }) });
   }
   async function uploadPending() {
     for (const [name, blob] of Array.from(pendingPhotos.entries())) {
@@ -342,8 +344,10 @@
         }
         await uploadPending();
         if (same(merged, remote.db)) break;
-        const res = await putDb(sorted(merged), remote.v);
-        if (res.ok) { lastV = remote.v + 1; break; }
+        let push = [];
+        try { push = outbox ? outbox.take() || [] : []; } catch (e) { push = []; }
+        const res = await putDb(sorted(merged), remote.v, push);
+        if (res.ok) { lastV = remote.v + 1; try { if (outbox) outbox.done(); } catch (e) { /* 다음에 다시 */ } break; }
         if (res.status === 401) throw authErr();
         // 409: 그사이 다른 폰이 먼저 저장함 → 다시 받아서 합쳐요.
         if (res.status !== 409) throw new Error("write " + res.status);
@@ -429,6 +433,7 @@
       const prev = db[col][id];
       const fresh = !prev || prev.del;
       db[col][id] = Object.assign({}, rec, { id, t: opts && opts.soft ? 1 : Date.now() });
+      if (!(opts && opts.soft) && this.me()) db[col][id].u = this.me(); // 마지막으로 고친 사람
       // 처음 만든 때와 만든 사람 (이야기가 이걸 보고 진행돼요)
       if (fresh && !(opts && opts.soft)) { db[col][id].c = rec.c || Date.now(); if (!rec.by && this.me()) db[col][id].by = this.me(); }
       else if (prev && prev.c) { db[col][id].c = prev.c; if (prev.by) db[col][id].by = prev.by; }
@@ -441,6 +446,9 @@
       db[col][id] = { id, del: true, t: Date.now() };
       // 처음 만든 때와 만든 사람은 남겨요 (이 기록으로 받은 선물이 사라지지 않게)
       if (prev && prev.c) { db[col][id].c = prev.c; if (prev.by) db[col][id].by = prev.by; if (prev.from) db[col][id].from = prev.from; if (prev.dn) { db[col][id].dn = prev.dn; db[col][id].dby = prev.dby; } }
+      // 누가 무엇을 지웠는지 (상대에게 알려 주려고 제목만 짧게 남겨요)
+      if (this.me()) db[col][id].u = this.me();
+      if (prev && !prev.del) db[col][id].ti = String(prev.title || prev.text || "").slice(0, 30);
       changed();
     },
     // 두 사람이 따로 적는 값 (하트, 기분, 답변, 보낸 하트 수)
@@ -507,6 +515,15 @@
     },
     sync,
     syncSoon() { schedule(600); },
+    setOutbox(o) { outbox = o; },
+    // 서버에 직접 묻기 (알림 등록 같은 것). 이 폰의 열쇠를 붙여서 보내요.
+    async call(path, opts) {
+      if (!API || !token()) return null;
+      const o = opts || {};
+      const res = await fetch(API + path, { method: o.method || "GET", headers: Object.assign(o.body ? { "Content-Type": "application/json" } : {}, auth()), body: o.body ? JSON.stringify(o.body) : undefined, cache: "no-store" });
+      if (!res.ok) return null;
+      return res.json().catch(() => null);
+    },
     // 같이 보는 순간의 일(동물 던지기 같은 것): 내 화면은 다시 그리지 않고, 바로 올려서 상대 폰에 전해요
     live(key, who, value) {
       if (!db.pairs[key]) db.pairs[key] = {};
