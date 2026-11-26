@@ -426,18 +426,7 @@
       }
     });
   }
-  // 풍경 속 화분(텃밭), 물음표 팻말(오늘의 질문)
-  function renderScenePlant() {
-    if (!window.Garden) return;
-    const el = $("plant");
-    const g = Garden.pot();
-    const badge = Garden.badge();
-    const k = g.key + badge;
-    if (el.dataset.k !== k) {
-      el.dataset.k = k;
-      el.innerHTML = g.html + (badge ? `<i class="plant-alert">${PIXEL.icon("coin", 2)}</i>` : "");
-    }
-  }
+  function renderScenePlant() { /* 텃밭은 없앴어요 */ }
   function renderSceneBits() {
     if (window.Notes) Notes.renderScene();
     renderScenePlant();
@@ -482,8 +471,6 @@
       }
       if (ev.target.closest(".house")) { if (window.Deco) Deco.open("pj"); return; } // 집을 누르면 옷장
       if (ev.target.closest("#kennel")) { play($("kennel"), "boing"); if (window.Deco) Deco.open("pet"); return; }
-      const pot = ev.target.closest(".sc-plant");
-      if (pot) { play(pot, "boing"); if (window.Garden) Garden.open(); }
     });
   }
   // ---------- 뒤로 가기 ----------
@@ -493,7 +480,7 @@
     let depth = 0, skip = 0, lastBack = 0;
     const modals = () => document.querySelectorAll(".modal:not([hidden]):not(.closing):not(#hello)").length;
     function layers() {
-      return (state.view !== "home" ? 1 : 0) + (state.openPanel ? 1 : 0) + (window.Garden && Garden.isOpen() ? 1 : 0) + modals() + (window.Tale && Tale.isOpen() ? 1 : 0) + (window.Deco && Deco.isOpen() ? 1 : 0) + ($("lightbox").hidden ? 0 : 1);
+      return (state.view !== "home" ? 1 : 0) + (state.openPanel ? 1 : 0) + modals() + (window.Tale && Tale.isOpen() ? 1 : 0) + (window.Deco && Deco.isOpen() ? 1 : 0) + ($("lightbox").hidden ? 0 : 1);
     }
     function closeTop() {
       if (!$("lightbox").hidden) return closeLightbox();
@@ -501,7 +488,6 @@
       if (window.Deco && Deco.isOpen()) return Deco.back();
       const m = document.querySelector(".modal:not([hidden]):not(.closing):not(#hello)");
       if (m) return closeModal(m);
-      if (window.Garden && Garden.isOpen()) return Garden.close();
       if (state.openPanel) return setPanel(null);
       if (state.view !== "home") return go("home");
     }
@@ -544,7 +530,7 @@
       const drafts = {};
       KEEP.forEach((id) => { const el = $(id); if (el && el.value) drafts[id] = el.value; });
       sessionStorage.setItem(UI_KEY, JSON.stringify({
-        t: Date.now(), view: state.view, panel: state.openPanel, game: !!(window.Garden && Garden.isOpen()),
+        t: Date.now(), view: state.view, panel: state.openPanel, 
         deco: window.Deco && Deco.isOpen() ? Deco.tab() : "", day: window.Cal ? Cal.sel() : "", mail: window.Notes ? Notes.tab() : "", drafts,
       }));
     } catch (e) { /* 못 적어도 괜찮아요 */ }
@@ -558,7 +544,6 @@
     else if (u.panel === "mail" && window.Notes) Notes.open(u.mail);
     else if (u.panel === "note" && window.Notes) { setPanel("note"); Notes.renderWrite(); }
     else if (u.panel) setPanel(u.panel);
-    if (u.game && window.Garden) Garden.open();
     if (u.deco && window.Deco) Deco.open(u.deco);
     setTimeout(() => { Object.keys(u.drafts || {}).forEach((id) => { const el = $(id); if (el && !el.value) el.value = u.drafts[id]; }); }, 350);
   }
@@ -776,7 +761,6 @@
     $("couple").classList.toggle("blessed", !!(Store.pair(qk, "him") && Store.pair(qk, "her")));
     if (state.openPanel === "mood") renderMood();
     if (state.openPanel === "mail" && window.Notes && !questEditing && !(document.activeElement && document.activeElement.id === "questInput")) Notes.renderMail();
-    if (window.Garden && Garden.isOpen() && !quiet) Garden.render();
   }
 
   // ---------- 기록 ----------
@@ -1134,7 +1118,6 @@
       if (me && Store.me()) return;
       if (me) {
         silently(() => Store.setMe(me.dataset.me));
-        if (window.Garden) Garden.attend();
         toast(`${WHO[me.dataset.me]} 폰으로 기억할게요`);
         renderHome();
         if (state.openPanel) setPanel(state.openPanel);
@@ -1395,7 +1378,6 @@
     $("helloYes").addEventListener("click", () => {
       if (!helloPick || Store.me()) return;
       silently(() => Store.setMe(helloPick));
-      if (window.Garden) Garden.attend();
       renderHome();
       closeModal($("hello"));
       toast(`안녕, ${WHO[helloPick]}!`);
@@ -1515,10 +1497,6 @@
   PIXEL.fill(document);
   bind();
   bindInstall();
-  if (window.Garden) {
-    Garden.bind({ toast, burst, onChanged() { renderScenePlant(); } });
-    Garden.attend();
-  }
   if (window.Deco) Deco.attend();
   document.addEventListener("hsd:ban", () => {});
   if (window.Notes) Notes.bind({ toast, silently, setPanel, play, burstAt, bubble: showBubble, panel: () => state.openPanel, todayKey, renderQuest });
@@ -1528,7 +1506,7 @@
   renderView();
   // 누를 수 있는 것들 위에 번갈아 반짝이를 띄워요
   (function sparkles() {
-    const sel = "#plane, #mailbox, #plant, #kennel, .house, #banner, .mood-tag.mine, .pal";
+    const sel = "#plane, #mailbox, #kennel, .house, #banner, .mood-tag.mine, .pal";
     let k = 0;
     setInterval(() => {
       const scene = $("scene");

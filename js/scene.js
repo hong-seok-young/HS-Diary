@@ -397,7 +397,6 @@
     renderChips();
     const key = [S.act && S.act.key, S.w.kind, S.season, S.specials.map((s) => s.key).join(","), S.dark > 0.55, Math.round(S.w.temp || 0) <= 3, Math.round(S.w.temp || 0) >= 28].join("|");
     if (force || key !== lastKey) { lastKey = key; renderProps(); }
-    if (S.w.wet && window.Garden) window.Garden.rain();
   }
   let skyOn = "A";
   let skyNow = "";

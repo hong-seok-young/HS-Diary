@@ -1484,7 +1484,7 @@ button.deco-it.lock:active { transform: scale(.95); }
    ============================================================ */
 @keyframes tapGlow { 0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0)); } 50% { filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 3px rgba(255, 244, 180, .9)); } }
 @keyframes tapHop { 0%, 86%, 100% { transform: translateY(0); } 90% { transform: translateY(-4px); } 94% { transform: translateY(0); } 97% { transform: translateY(-2px); } }
-.sc-mailbox, .sc-kennel, .sc-plant, .scene .house { animation: tapGlow 2.6s ease-in-out infinite, tapHop 6s ease-in-out infinite; }
+.sc-mailbox, .sc-kennel, .scene .house { animation: tapGlow 2.6s ease-in-out infinite, tapHop 6s ease-in-out infinite; }
 .sc-kennel { animation-delay: -.8s, -2s; }
 .sc-plant { animation-delay: -1.6s, -4s; }
 .scene .house.h2 { animation-delay: -1.2s, -3s; }
@@ -1497,3 +1497,5 @@ button.deco-it.lock:active { transform: scale(.95); }
 .tap-spark { position: absolute; z-index: 11; width: 3px; height: 3px; background: #fff; pointer-events: none; box-shadow: 0 -3px 0 0 #fff, 0 3px 0 0 #fff, -3px 0 0 0 #fff, 3px 0 0 0 #fff, 0 -6px 0 0 #fff6b0, 0 6px 0 0 #fff6b0, -6px 0 0 0 #fff6b0, 6px 0 0 0 #fff6b0; animation: sparkTw .9s steps(6) forwards; }
 @keyframes sparkTw { 0% { transform: scale(0) rotate(0); opacity: 0; } 35% { transform: scale(1) rotate(45deg); opacity: 1; } 70% { transform: scale(.7) rotate(90deg); opacity: 1; } 100% { transform: scale(0) rotate(135deg); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .sc-mailbox, .sc-kennel, .sc-plant, .scene .house, .sc-banner, .sc-plane img { animation: none; } .tap-spark { display: none; } }
+
+img.px { image-rendering: crisp-edges; image-rendering: pixelated; -webkit-user-drag: none; user-select: none; }
