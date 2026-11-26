@@ -167,8 +167,8 @@
     for (let i = ents.length - 1; i >= 0; i--) {
       const e = ents[i], g = want.indexOf(e.id) >= 0 ? growth(e.id) : null;
       if (!g || g.form + "|" + g.size !== e.gkey) {
-        if (g && !e.held && !e.thrown) { const n = make(e.id); if (n) { if (n.kind !== "hippo" && n.kind !== "bird") { n.x = e.x; } ents.splice(i, 1, n); e.el.remove(); hearts(n, 5); say(n, g.form === "cocoon" ? "…번데기가 됐어" : e.form === "egg" ? "빠직! 안녕?" : g.done ? "다 컸어!" : "쑥쑥 컸어!", 2400); continue; } }
-        if (!g) { e.el.remove(); ents.splice(i, 1); }
+        if (g && !e.held && !e.thrown) { const n = make(e.id); if (n) { if (n.kind !== "hippo" && n.kind !== "bird") { n.x = e.x; } ents.splice(i, 1, n); e.el.remove(); if (e.cv) e.cv.remove(); hearts(n, 5); say(n, g.form === "cocoon" ? "…번데기가 됐어" : e.form === "egg" ? "빠직! 안녕?" : g.done ? "다 컸어!" : "쑥쑥 컸어!", 2400); continue; } }
+        if (!g) { e.el.remove(); if (e.cv) e.cv.remove(); ents.splice(i, 1); }
       }
     }
     want.forEach((id) => { if (!ents.some((e) => e.id === id)) { const e = make(id); if (e) ents.push(e); } });
@@ -378,42 +378,153 @@
   // 아기 양: 풀 뜯고, 깡총 뛰고, 비 오면 털을 털어요
   // ============================================================
   // ---------- 던져졌을 때: 빙글빙글 날아가서 벽과 바닥에 튕기다 멈춰요 ----------
+  // ---------- 말랑한 몸: 벽에 부딪히면 닿은 면이 넓게 퍼지고, 반대쪽은 눌려 들어와요 ----------
+  // 라켓에 맞은 공을 느리게 본 것처럼: 닿는 순간 푹 눌렸다가(닿은 쪽이 넓적), 탄성으로 되돌아오며 튕겨 나가고, 잠깐 출렁여요.
+  // 그림을 한 줄씩(벽과 나란한 줄) 잘라 다시 그려서, 폭만 줄이는 게 아니라 모양 자체가 찌그러져요.
+  const bbCache = new Map();
+  function bodyBox(img) {
+    const k = img.src;
+    let b = bbCache.get(k);
+    if (b) return b;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    if (!w) return null;
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const x = c.getContext("2d");
+    x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, w, h).data;
+    let x0 = w, x1 = 0, y0 = h, y1 = 0;
+    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) if (d[(yy * w + xx) * 4 + 3] > 20) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; }
+    b = { x0, x1, y0, y1, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+    if (bbCache.size > 300) bbCache.clear();
+    bbCache.set(k, b);
+    return b;
+  }
+  // c: 눌린 정도 (0 = 그대로, 1 = 아주 납작, 음수 = 벽에서 떨어지며 길쭉). sag: 흘러내리며 처지는 정도
+  function drawWarp(e, side, c, sag) {
+    const bb = bodyBox(e.img);
+    if (!bb) return false;
+    if (!e.cv) { e.cv = document.createElement("canvas"); e.cv.className = "pal-warp"; layer.appendChild(e.cv); }
+    const S = SC * (e.size || 1), bw = bb.w * S, bh = bb.h * S;
+    const cw = Math.ceil(bw * 2.6), ch = Math.ceil(bh * 2.6);
+    const cv = e.cv;
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; cv.style.width = cw + "px"; cv.style.height = ch + "px"; }
+    const g = cv.getContext("2d");
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cw, ch);
+    g.imageSmoothingEnabled = false;
+    const cc = Math.max(-0.5, Math.min(0.85, c));
+    const thick = (side === "left" || side === "right" ? bw : bh) * (1 - 0.7 * cc); // 벽에서 얼마나 튀어나와 있나
+    const pw = 1 + 0.7 * Math.max(0, cc); // 벽 쪽 줄일수록 더 얇게 눌려요
+    const spread = (u) => 1 + cc * (1.4 * Math.pow(1 - u, 1.6) - 0.2); // 벽에 가까울수록 넓게 퍼져요
+    const vert = side === "left" || side === "right";
+    const n = vert ? bb.w : bb.h;
+    if (vert) {
+      for (let i = 0; i < n; i++) {
+        const u0 = i / n, u1 = (i + 1) / n, um = (u0 + u1) / 2;
+        const d0 = thick * Math.pow(u0, pw), d1 = thick * Math.pow(u1, pw);
+        const dh = bh * spread(um), dy = ch / 2 - dh / 2 + sag * um * um * bh * 0.5;
+        const sx = side === "left" ? (e.flip ? bb.x1 - i : bb.x0 + i) : (e.flip ? bb.x0 + i : bb.x1 - i);
+        const dx = side === "left" ? d0 : cw - d1;
+        g.drawImage(e.img, sx, bb.y0, 1, bb.h, dx, dy, Math.max(0.6, d1 - d0) + 0.6, dh);
+      }
+      cv.style.left = (side === "left" ? 0 : W - cw) + "px";
+      cv.style.top = (H - (e.b + bh / 2) - ch / 2).toFixed(1) + "px";
+    } else {
+      if (e.flip) g.setTransform(-1, 0, 0, 1, cw, 0);
+      for (let i = 0; i < n; i++) {
+        const u0 = i / n, u1 = (i + 1) / n, um = (u0 + u1) / 2;
+        const d0 = thick * Math.pow(u0, pw), d1 = thick * Math.pow(u1, pw);
+        const dw = bw * spread(um), dx = cw / 2 - dw / 2;
+        const sy = side === "top" ? bb.y0 + i : bb.y1 - i;
+        const dy = side === "top" ? d0 + sag * 6 : ch - d1;
+        g.drawImage(e.img, bb.x0, sy, bb.w, 1, dx, dy, dw, Math.max(0.6, d1 - d0) + 0.6);
+      }
+      cv.style.left = (e.x - cw / 2).toFixed(1) + "px";
+      cv.style.top = (side === "top" ? 0 : H - e.b - ch) + "px";
+    }
+    cv.hidden = false;
+    e.warping = true;
+    return true;
+  }
+  function endWarp(e) { if (e.cv) e.cv.hidden = true; e.warping = false; }
+  // 떨어져 나온 뒤 잠깐 출렁출렁 (늘었다 줄었다 하며 잦아들어요)
+  function jiggle(e, amp, axis) { e.jig = { t: 0, amp, axis }; }
+  function jiggleStep(e, dt) {
+    const j = e.jig;
+    if (!j) return;
+    j.t += dt;
+    const k = j.amp * Math.exp(-6.5 * j.t) * Math.sin(21 * j.t);
+    const a = 1 + k, o = 1 / a;
+    if (j.axis === "x") { e.sx = a; e.sy = o; } else { e.sy = a; e.sx = o; }
+    if (j.t > 0.9) { e.jig = null; e.sx = 1; e.sy = 1; }
+  }
+
+  // ---------- 던져졌을 때: 빙글빙글 날아가서 벽과 바닥에 부딪혀요 ----------
+  // 세게 부딪히면 찰싹 붙어서 흘러내리기도 하고(열에 여섯 번쯤), 아니면 푹 눌렸다가 튕겨 나와요.
   function flung(e, dt) {
     const t = e.thrown;
     t.t += dt;
     const bird = e.kind === "bird";
-    if (t.stuck) {
-      // 말랑하게 찌그러져 붙었다가, 천천히 흘러내리며 떨어져요
-      const s = t.stuck;
-      s.t += dt;
-      const k = s.t / s.dur;
-      const sq = k < 0.1 ? k / 0.1 : 1 - Math.max(0, (k - 0.6) / 0.4) * 0.7;
-      e.rot = 0; e.face = k < 0.5 ? "sweat" : "blink"; e.frame = "stand";
-      if (s.side === "top") { e.sx = 1 + 0.5 * sq; e.sy = 1 - 0.5 * sq; }
-      else { e.sx = 1 - 0.5 * sq; e.sy = 1 + 0.35 * sq; e.flip = s.side === "left"; if (k > 0.3) e.b = Math.max(4, e.b - dt * 22 * (k - 0.3) * 3); }
-      if (k >= 1 || e.b <= 5) { t.stuck = null; e.sx = 1; e.sy = 1; t.vx = s.side === "left" ? 50 : s.side === "right" ? -50 : 0; t.vy = 0; say(e, pick(["떼굴", "휴…", "말랑"])); }
+    const bb = bodyBox(e.img), S = SC * (e.size || 1);
+    const hw = bb ? (bb.w * S) / 2 : 12, bh = bb ? bb.h * S : 30;
+    if (t.hit) {
+      const h = t.hit;
+      h.t += dt;
+      e.rot = 0; e.frame = "stand"; e.sx = 1; e.sy = 1; e.jig = null;
+      let c = 0, sag = 0, leave = false;
+      if (!h.stick) {
+        // 튕길 때: 푹 눌렸다가 되돌아오는 한 번의 출렁임
+        const k = h.t / h.dur;
+        c = h.amp * Math.sin(Math.PI * Math.min(1, k)) * (k < 0.5 ? 1 : 0.9);
+        e.face = "sweat";
+        leave = k >= 1;
+      } else {
+        // 붙을 때: 철썩 눌리고 → 젤리처럼 부르르 → 처지며 흘러내리고 → 쭉 늘어났다가 톡 떨어져요
+        const rest = h.amp * 0.62, peel = 0.26, hold = h.dur - peel;
+        const peak = Math.min(0.85, h.amp * 1.25); // 닿는 순간에는 더 푹 눌렸다가
+        if (h.t < 0.09) c = peak * (1 - Math.pow(1 - h.t / 0.09, 2));
+        else if (h.t < hold) { const q = h.t - 0.09; c = rest + (peak - rest) * Math.exp(-5.5 * q) * Math.cos(19 * q); }
+        else { const q = Math.min(1, (h.t - hold) / peel); c = rest * (1 - q) - 0.32 * Math.sin(q * Math.PI); }
+        const slide = Math.max(0, (h.t - 0.5) / Math.max(0.2, hold - 0.5));
+        sag = Math.min(1, slide) * 0.9;
+        if (h.side !== "top" && h.t > 0.5) e.b = Math.max(4, e.b - dt * (10 + 46 * slide * slide));
+        e.face = h.t < 0.6 ? "sweat" : "blink";
+        leave = h.t >= h.dur || (h.side !== "top" && e.b <= 4.5 && h.t > 0.7);
+      }
+      if (!leave && drawWarp(e, h.side, c, sag)) return;
+      // 벽에서 떨어져 나가요
+      endWarp(e);
+      t.hit = null;
+      const out = h.stick ? 60 : h.speed * (h.side === "bottom" ? 0.45 : 0.6);
+      if (h.side === "left") { e.x = hw; t.vx = out; if (h.stick) t.vy = 0; }
+      else if (h.side === "right") { e.x = W - hw; t.vx = -out; if (h.stick) t.vy = 0; }
+      else if (h.side === "top") { e.b = H - bh - 2; t.vy = -out * 0.6; }
+      else { t.vy = out; t.vx *= 0.7; }
+      jiggle(e, Math.min(0.5, h.amp * (h.stick ? 0.7 : 0.6)), h.side === "left" || h.side === "right" ? "x" : "y");
+      if (h.stick) say(e, pick(["떼굴", "휴…", "말랑", "뽁!"]));
       return;
     }
-    const stick = (side, v) => {
-      if (Math.abs(v) < 380 || Math.random() > 0.6) return false;
-      t.stuck = { side, t: 0, dur: rand(1.3, 2.6) }; t.vx = 0; t.vy = 0;
-      say(e, pick(["철썩!", "찰싹", "쭈욱…", "납작"]));
-      const sr = e.el.getBoundingClientRect();
-      if (window.FX && FX.cutePop) FX.cutePop(side === "left" ? sr.left : side === "right" ? sr.right : sr.left + sr.width / 2, side === "top" ? sr.top : sr.top + sr.height / 2, 0.35);
-      return true;
+    const hit = (side, speed) => {
+      const amp = Math.max(0.2, Math.min(0.8, speed / 1050));
+      const stick = side !== "bottom" && speed > 380 && Math.random() < 0.58;
+      t.hit = { side, t: 0, amp: stick ? Math.max(0.55, amp) : amp, speed, stick, dur: stick ? rand(1.5, 2.8) : 0.17 + amp * 0.16 };
+      if (stick) { say(e, pick(["철썩!", "찰싹", "쭈욱…", "납작"])); }
+      if (speed > 300 && window.FX && FX.cutePop) { const sr = scene.getBoundingClientRect(); FX.cutePop(sr.left + (side === "left" ? 2 : side === "right" ? W - 2 : e.x), sr.top + (side === "top" ? 2 : side === "bottom" ? H - e.b : H - e.b - bh / 2), 0.3); }
+      if (side === "bottom") drops(e.x, 6, 4, 10, "#d8c8a0");
     };
     t.vy -= (bird ? 500 : 1500) * dt;
     e.x += t.vx * dt; e.b += t.vy * dt;
     e.rot = (e.rot + t.vx * dt * 1.4) % 360;
     e.frame = bird ? (Math.floor(t.t * 14) % 2 ? "fly1" : "fly2") : "stand";
     e.face = "sweat";
-    e.sx = 1; e.sy = 1;
-    if (e.x < 10) { e.x = 10; if (stick("left", t.vx)) return; t.vx = Math.abs(t.vx) * 0.6; }
-    if (e.x > W - 10) { e.x = W - 10; if (stick("right", t.vx)) return; t.vx = -Math.abs(t.vx) * 0.6; }
-    if (e.b > H - 26) { e.b = H - 26; if (stick("top", t.vy)) return; t.vy = -Math.abs(t.vy) * 0.4; }
+    if (e.x < hw && t.vx < 0) { e.x = hw; if (Math.abs(t.vx) > 120) { hit("left", Math.abs(t.vx)); return; } t.vx = Math.abs(t.vx) * 0.5; }
+    if (e.x > W - hw && t.vx > 0) { e.x = W - hw; if (Math.abs(t.vx) > 120) { hit("right", Math.abs(t.vx)); return; } t.vx = -Math.abs(t.vx) * 0.5; }
+    if (e.b > H - bh - 2 && t.vy > 0) { e.b = H - bh - 2; if (t.vy > 160) { hit("top", t.vy); return; } t.vy = -Math.abs(t.vy) * 0.4; }
     const floor = bird ? 30 : 4;
     const done = () => {
-      e.thrown = null; e.rot = 0; e.lift = 0; e.face = ""; e.taps = []; e.sx = 1; e.sy = 1;
+      e.thrown = null; e.rot = 0; e.lift = 0; e.face = ""; e.taps = [];
+      endWarp(e);
       if (bird) { e.fx.tx = e.x; e.fx.tb = Math.max(e.b, H * 0.4); e.vx = 0; e.vb = 0; setState(e, "hover", 1.5); return; }
       if (e.kind === "egg") { e.b = 5; setState(e, "sit", 3); e.fx.wob = 0.8; say(e, pick(["데굴데굴", "…!", "어지러워"])); return; }
       e.b = e.kind === "cat" ? 4 : 6;
@@ -422,12 +533,12 @@
         else setState(e, "land", 6);
       } else if (e.kind === "cat") setState(e, "loaf", 2.5);
       else setState(e, "idle", 2);
-      if (!e.swim) { e.el.animate([{ scale: "1.2 .8" }, { scale: ".95 1.08" }, { scale: "1" }], { duration: 260 }); say(e, pick(["휴…", "어질어질", "또 던져 줘!"])); }
+      if (!e.swim) { if (!e.jig) jiggle(e, 0.22, "y"); say(e, pick(["휴…", "어질어질", "또 던져 줘!"])); }
     };
     if (bird && (t.t > 1.4 || Math.hypot(t.vx, t.vy) < 70)) { done(); return; }
     if (e.b <= floor && t.vy < 0) {
       e.b = floor;
-      if (!bird && Math.abs(t.vy) > 220) { t.vy = -t.vy * 0.45; t.vx *= 0.7; drops(e.x, 6, 4, 10, "#d8c8a0"); }
+      if (!bird && Math.abs(t.vy) > 220) hit("bottom", Math.abs(t.vy));
       else if (bird) { t.vy = Math.abs(t.vy) * 0.5; }
       else done();
     }
@@ -832,6 +943,7 @@
     let src;
     src = e.kind === "egg" ? eggImg(e.id, e.form) : SP.petImg(e.sp, e.frame, e.face, env().wet, e.tail);
     if (src !== e.src) { e.img.src = src; e.src = src; }
+    e.img.style.visibility = e.warping ? "hidden" : "";
     const iw = e.img.naturalWidth * SC || 50;
     e.img.style.width = iw + "px";
     let b = e.kind === "hippo" && e.swim ? pond.b + pond.water - 2 : e.b;
@@ -865,7 +977,8 @@
     pondEl.classList.toggle("frozen", E.snowy && E.cold);
     ents.forEach((e) => {
       e.busy = ["loop", "dash", "jump", "dance", "dive", "climbin", "climbout", "puff", "roll", "cloud", "belly", "zoomies", "head", "pounce", "swoop", "toperch", "walkpond"].includes(e.st);
-      if (e.held) { e.frame = e.kind === "bird" ? (Math.floor(ts / 90) % 2 ? "fly1" : "fly2") : "stand"; e.face = "sweat"; render(e); return; }
+      if (e.held) { e.frame = e.kind === "bird" ? (Math.floor(ts / 90) % 2 ? "fly1" : "fly2") : "stand"; e.face = "sweat"; e.jig = null; endWarp(e); render(e); return; }
+      jiggleStep(e, dt);
       if (e.thrown) { flung(e, dt); render(e); return; }
       if (e.kind === "hippo") hippo(e, dt, E);
       if (e.kind === "sheep") sheep(e, dt, E);
