@@ -510,12 +510,12 @@
   }
   function buildVillage() {
     const hills = scene.querySelector(".sc-hills");
-    const house = PIXEL.rows("house");
-    const house2 = PIXEL.rows("house2");
-    const lit = (c) => Object.assign({}, c, { G: "#ffe08f" });
-    const h1 = el("span", "house h1", PIXEL.draw(house.rows, house.colors, 2, "px day") + PIXEL.draw(house.rows, lit(house.colors), 2, "px nite") + '<i class="smoke"><b></b><b></b><b></b></i>');
-    const h2 = el("span", "house h2", PIXEL.draw(house2.rows, house2.colors, 2, "px day") + PIXEL.draw(house2.rows, lit(house2.colors), 2, "px nite") + '<i class="smoke"><b></b><b></b><b></b></i>');
-    [el("div", "sc-mountains", "", ""), h1, h2].forEach((x) => scene.insertBefore(x, hills));
+    // 우리 집 하나 (황무지에서 시작해 점점 좋아져요. 모양은 js/home.js 가 정해요)
+    const home = el("button", "house home");
+    home.id = "home";
+    home.type = "button";
+    [el("div", "sc-mountains", "", ""), home].forEach((x) => scene.insertBefore(x, hills));
+    if (window.Home) Home.soon();
     scene.insertBefore(el("div", "sc-fence", "", ""), hills.nextSibling);
     scene.insertBefore(el("span", "sc-lamp", PIXEL.sprite("lamp", 2)), scene.querySelector(".sc-ground").nextSibling);
     scene.insertBefore(el("div", "sc-glow"), $("couple"));
@@ -1133,7 +1133,7 @@
       const h = t.closest(".house");
       play(h, "boing");
       for (let k = 0; k < 5; k++) spawn({ t: "puff", x: x + rand(-4, 4), y: y - 10, vx: rand(-20, 20), vy: rand(-60, -30), life: 1 });
-      if (H.bubble) H.bubble(S.dark > 0.45 ? "불 켜진 집 따뜻해 보여" : "저기 살고 싶다", "her");
+      if (H.bubble) H.bubble(h.dataset.lv === "0" ? "여기에 우리 집을 짓자" : S.dark > 0.45 ? "불 켜진 우리 집 따뜻해" : "우리 집이야", "her");
       return;
     }
     if (t.closest(".sc-lamp")) { scene.classList.toggle("lamp-off"); play(t.closest(".sc-lamp"), "boing"); return; }

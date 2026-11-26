@@ -1386,11 +1386,11 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
    쪽지: 종이비행기와 우체통
    ============================================================ */
 .phase-chip { display: none !important; }
-.sc-plane { position: absolute; left: 0; top: 0; z-index: 8; width: 38px; height: 38px; border: 0; padding: 0; background: none; line-height: 0; will-change: transform; }
+.sc-plane { position: absolute; left: 0; top: 0; z-index: 8; width: 26px; height: 26px; border: 0; padding: 0; background: none; line-height: 0; will-change: transform; }
 .sc-plane[hidden], .sc-mailbox[hidden] { display: none; }
-.sc-plane::after { content: ""; position: absolute; inset: -8px; }
+.sc-plane::after { content: ""; position: absolute; inset: -12px; }
 .sc-plane span { display: block; }
-.sc-plane img { display: block; width: 38px; height: 38px; image-rendering: pixelated; animation: tapGlow 2.6s ease-in-out infinite; }
+.sc-plane img { display: block; width: 26px; height: 26px; image-rendering: pixelated; animation: tapGlow 2.6s ease-in-out infinite; }
 .sc-plane.boing img { animation: boing .5s var(--ease); }
 .sc-plane.fly { pointer-events: none; z-index: 12; }
 .sc-plane.fly img { animation: none; }
@@ -1528,10 +1528,10 @@ button.day-it:active { transform: translateY(1px); }
 .df-btns #dayDel { margin-right: auto; }
 
 /* 머리에 꽂힌 종이비행기와 눈물 */
-.stuck-plane { position: absolute; left: 50%; top: -20px; margin-left: -19px; width: 38px; height: 26px; overflow: hidden; z-index: 3; pointer-events: none; transform-origin: 50% 100%; animation: stuckIn .25s cubic-bezier(.3, 1.6, .5, 1), stuckWag .28s ease-in-out .25s 12 alternate; }
-.stuck-plane img { display: block; width: 38px; height: 38px; image-rendering: pixelated; }
+.stuck-plane { position: absolute; left: 50%; top: -13px; margin-left: -13px; width: 26px; height: 18px; overflow: hidden; z-index: 3; pointer-events: none; transform-origin: 50% 100%; animation: stuckIn .25s cubic-bezier(.3, 1.6, .5, 1), stuckWag .28s ease-in-out .25s 12 alternate; }
+.stuck-plane img { display: block; width: 26px; height: 26px; image-rendering: pixelated; }
 .stuck-plane.out { transition: transform .35s ease-in, opacity .35s ease; transform: translateY(-18px) rotate(40deg); opacity: 0; }
-.bob.has-hat .stuck-plane { top: -32px; }
+.bob.has-hat .stuck-plane { top: -24px; }
 @keyframes stuckIn { from { transform: translateY(-14px); } }
 @keyframes stuckWag { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
 .tear-drop { position: absolute; z-index: 9; width: 3px; height: 4px; background: #6fc0f5; box-shadow: 0 -2px 0 0 #bfe6ff; pointer-events: none; }
@@ -1628,3 +1628,13 @@ button.day-it:active { transform: translateY(1px); }
 @keyframes ulWagBtn { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
 .unlock .tale-head { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (prefers-reduced-motion: reduce) { .ul-rays, .ul-new, .ul-name span, .unlock .ul-art, .unlock .ul-box, .unlock .ul-box .btn { animation: none !important; opacity: 1; } }
+
+/* ---------- 우리 집 ---------- */
+.house.home { left: 24%; bottom: 38px; padding: 0; border: 0; background: none; line-height: 0; }
+.house.home img { display: block; image-rendering: pixelated; }
+.house.home .nite { position: absolute; left: 0; top: 0; }
+.house.home.grow { animation: homeGrow .9s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes homeGrow { 0% { transform: scale(.2, 0); } 60% { transform: scale(1.12, 1.18); } 100% { transform: none; } }
+.house.home { transform-origin: 50% 100%; }
+.ul-img.home { width: auto; height: auto; max-width: 240px; }
+.deco-tip { white-space: pre-line; }

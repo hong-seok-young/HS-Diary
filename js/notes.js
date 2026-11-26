@@ -17,34 +17,33 @@
   const call = (w) => (batchim(NAME[w]) ? NAME[w] + "이" : NAME[w]);
 
   // ---------- 종이비행기 도트 그림 ----------
-  // 위에서 본 화살 모양 종이비행기. 날아가는 방향(16방향)마다 따로 그려요.
-  // 밝은 날개, 그늘진 날개, 가운데 접힌 선. 그늘은 늘 아래쪽 날개에 져요.
-  const DIRS = 16, PS = 19;
+  // 옆에서 본 종이비행기 (살짝 위에서 내려다봐서 건너편 날개 끝이 조금 보여요).
+  // 날아가는 방향(16방향)마다 따로 그려요. 왼쪽으로 날 때는 뒤집어서, 접힌 배(용골)가 늘 아래로 가요.
+  const DIRS = 16, PS = 13;
   const planeCache = {};
   function planeImg(dir) {
     dir = ((dir % DIRS) + DIRS) % DIRS;
     if (planeCache[dir] || !window.GArt) return planeCache[dir] || "";
     const th = (dir / DIRS) * Math.PI * 2; // 0 = 오른쪽, 시계 방향
-    const rot = ([x, y]) => [PS / 2 + x * Math.cos(th) - y * Math.sin(th), PS / 2 + x * Math.sin(th) + y * Math.cos(th)];
-    // 코, 왼 날개 끝, 꼬리 홈, 오른 날개 끝 (오른쪽을 보는 모양)
-    const nose = rot([8, 0]), tipA = rot([-6.5, -5.6]), notch = rot([-3.4, 0]), tipB = rot([-6.5, 5.6]);
+    const f = Math.cos(th) >= -1e-6 ? 1 : -1;
+    const ph = Math.atan2(Math.sin(th), Math.abs(Math.cos(th))); // 코가 들리고 숙여지는 각도
+    const rot = ([x, y]) => [PS / 2 + f * (x * Math.cos(ph) - y * Math.sin(ph)), PS / 2 + x * Math.sin(ph) + y * Math.cos(ph)];
+    // 오른쪽을 보는 모양: 코, 날개 뒤 끝(위), 접힌 선의 뒤 끝, 배 아래 끝, 건너편 날개 끝
+    const nose = rot([6.2, 0.3]), wing = rot([-5.8, -1.7]), fold = rot([-5.2, 0.1]), keel = rot([-3.2, 2.5]), far = rot([-4.4, -3]);
     const inTri = (p, a, b, c) => {
       const d = (u, v, w) => (u[0] - w[0]) * (v[1] - w[1]) - (v[0] - w[0]) * (u[1] - w[1]);
       const d1 = d(p, a, b), d2 = d(p, b, c), d3 = d(p, c, a);
       return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
     };
-    const aLow = tipA[1] > tipB[1]; // 화면에서 더 아래에 있는 날개가 그늘
     const g = [];
-    for (let y = 0; y < PS; y++) { const r = []; for (let x = 0; x < PS; x++) { const p = [x + 0.5, y + 0.5]; r.push(inTri(p, nose, tipA, notch) ? (aLow ? "G" : "W") : inTri(p, nose, notch, tipB) ? (aLow ? "W" : "G") : "."); } g.push(r); }
-    // 가운데 접힌 선
-    for (let k = 0; k <= 24; k++) { const x = Math.floor(nose[0] + (notch[0] - nose[0]) * (k / 24)), y = Math.floor(nose[1] + (notch[1] - nose[1]) * (k / 24)); if (g[y] && g[y][x] && g[y][x] !== "." && k > 3) g[y][x] = "D"; }
+    for (let y = 0; y < PS; y++) { const r = []; for (let x = 0; x < PS; x++) { const p = [x + 0.5, y + 0.5]; r.push(inTri(p, nose, wing, fold) ? "W" : inTri(p, nose, fold, keel) ? "G" : inTri(p, nose, far, wing) ? "D" : "."); } g.push(r); }
     const add = [];
     for (let y = 0; y < PS; y++) for (let x = 0; x < PS; x++) {
       if (g[y][x] !== ".") continue;
       if ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]].some(([a, b]) => g[b] && g[b][a] && g[b][a] !== "." && g[b][a] !== "o")) add.push([x, y]);
     }
     add.forEach(([x, y]) => { g[y][x] = "o"; });
-    planeCache[dir] = GArt.fromRows("paperplane" + dir, g.map((r) => r.join("")), { o: "#4f5d70", W: "#ffffff", G: "#cdd6e2", D: "#9aa8ba" }).uri;
+    planeCache[dir] = GArt.fromRows("paperplane3|" + dir, g.map((r) => r.join("")), { o: "#4f5d70", W: "#ffffff", G: "#c3cedc", D: "#e4eaf2" }).uri;
     return planeCache[dir];
   }
   const dirOf = (vx, vy) => Math.round((Math.atan2(vy, vx) / (Math.PI * 2)) * DIRS);
