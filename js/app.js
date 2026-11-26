@@ -524,7 +524,7 @@
 
   // ---------- 새로고침: 당겨서, 그리고 새 버전이 올라오면 저절로 ----------
   // 새로고침해도 보고 있던 화면과 창, 쓰던 글이 그대로 돌아와요.
-  const UI_KEY = "hsd.ui", KEEP = ["noteText", "dayText", "dayTime", "planTitle", "questInput", "decoText"];
+  const UI_KEY = "hsd.ui", KEEP = ["noteText", "planTitle", "questInput", "decoText"];
   function saveUi() {
     try {
       const drafts = {};

@@ -58,6 +58,13 @@
       const ease = p * p * (3 - 2 * p);
       return { dir: (going || back) ? "side" : (t % 1400 < 700 ? "down" : "side"), flip: going ? away < 0 : back ? away > 0 : away > 0, frame: fr, dx: away * a.dist * ease };
     } },
+    // 종이비행기가 머리에 콕: 깜짝 놀랐다가 머리를 부여잡고 엉엉, 마지막엔 훌쩍
+    ouch: { dur: 4300, who: "one", start: (a) => { const st = state[a.one]; if (st) hop(st, 8); const h = H(); if (h.bubble) setTimeout(() => h.bubble(pick(["아야! 으앙", "머리에 꽂혔어…", "으아앙 아파", "누가 던졌어!"]), a.one), 420); }, f: (who, t, a) => {
+      if (who !== a.one) return { dir: "side", flip: who === "her", face: t > 500 && t < 2600 ? "happy" : "", hop: t > 600 && t < 2400 && Math.floor(t / 300) !== Math.floor((t - 70) / 300) ? 3 : 0 };
+      if (t < 380) return { face: "hit" };
+      if (t < 3500) return { pose: "clutch", face: Math.floor(t / 170) % 2 ? "cry1" : "cry2", dx: Math.floor(t / 90) % 2 ? 1 : -1 };
+      return { face: Math.floor(t / 300) % 2 ? "cry1" : "blink" };
+    } },
     crouch: { dur: 2200, who: "one", f: (who, t, a) => (who === a.one ? { pose: "crouch", face: t > 600 ? "happy" : "" } : { face: t % 1700 < 140 ? "blink" : "" }) },
     stretch2: { dur: 1600, f: (who, t) => ({ pose: Math.floor(t / 400) % 2 ? "raise" : "", face: "happy" }) },
     sky: { dur: 2000, f: (who, t) => ({ dir: "up" }) },
@@ -83,7 +90,8 @@
     // 특별한 할 일(잠, 산책, 체조)이 없을 때만 자유롭게 움직여요
     const free = !walking && !sleeping && !stretch;
     if (free && !act && now > nextAt) startAct(now);
-    if (act && (!free || now - act.at > (act.dur || ACTS[act.key].dur))) { act = null; nextAt = now + 3500 + Math.random() * 6000; }
+    const ouch = act && act.key === "ouch";
+    if (act && ((!free && !ouch) || now - act.at > (act.dur || ACTS[act.key].dur))) { act = null; nextAt = now + 3500 + Math.random() * 6000; }
     for (const who in state) {
       const st = state[who];
       if (st.el.classList.contains("jump") && st.waveTo < now) st.waveTo = now + 1100;
@@ -91,6 +99,10 @@
       if (st.waveTo > now) {
         face = "happy";
         pose = Math.floor((st.waveTo - now) / 160) % 2 ? "wave1" : "wave2";
+      } else if (ouch) {
+        const o = ACTS.ouch.f(who, now - act.at, act) || {};
+        dir = o.dir || "down"; flip = !!o.flip; pose = o.pose || ""; face = o.face || ""; dx = o.dx || 0;
+        if (o.hop) hop(st, o.hop);
       } else if (sleeping) {
         face = "blink";
       } else if (walking) {
@@ -130,5 +142,5 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
-  window.CharAnim = { start, act: () => act, play(k) { if (!ACTS[k]) return; act = { key: k, at: performance.now(), one: pick(["him", "her"]) }; if (ACTS[k].start) ACTS[k].start(act); } };
+  window.CharAnim = { start, act: () => act, play(k, who) { if (!ACTS[k]) return; act = { key: k, at: performance.now(), one: who || pick(["him", "her"]) }; if (ACTS[k].start) ACTS[k].start(act); } };
 })();

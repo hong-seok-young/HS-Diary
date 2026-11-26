@@ -122,23 +122,62 @@
     if (knownQ && knownQ !== qs && theirAnswer() && knownQ.slice(0, -2) === qKey()) arrive({ from: other(w), text: myAnswer() ? String(theirAnswer()) : "나도 답하면 볼 수 있어요", q: 1 }, 1);
     knownQ = qs;
   }
+  // 종이비행기가 (who)의 머리에 날아가 콕 꽂혀요. 맞은 사람은 머리를 부여잡고 엉엉 울어요.
+  function hitHead(who, fromX, fromY, done) {
+    const scene = $("scene"), bob = document.querySelector(`.bob[data-who="${who}"]`);
+    if (!scene || !bob) { if (done) done(); return; }
+    const sr = scene.getBoundingClientRect(), tr = bob.getBoundingClientRect();
+    const x1 = tr.left - sr.left + tr.width / 2 - PS, y1 = tr.top - sr.top - PS * 1.2;
+    const f = document.createElement("i");
+    f.className = "sc-plane fly";
+    f.innerHTML = planeHtml(dirOf(x1 - fromX, y1 - fromY));
+    scene.appendChild(f);
+    const midY = Math.min(fromY, y1) - 34;
+    const im = f.querySelector("img");
+    const an = f.animate([{ transform: `translate(${fromX}px, ${fromY}px)` }, { transform: `translate(${(fromX + x1) / 2}px, ${midY}px)`, offset: 0.55 }, { transform: `translate(${x1}px, ${y1}px)` }], { duration: 1000, easing: "cubic-bezier(.4,0,.8,.6)" });
+    // 내려꽂힐 때는 코가 아래를 봐요
+    setTimeout(() => { if (im) im.src = planeImg(dirOf((x1 - fromX) * 0.25, 30)); }, 560);
+    an.onfinish = () => {
+      f.remove();
+      // 머리에 꽂힌 비행기 (코가 박혀서 꼬리만 파르르)
+      const stuck = document.createElement("i");
+      stuck.className = "stuck-plane";
+      stuck.innerHTML = `<img class="px" alt="" src="${planeImg(4)}">`;
+      bob.appendChild(stuck);
+      if (H.burstAt) H.burstAt(bob, 9, "spark");
+      if (window.CharAnim && CharAnim.play) CharAnim.play("ouch", who);
+      // 눈물이 뚝뚝
+      let n = 0;
+      const drip = setInterval(() => {
+        if (++n > 16) { clearInterval(drip); return; }
+        const d = document.createElement("i");
+        d.className = "tear-drop";
+        const r = bob.getBoundingClientRect();
+        d.style.left = r.left - sr.left + r.width * (n % 2 ? 0.28 : 0.72) + "px";
+        d.style.top = r.top - sr.top + r.height * 0.45 + "px";
+        scene.appendChild(d);
+        d.animate([{ transform: "translate(0,0)", opacity: 1 }, { transform: `translate(${n % 2 ? -10 : 10}px, ${r.height * 0.55}px)`, opacity: 0.2 }], { duration: 520, easing: "ease-in" }).onfinish = () => d.remove();
+      }, 190);
+      setTimeout(() => { stuck.classList.add("out"); setTimeout(() => stuck.remove(), 360); if (done) done(); }, 3600);
+    };
+  }
   function arrive(n, count) {
     const box = $("mailbox"), scene = $("scene");
     if (!box || !scene) return;
-    // 종이비행기가 우체통으로 날아와요
-    const f = document.createElement("i");
-    f.className = "sc-plane fly";
-    scene.appendChild(f);
     const sr = scene.getBoundingClientRect(), br = box.getBoundingClientRect();
-    const tx = br.left - sr.left, ty = br.top - sr.top;
-    f.innerHTML = planeHtml(dirOf(tx - sr.width, ty - 10));
-    f.animate([{ transform: `translate(${sr.width + 20}px, 10px)` }, { transform: `translate(${tx + 60}px, ${ty - 46}px)`, offset: 0.6 }, { transform: `translate(${tx + 2}px, ${ty - 2}px) scale(.5)`, opacity: 0.2 }], { duration: 1500, easing: "ease-in-out" }).onfinish = () => {
-      f.remove();
-      box.animate([{ transform: "scale(1.25, .8)" }, { transform: "scale(.9, 1.15)" }, { transform: "none" }], { duration: 320 });
-      if (H.burstAt) H.burstAt(box, 6, "heart");
-    };
+    const pop = () => { box.animate([{ transform: "scale(1.25, .8)" }, { transform: "scale(.9, 1.15)" }, { transform: "none" }], { duration: 320 }); if (H.burstAt) H.burstAt(box, 6, "heart"); };
+    if (!n.q) hitHead(me(), sr.width + 20, 12, pop);
+    else {
+      // 답장은 우체통으로 쏙
+      const f = document.createElement("i");
+      f.className = "sc-plane fly";
+      const tx = br.left - sr.left, ty = br.top - sr.top;
+      f.innerHTML = planeHtml(dirOf(tx - sr.width, ty - 10));
+      scene.appendChild(f);
+      f.animate([{ transform: `translate(${sr.width + 20}px, 10px)` }, { transform: `translate(${tx + 60}px, ${ty - 46}px)`, offset: 0.6 }, { transform: `translate(${tx + 2}px, ${ty - 2}px) scale(.5)`, opacity: 0.2 }], { duration: 1500, easing: "ease-in-out" }).onfinish = () => { f.remove(); pop(); };
+    }
     const text = n.q ? `${call(n.from)}가 오늘의 질문에 답했어요` : count > 1 ? `${call(n.from)}가 쪽지 ${count}개를 보냈어요` : `${call(n.from)}의 쪽지가 왔어요`;
-    if (H.bubble) H.bubble(n.q ? "답장이 왔어!" : "쪽지가 왔어!", me());
+    if (H.bubble && n.q) H.bubble("답장이 왔어!", me());
     if (H.toast) H.toast(text);
     // 다른 앱을 보고 있어도 알려 줘요 (알림을 허락했을 때)
     try {
@@ -168,22 +207,13 @@
     ta.value = "";
     askNotify();
     if (H.setPanel) H.setPanel(null);
-    // 종이비행기가 상대에게 날아가요
+    // 종이비행기가 날아가서 상대 머리에 콕
     const plane = $("plane"), scene = $("scene");
-    const target = document.querySelector(`.bob[data-who="${other(w)}"]`);
-    if (plane && scene && target) {
-      const sr = scene.getBoundingClientRect(), pr = plane.getBoundingClientRect(), tr = target.getBoundingClientRect();
-      const f = document.createElement("i");
-      f.className = "sc-plane fly";
-      scene.appendChild(f);
-      const x0 = pr.left - sr.left, y0 = pr.top - sr.top, x1 = tr.left - sr.left + tr.width / 2 - 10, y1 = tr.top - sr.top;
-      f.innerHTML = planeHtml(dirOf(x1 - x0, y1 - y0));
-      fl.wait = 1.4; // 날아간 동안은 잠깐 자리를 비워요
-      f.animate([{ transform: `translate(${x0}px, ${y0}px)` }, { transform: `translate(${(x0 + x1) / 2}px, ${Math.min(y0, y1) - 30}px)`, offset: 0.5 }, { transform: `translate(${x1}px, ${y1}px) scale(.6)`, opacity: 0.3 }], { duration: 1100, easing: "ease-in-out" }).onfinish = () => {
-        f.remove();
-        if (H.burstAt) H.burstAt(target, 7, "heart");
-        if (H.play) H.play(target, "jump");
-      };
+    if (plane && scene) {
+      const sr = scene.getBoundingClientRect(), pr = plane.getBoundingClientRect();
+      const vis = plane.style.visibility !== "hidden" && pr.left > sr.left - 30 && pr.left < sr.right;
+      fl.wait = 2; fl.x = sr.width + 24;
+      hitHead(other(w), vis ? pr.left - sr.left : -30, vis ? pr.top - sr.top : 40);
     }
     if (H.toast) H.toast(`${call(other(w))}의 우체통으로 보냈어요`);
   }

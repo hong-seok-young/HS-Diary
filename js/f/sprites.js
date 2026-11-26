@@ -28,8 +28,8 @@
 
   // ---------- 사람 (머리가 큰 2등신, 동물 잠옷을 입을 수 있어요) ----------
   const PEOPLE = {
-    him: { H: "#4a4038", h: "#6e5e52", S: "#fbdcc0", s: "#ecc0a0", E: "#2e221c", W: "#ffffff", C: "#ffaaa8", m: "#e0907a", M: "#c9735f", T: "#8cc0ee", t: "#6a9fd4", P: "#5c6f9c", K: "#4a3a30" },
-    her: { H: "#7a5440", h: "#a07458", S: "#fbdcc0", s: "#ecc0a0", E: "#2e221c", W: "#ffffff", C: "#ffaaa8", m: "#e0907a", M: "#c9735f", T: "#ffd978", t: "#f0b54a", P: "#fbdcc0", K: "#c96a52", R: "#ff7aa8", r: "#e05a88" },
+    him: { H: "#4a4038", h: "#6e5e52", S: "#fbdcc0", s: "#ecc0a0", E: "#2e221c", W: "#ffffff", C: "#ffaaa8", m: "#e0907a", M: "#c9735f", D: "#6fc0f5", T: "#8cc0ee", t: "#6a9fd4", P: "#5c6f9c", K: "#4a3a30" },
+    her: { H: "#7a5440", h: "#a07458", S: "#fbdcc0", s: "#ecc0a0", E: "#2e221c", W: "#ffffff", C: "#ffaaa8", m: "#e0907a", M: "#c9735f", D: "#6fc0f5", T: "#ffd978", t: "#f0b54a", P: "#fbdcc0", K: "#c96a52", R: "#ff7aa8", r: "#e05a88" },
   };
   // 동물 잠옷: 동물 도감(js/zoo.js)의 종마다 한 벌. U 바탕, u 그늘, b 배, i 귀 안쪽, f 발, x 포인트
   const Z = window.Zoo || { LIST: [], BY: {} };
@@ -119,7 +119,7 @@
     const armC = P ? (P.limbs || "U") : bodyC;
     // 팔
     const swing = frame === 1 ? -1 : frame === 2 ? 1 : 0;
-    const up = pose === "wave1" || pose === "wave2" || pose === "raise" || pose === "hold";
+    const up = pose === "wave1" || pose === "wave2" || pose === "raise" || pose === "hold" || pose === "clutch";
     if (pose === "wave1" || pose === "wave2") {
       rect(g, 4, by, 1, 2, armC); put(g, 4, by + 2, "S");
     } else if (up) {
@@ -207,13 +207,45 @@
       put(g, rx, oy, "R"); put(g, rx + 2, oy, "R"); put(g, rx + 1, oy, "r"); put(g, rx, oy + 1, "R"); put(g, rx + 1, oy + 1, "r"); put(g, rx + 2, oy + 1, "R");
     }
     // 머리 위로 올린 팔 (머리보다 앞에)
-    if (pose === "wave1") { rect(g, 16, oy + 4, 1, by - oy - 3, armC); rect(g, 16, oy + 2, 2, 2, "S"); }
-    if (pose === "wave2") { rect(g, 16, oy + 6, 1, by - oy - 5, armC); put(g, 17, oy + 5, armC); rect(g, 17, oy + 3, 1, 2, "S"); }
+    // 팔은 어깨에서부터 이어져요. 손은 볼 옆에 딱 붙어서, 닿은 볼이 발그레하게 눌려요.
+    const dots = (list, c) => list.forEach(([x, y]) => put(g, x, y, c));
+    if (pose === "wave1") { dots([[13, by], [14, by - 1], [15, by - 2], [16, by - 3]], armC); dots([[16, by - 4], [16, by - 5]], "S"); }
+    if (pose === "wave2") { dots([[13, by], [14, by - 1], [15, by - 1]], armC); dots([[16, by - 2], [16, by - 3]], "S"); }
     if (pose === "raise" || pose === "hold") {
-      rect(g, 0, oy + 1, 1, by - oy, armC); rect(g, 17, oy + 1, 1, by - oy, armC);
-      rect(g, 0, oy - 1, 1, 2, "S"); rect(g, 17, oy - 1, 1, 2, "S");
+      // 만세: 두 팔을 비스듬히 올려 볼 옆에 주먹
+      dots([[4, by], [3, by - 1], [2, by - 2], [13, by], [14, by - 1], [15, by - 2]], armC);
+      dots([[1, by - 3], [1, by - 4], [16, by - 3], [16, by - 4]], "S");
+      if (dir === "down") dots([[2, by - 4], [3, by - 4], [14, by - 4], [15, by - 4]], "C");
+    }
+    if (pose === "clutch") {
+      // 머리 부여잡기: 팔이 머리 옆을 타고 올라가 정수리를 꼭 눌러요. 눌린 볼이 풍선처럼 볼록.
+      dots([[4, by], [3, by - 1], [2, by - 2], [13, by], [14, by - 1], [15, by - 2]], armC);
+      for (let y = oy + 4; y <= by - 3; y++) { put(g, 1, y, armC); put(g, 16, y, armC); }
+      dots([[1, oy + 3], [2, oy + 2], [16, oy + 3], [15, oy + 2]], armC);
+      dots([[3, oy + 1], [4, oy + 1], [3, oy + 2], [4, oy + 2], [13, oy + 1], [14, oy + 1], [13, oy + 2], [14, oy + 2]], "S");
+      if (dir === "down") { dots([[2, oy + 8], [3, oy + 8], [4, oy + 8], [13, oy + 8], [14, oy + 8], [15, oy + 8], [2, oy + 9], [15, oy + 9]], "C"); dots([[0, oy + 8], [0, oy + 9], [17, oy + 8], [17, oy + 9]], "S"); }
     }
     // 표정
+    if (dir !== "up" && (face === "cry1" || face === "cry2" || face === "hit")) {
+      const eyes = dir === "side" ? [HX + 7, HX + 12] : [HX + 4, HX + 10];
+      const ey = oy + 7, mx = dir === "side" ? HX + 10 : HX + 7;
+      eyes.forEach((x) => { rect(g, x, ey, 2, 2, "S"); });
+      if (face === "hit") {
+        // 깜짝: 흰 눈에 점 눈동자, 벌어진 입
+        eyes.forEach((x) => { rect(g, x, ey - 1, 2, 3, "W"); put(g, x + 1, ey, "E"); });
+        rect(g, mx, oy + 9, 2, 2, "M");
+      } else {
+        // 엉엉: 질끈 감은 눈(> <), 줄줄 흐르는 눈물, 크게 벌린 입
+        eyes.forEach((x, k) => {
+          const a = k === 0 && dir !== "side" ? 1 : 0;
+          put(g, x + (a ? 0 : 1), ey - 1, "E"); put(g, x + (a ? 1 : 0), ey, "E"); put(g, x + (a ? 0 : 1), ey + 1, "E");
+          const t = face === "cry1" ? [2, 3, 5] : [2, 4, 5];
+          t.forEach((d) => put(g, x + (k === 0 ? -1 : 2), ey + d - 1, "D"));
+          put(g, x + (k === 0 ? 0 : 1), ey + (face === "cry1" ? 2 : 3), "D");
+        });
+        rect(g, mx - 1, oy + 9, 4, 1, "M"); rect(g, mx, oy + 10, 2, 1, "M"); put(g, mx, oy + 9, "W"); put(g, mx + 1, oy + 9, "W");
+      }
+    }
     if (dir !== "up" && (face === "blink" || face === "happy")) {
       const eyes = dir === "side" ? [HX + 7, HX + 12] : [HX + 4, HX + 10];
       const ey = oy + 7;
@@ -229,7 +261,7 @@
   function charImg(who, dir, frame, pose, face, pj) {
     if (pj === undefined) pj = wearing(who);
     const P = pj && PJ[pj];
-    const key = `ch6|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}`;
+    const key = `ch7|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}`;
     return A.fromRows(key, charRows(who, dir, frame, pose || "", face || "", P ? pj : ""), Object.assign({ o: OUT }, PEOPLE[who] || PEOPLE.him, P ? P.c : {})).uri;
   }
 
@@ -390,7 +422,7 @@
     frog: [[2, -2], [".UUU.", "UwwwU", "UwEwU", "UUUUU"]], koala: [[-1, 0], [".UUU.", "UiiiU", "UiiiU", ".UUU."]], deer: [[2, -4], ["x.x.", "xxx.", ".x..", ".x.."]],
     big: [[-1, -2], ["UUUU", "UiiU", "UiiU", ".UUU"]], horn: [[3, -2], ["w.", "ww", "ww"]], antenna: [[5, -3], ["x.", ".x", ".x"]],
   };
-  const PET_W = 24, PET_H = 23;
+  const PET_W = 26, PET_H = 23;
   function petRows(sp, frame, face) {
     const g = blank(PET_W, PET_H);
     const m = sp.m, has = (c) => m.indexOf(c) >= 0;
@@ -398,7 +430,7 @@
     const walk = frame === "walk1" || frame === "walk2";
     const look = walk ? 1 : 0;
     const body = low ? PET_BALL.filter((r, i) => i !== 6 && i !== 12) : PET_BALL;
-    const ox = 3, oy = 6 + (low ? 2 : 0) + (frame === "eat" ? 1 : 0);
+    const ox = 4, oy = 6 + (low ? 2 : 0) + (frame === "eat" ? 1 : 0);
     const P = (x, y, c) => put(g, ox + x, oy + y, c);
     const flipRows = (rs) => rs.map((r) => r.split("").reverse().join(""));
     const st = (rs, x, y) => rs.forEach((r, j) => { for (let i = 0; i < r.length; i++) if (r[i] !== ".") P(x + i, y + j, r[i] === "U" && has("e") ? "x" : r[i]); });
@@ -413,11 +445,17 @@
     else if (sp.tail === "nub") { P(17, ty + 2, "U"); P(18, ty + 2, "u"); }
     else if (sp.tail === "fish") { [[17, ty + 1], [18, ty], [18, ty + 2], [19, ty - 1], [19, ty + 3], [18, ty + 1]].forEach(([x, y]) => P(x, y, "U")); P(19, ty - 1, "u"); P(19, ty + 3, "u"); }
     // 날개, 갈기 (몸 뒤)
-    if (has("i")) { [[-1, 5], [-2, 4], [-2, 5], [-1, 6], [-2, 6], [18, 5], [19, 4], [19, 5], [18, 6], [19, 6]].forEach(([x, y]) => P(x, y, has("k") ? "u" : "w")); }
+    const flying = frame === "fly1" || frame === "fly2";
+    const wingC = has("i") && !has("k") ? "w" : "u";
+    if (flying) {
+      // 날갯짓: 위로 한 번, 아래로 한 번
+      const wing = frame === "fly1" ? [[-1, 4], [-1, 5], [-2, 3], [-2, 4], [-3, 2], [-3, 3], [-4, 2]] : [[-1, 6], [-1, 7], [-2, 7], [-2, 8], [-3, 8], [-3, 9], [-4, 9]];
+      wing.forEach(([x, y]) => { P(x, y, wingC); P(17 - x, y, wingC); });
+    } else if (has("i")) { [[-1, 5], [-2, 4], [-2, 5], [-1, 6], [-2, 6], [18, 5], [19, 4], [19, 5], [18, 6], [19, 6]].forEach(([x, y]) => P(x, y, wingC)); }
     if (has("g")) { for (let a = 0; a < 16; a++) { const t = (a / 16) * Math.PI * 2; P(Math.round(8.5 + Math.cos(t) * 9.6), Math.round(5.5 + Math.sin(t) * 7.2), "x"); P(Math.round(8.5 + Math.cos(t) * 8.8), Math.round(5.5 + Math.sin(t) * 6.6), "x"); } }
     // 발
     const last = oy + body.length;
-    if (!low) {
+    if (!low && !flying) {
       const fl = frame === "walk1" ? 1 : 0, fr = frame === "walk2" ? 1 : 0;
       rect(g, ox + 3, last - fl, 3, 1, "f"); rect(g, ox + 12, last - fr, 3, 1, "f");
     }
@@ -469,7 +507,7 @@
     const sp = PJ[id];
     if (!sp) return "";
     const fr = frame === "stretch" ? "stand" : frame || "stand";
-    return A.fromRows(`pet|${id}|${fr}|${face || ""}`, petRows(sp, fr, face || ""), Object.assign({ o: Z.shade ? Z.shade(sp.c.U.slice(1), -0.62) : OUT, K: "#2e221c", W: "#ffffff", C: "#ff9ab8", M: "#c0506a", N: Z.shade ? Z.shade(sp.c.U.slice(1), -0.55) : "#3b2a20", D: "#7fc4f0", G: "#5fae5f", E: "#2e221c" }, sp.c)).uri;
+    return A.fromRows(`pet2|${id}|${fr}|${face || ""}`, petRows(sp, fr, face || ""), Object.assign({ o: Z.shade ? Z.shade(sp.c.U.slice(1), -0.62) : OUT, K: "#2e221c", W: "#ffffff", C: "#ff9ab8", M: "#c0506a", N: Z.shade ? Z.shade(sp.c.U.slice(1), -0.55) : "#3b2a20", D: "#7fc4f0", G: "#5fae5f", E: "#2e221c" }, sp.c)).uri;
   }
 
   // ---------- 강아지 (찹쌀떡처럼 동그랗게 앞을 봐요) ----------

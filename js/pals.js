@@ -67,7 +67,9 @@
     const sp = SP.PJ[id];
     if (!sp) return null;
     const swimmer = sp.fam === "w" && !ents.some((x) => x.kind === "hippo");
-    const kind = swimmer ? "hippo" : sp.fam === "c" ? "cat" : "sheep";
+    // 새와 날개 달린 친구는 하늘을 날아요 (타조, 키위처럼 못 나는 새는 빼고)
+    const flyer = sp.fam !== "w" && (sp.m.indexOf("i") >= 0 || (/^bd/.test(id) && ["bd54", "bd55", "bd56", "bd62"].indexOf(id) < 0));
+    const kind = flyer ? "bird" : swimmer ? "hippo" : sp.fam === "c" ? "cat" : "sheep";
     const el = document.createElement("button");
     el.className = "pal pal-" + kind;
     el.setAttribute("aria-label", sp.name);
@@ -79,6 +81,7 @@
     if (kind === "hippo") { e.x = (pond.x0 + pond.x1) / 2; e.swim = true; e.st = "swim"; e.t = rand(4, 9); }
     if (kind === "sheep") { e.x = W * rand(0.55, 0.9); e.b = rand(5, 10); e.st = "graze"; e.t = rand(2, 4); }
     if (kind === "cat") { e.x = W * rand(0.45, 0.85); e.b = rand(2, 6); e.st = "loaf"; e.t = rand(2, 4); }
+    if (kind === "bird") { e.x = W * rand(0.15, 0.85); e.b = H * rand(0.42, 0.7); e.st = "fly"; e.t = 0; e.fx.tx = e.x; e.fx.tb = e.b; }
     return e;
   }
   function sync() {
@@ -278,6 +281,58 @@
   // ============================================================
   // 아기 양: 풀 뜯고, 깡총 뛰고, 비 오면 털을 털어요
   // ============================================================
+  // ---------- 날아다니는 친구 ----------
+  // 하늘 여기저기를 느긋하게 날고, 가끔 제자리에서 둥실 떠 있어요. 밤에는 지붕 높이로 내려와 졸아요.
+  function bird(e, dt, E) {
+    e.t -= dt;
+    e.acc += dt;
+    const flap = Math.floor(e.acc * (e.st === "dash" ? 14 : 7)) % 2 ? "fly1" : "fly2";
+    const lo = H * 0.36, hi = Math.max(lo + 10, H - 84);
+    const go = (speed) => {
+      const dx = e.fx.tx - e.x, db = e.fx.tb - e.b, d = Math.hypot(dx, db);
+      if (d < 2) return true;
+      const st = Math.min(d, speed * dt);
+      e.x += (dx / d) * st; e.b += (db / d) * st;
+      if (Math.abs(dx) > 1) e.flip = dx < 0;
+      return false;
+    };
+    const pickSpot = () => { e.fx.tx = rand(24, W - 24); e.fx.tb = rand(lo, hi); };
+    if (E.night && e.st !== "roost" && !e.busy) { e.fx.tx = rand(W * 0.2, W * 0.8); e.fx.tb = rand(34, 52); setState(e, "roost", 0); }
+    if (!E.night && e.st === "roost") { pickSpot(); setState(e, "fly", 0); }
+    switch (e.st) {
+      case "roost": {
+        const there = go(26);
+        e.frame = there ? "lie" : flap; e.face = there ? "sleep" : "";
+        e.lift = there ? Math.sin(e.acc * 1.4) * 1 : 0;
+        if (there && Math.random() < dt * 0.12) zzz(e);
+        break;
+      }
+      case "hover": {
+        e.frame = flap; e.face = Math.floor(e.acc * 2) % 7 === 0 ? "blink" : "";
+        e.lift = Math.sin(e.acc * 3) * 3;
+        if (e.t < 0) { pickSpot(); setState(e, "fly", 0); }
+        break;
+      }
+      case "loop": {
+        // 한 바퀴 빙글
+        const k = 1 - Math.max(0, e.t) / 1.1;
+        e.frame = flap; e.face = "happy"; e.rot = (e.flip ? -1 : 1) * k * 360; e.lift = Math.sin(k * Math.PI) * 16;
+        if (e.t < 0) { e.rot = 0; e.lift = 0; setState(e, "hover", 1.2); }
+        break;
+      }
+      case "dash": {
+        e.frame = flap; e.face = "happy";
+        if (go(150)) { if (--e.fx.n > 0) { e.fx.tx = e.fx.tx < W / 2 ? W - 20 : 20; e.fx.tb = rand(lo, hi); } else setState(e, "hover", 1.5); }
+        break;
+      }
+      default: {
+        e.frame = flap; e.face = "";
+        e.lift = Math.sin(e.acc * 2.2) * 2;
+        if (go(E.windy ? 34 : 22)) setState(e, "hover", rand(1.5, 5));
+      }
+    }
+  }
+
   function sheep(e, dt, E) {
     e.t -= dt;
     const [l, r] = landRange(e);
@@ -482,6 +537,13 @@
     const n = e.taps.length;
     const E = env();
     e.el.animate([{ scale: "1" }, { scale: "1.12 .9" }, { scale: "1" }], { duration: 220, composite: "add" });
+    if (e.kind === "bird") {
+      if (e.st === "roost") { say(e, "쿨…"); return; }
+      if (n === 1) { setState(e, "loop", 1.1); say(e, pick(["짹!", "삐약", "휘익"])); }
+      else if (n === 2) { hearts(e, 4); setState(e, "hover", 1.6); say(e, "짹짹"); }
+      else { e.fx.n = 3; e.fx.tx = e.x < W / 2 ? W - 20 : 20; e.fx.tb = e.b; setState(e, "dash", 0); say(e, "슈웅!"); e.taps = []; }
+      return;
+    }
     if (e.kind === "hippo") {
       if (e.st === "sleepswim") { say(e, n > 2 ? "zzz… 5분만…" : "음냐…"); drops(e.x + 12, pond.b + 10, 2, 2, "#dff3ff"); return; }
       if (n === 1) { if (e.swim) { setState(e, "dive", 2.2); say(e, "뽀글"); } else { e.fx.yawn = 1.4; say(e, "하아암"); } }
@@ -538,10 +600,11 @@
     const E = env();
     pondEl.classList.toggle("frozen", E.snowy && E.cold);
     ents.forEach((e) => {
-      e.busy = ["jump", "dance", "dive", "climbin", "climbout", "puff", "roll", "cloud", "belly", "zoomies", "head", "pounce"].includes(e.st);
+      e.busy = ["loop", "dash", "jump", "dance", "dive", "climbin", "climbout", "puff", "roll", "cloud", "belly", "zoomies", "head", "pounce"].includes(e.st);
       if (e.kind === "hippo") hippo(e, dt, E);
       if (e.kind === "sheep") sheep(e, dt, E);
       if (e.kind === "cat") cat(e, dt, E);
+      if (e.kind === "bird") bird(e, dt, E);
       render(e);
     });
     raf = requestAnimationFrame(frame);

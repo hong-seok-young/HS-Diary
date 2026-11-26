@@ -607,10 +607,7 @@
       fly: day && dry && (S.season === "spring" || S.season === "summer") ? 2 : 0,
       dfly: day && dry && S.season === "autumn" ? 2 : 0,
       bat: S.dark > 0.3 && S.dark < 0.85 && !S.rising && (S.season === "summer" || S.season === "autumn") && dry ? 2 : 0,
-      frog: S.w.wet ? 1 : 0,
-      snail: day && (S.w.kind === "drizzle" || (wx && wx.lastWetAt && Date.now() - wx.lastWetAt < 3 * 3600000)) ? 1 : 0,
-      owl: night ? 1 : 0,
-      squirrel: day && S.season === "autumn" ? 1 : 0,
+      frog: 0, snail: 0, owl: 0, squirrel: 0, // 그림이 복잡해져서, 동물은 꾸미기에서 고른 친구들만 나와요
     };
     Object.keys(want).forEach((k) => {
       const have = critters.filter((c) => c.kind === k).length;
@@ -625,7 +622,7 @@
         if (k === "squirrel") { const t = treeTop(".sc-tree.t1"); if (t) addCritter("squirrel", { button: true, x: t.x + t.w / 2, y: t.y + 4, speed: 0, perch: t, scale: 2 }); }
       }
     });
-    if (!S.dogDone && day && dry && !hasCritter("dog") && Math.random() < 0.6) {
+    if (false && !S.dogDone && day && dry && !hasCritter("dog") && Math.random() < 0.6) {
       S.dogDone = true;
       setTimeout(() => { if (!hasCritter("dog")) addCritter("dog", { button: true, frames: ["dog1", "dog2"], x: -30, y: groundTop() - 10, tx: S.W + 40, ty: groundTop() - 10, speed: 36, walkOff: true, scale: 3 }); }, rand(2000, 9000));
     }
