@@ -36,7 +36,7 @@
   const ids = Z.LIST.map((s) => s.id);
   const PJS = FIRST_PJ.concat(shuffled(ids.filter((id) => FIRST_PJ.indexOf(id) < 0), 20260717));
   const IT0 = window.Items ? Items.LIST.map((x) => x.id) : [];
-  const FIRST_IT = ["cake0", "cone7", "boba10", "balloon19", "donut1", "heart0"].filter((id) => IT0.indexOf(id) >= 0);
+  const FIRST_IT = ["cake0", "e_gr1", "h_bow0", "n_scarf12", "cone7", "h_crown8", "e_sun15", "boba10"].filter((id) => IT0.indexOf(id) >= 0);
   const ITEMS = FIRST_IT.concat(shuffled(IT0.filter((id) => FIRST_IT.indexOf(id) < 0), 19930811));
   const PETS = FIRST_PET.concat(shuffled(ids.filter((id) => FIRST_PET.indexOf(id) < 0), 19970929));
 
@@ -70,7 +70,31 @@
   }
   const ownedItems = () => unlocks().filter((u) => u.cat === "item").map((u) => u.item);
   // 손에 든 것 (사람마다 따로 골라요)
-  function holdOf(w) { const v = window.Store && Store.pair("hold", w); return v && ownedItems().indexOf(v) >= 0 ? v : ""; }
+  // 사람마다 손, 눈, 머리, 목에 하나씩 골라요
+  const KINDS = ["hand", "eye", "hat", "neck"];
+  function accOf(w) {
+    const v = (window.Store && Store.pair("acc", w)) || {};
+    const own = ownedItems(), out = {};
+    KINDS.forEach((k) => { const id = k === "hand" && v.hand === undefined ? Store.pair("hold", w) : v[k]; out[k] = id && own.indexOf(id) >= 0 && Items.BY[id] && Items.BY[id].kind === k ? id : ""; });
+    return out;
+  }
+  const holdOf = (w) => accOf(w).hand;
+  let accCache = { t: 0, v: {} };
+  window.HSAcc = (who) => {
+    const now = Date.now();
+    if (now - accCache.t > 1500) accCache = { t: now, v: { him: accOf("him"), her: accOf("her") } };
+    return accCache.v[who] || {};
+  };
+  function setAcc(kind, id) {
+    const w = me();
+    if (!w) return;
+    const cur = accOf(w);
+    cur[kind] = id || "";
+    Store.setPair("acc", w, cur);
+    accCache.t = 0;
+    applyHold();
+    document.dispatchEvent(new CustomEvent("hsd:wear"));
+  }
   function applyHold() {
     if (!window.Items) return;
     ["him", "her"].forEach((w) => {
@@ -232,7 +256,7 @@
     const k = b.dataset.d, v = b.dataset.v, w = me();
     if (k === "close") { history.back(); return; }
     if (k === "tab") { tab = v; render(); $("decoBody").scrollTop = 0; return; }
-    if (k === "hold") { Store.setPair("hold", w, v); applyHold(); render(); return; }
+    if (k === "acc") { setAcc(b.dataset.kind, v); render(); return; }
     if (k === "ctab") { tab = closetTab = v; render(); $("decoBody").scrollTop = 0; return; }
     if (k === "wear") { if (window.Tale) Tale.setWear(v); document.dispatchEvent(new CustomEvent("hsd:wear")); render(); return; }
     if (k === "pet") {
@@ -252,7 +276,8 @@
   let io = null;
   function srcOf(k) {
     const [kind, id] = k.split("|");
-    return kind === "item" ? Items.uri(id) : kind === "pet" ? S().petImg(id, "stand", "") : S().charImg(me() || "him", "down", 0, "", "", id);
+    if (kind === "item") { const it = Items.BY[id]; if (it && it.kind !== "hand") { const a = {}; a[it.kind] = id; return S().charImg(me() || "him", "down", 0, "", "", "", a); } return Items.uri(id); }
+    return kind === "pet" ? S().petImg(id, "stand", "") : S().charImg(me() || "him", "down", 0, "", "", id);
   }
   // 얻는 방법 글상자: 잠깐 떴다가 사라지고, 다른 곳을 눌러도 사라져요
   let popT = 0;
@@ -281,11 +306,11 @@
   const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
   function render() {
     const w = me();
-    const closet = tab === "pj" || tab === "item";
+    const closet = tab === "pj" || KINDS.indexOf(tab) >= 0;
     $("decoTitle").textContent = closet ? "옷장" : tab === "pet" ? "동물 친구들" : "이름표";
     // 옷장 안에는 잠옷과 손에 드는 것이 있어요
     $("decoTabs").hidden = !closet;
-    $("decoTabs").innerHTML = closet ? [["pj", "잠옷"], ["item", "손에 드는 것"]].map(([k, n]) => `<button class="chip${tab === k ? " active" : ""}" data-d="ctab" data-v="${k}">${n}</button>`).join("") : "";
+    $("decoTabs").innerHTML = closet ? [["pj", "잠옷"], ["hand", "손"], ["eye", "눈"], ["hat", "머리"], ["neck", "목"]].map(([k, n]) => `<button class="chip${tab === k ? " active" : ""}" data-d="ctab" data-v="${k}">${n}</button>`).join("") : "";
     let html = "", tip = "";
     // 아직 못 얻은 것도 검은 그림자로 다 보여요. 이름은 ???, 아래에 얻는 방법.
     // 누르면 얻는 방법이 글상자로 잠깐 떠요
@@ -293,21 +318,25 @@
       pj: (n) => `${call("her")}가 ${n}번 더 출석하면 받아요. (하루에 한 벌)`,
       pet: (n) => `${call("him")}가 ${n}번 더 출석하면 만나요. (하루에 한 마리)`,
       ban: (n) => `오늘의 질문에 답하거나 하트를 보낸 날이 ${n}번 더 쌓이면 받아요. (하루에 하나)`,
-      item: (n) => `기록, 할 일, 일기, 일정 중 하나라도 남긴 날이 ${n}번 더 쌓이면 받아요. (하루에 하나)`,
+      item: (n) => `기록, 할 일, 일기, 일정 중 하나라도 남긴 날이 ${n}번 더 쌓이면 받아요. (장식품은 종류 상관없이 하루에 하나)`,
     };
-    const locked = (kind, id, left) => `<button class="deco-it lock${kind === "pet" ? " pet" : kind === "item" ? " item" : ""}" data-d="why" data-v="${esc(why[kind](left))}"><img class="px" alt="" data-k="${kind}|${id}" src="${BLANK}"><small>???</small></button>`;
+    const locked = (kind, id, left) => `<button class="deco-it lock${kind === "pet" ? " pet" : kind === "item" && Items.BY[id].kind === "hand" ? " item" : ""}" data-d="why" data-v="${esc(why[kind](left))}"><img class="px" alt="" data-k="${kind}|${id}" src="${BLANK}"><small>???</small></button>`;
     if (tab === "pj") {
       const own = ownedPajamas(), on = window.Tale ? Tale.wearOf(w) : "";
       tip = `잠옷 ${own.length}벌 / ${PJS.length}벌 · ${call("her")}가 출석하면 하루에 한 벌씩 생겨요`;
       html = `<div class="deco-grid"><button class="deco-it${on ? "" : " on"}" data-d="wear" data-v=""><img class="px" alt="" src="${S().charImg(w, "down", 0, "", "", "")}"><small>평소 옷</small></button>` +
         own.slice().reverse().map((id) => `<button class="deco-it${on === id ? " on" : ""}" data-d="wear" data-v="${id}"><img class="px" alt="" data-k="pj|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name)}</small></button>`).join("") +
         PJS.slice(own.length).map((id, k) => locked("pj", id, k + 1)).join("") + `</div>`;
-    } else if (tab === "item") {
-      const own = ownedItems(), on = holdOf(w);
-      tip = `손에 드는 것 ${own.length}개 / ${ITEMS.length}개 · 기록, 할 일, 일기, 일정을 남긴 날마다 하나씩 생겨요`;
-      html = `<div class="deco-grid"><button class="deco-it item${on ? "" : " on"}" data-d="hold" data-v=""><i class="empty-hand"></i><small>빈손</small></button>` +
-        own.slice().reverse().map((id) => `<button class="deco-it item${on === id ? " on" : ""}" data-d="hold" data-v="${id}"><img class="px" alt="" data-k="item|${id}" src="${BLANK}"><small>${esc(Items.BY[id].name)}</small></button>`).join("") +
-        ITEMS.slice(own.length).map((id, k) => locked("item", id, k + 1)).join("") + `</div>`;
+    } else if (KINDS.indexOf(tab) >= 0) {
+      const KN = { hand: "손에 드는 것", eye: "눈 장식", hat: "머리 장식", neck: "목 장식" };
+      const ownAll = ownedItems(), own = ownAll.filter((id) => Items.BY[id].kind === tab), on = accOf(w)[tab];
+      const rest = ITEMS.slice(ownAll.length);
+      const total = ITEMS.filter((id) => Items.BY[id].kind === tab).length;
+      tip = `${KN[tab]} ${own.length}개 / ${total}개 · 장식품은 모두 ${ITEMS.length}개. 기록, 할 일, 일기, 일정을 남긴 날마다 하나씩 생겨요` + (tab === "hat" ? " · 동물 잠옷을 입으면 머리 장식은 후드에 가려져요" : "");
+      const cls = tab === "hand" ? " item" : "";
+      html = `<div class="deco-grid"><button class="deco-it${cls}${on ? "" : " on"}" data-d="acc" data-kind="${tab}" data-v=""><i class="empty-hand"></i><small>없음</small></button>` +
+        own.slice().reverse().map((id) => `<button class="deco-it${cls}${on === id ? " on" : ""}" data-d="acc" data-kind="${tab}" data-v="${id}"><img class="px" alt="" data-k="item|${id}" src="${BLANK}"><small>${esc(Items.BY[id].name)}</small></button>`).join("") +
+        rest.map((id, k) => (Items.BY[id].kind === tab ? locked("item", id, k + 1) : "")).join("") + `</div>`;
     } else if (tab === "pet") {
       const own = ownedPets(), mine = placedOf(w) || [], all = placed();
       tip = `동물 ${own.length}마리 / ${PETS.length}마리 · ${call("him")}가 출석하면 하루에 한 마리씩 와요. 그림에 둘 친구를 ${MAXP}마리까지 골라요`;
@@ -356,7 +385,7 @@
     pj: [["문 앞에 상자가 놓여 있어.", "뭐가 들어 있을까?"], ["폭신한 게 만져져.", "얼른 열어 보자!"], ["리본 묶인 꾸러미다.", "우리 거 맞지?"], ["옷장에서 부스럭 소리가 나.", "새 잠옷일까?"], ["택배가 왔어!", "둘이 같이 뜯자."]],
     ban: [["바람에 뭔가 날아왔어.", "어디에 달면 예쁠까?"], ["반짝이는 게 떨어져 있어.", "주워 볼까?"], ["하늘에서 뭐가 내려와.", "우리 이름이 적혀 있네?"], ["누가 선물을 두고 갔어.", "펼쳐 보자!"]],
   };
-  const KIND = { pet: "새 친구", pj: "새 잠옷", ban: "새 이름표", item: "새 간식·소품" };
+  const KIND = { pet: "새 친구", pj: "새 잠옷", ban: "새 이름표", item: "새 장식품" };
   let uroot = null, uq = [], ucur = null, ustep = 0, utype = 0, utotal = 0;
   function uensure() {
     if (uroot) return;
@@ -382,7 +411,7 @@
   function artOf(u) {
     if (u.cat === "pet") return `<img class="px ul-img pet" alt="" src="${S().petImg(u.item, "stand", "happy")}">`;
     if (u.cat === "pj") return `<img class="px ul-img pj" alt="" src="${S().charImg(me() || "him", "down", 0, "wave1", "happy", u.item)}">`;
-    if (u.cat === "item") return `<img class="px ul-img item" alt="" src="${Items.uri(u.item)}">`;
+    if (u.cat === "item") { const it = Items.BY[u.item]; if (it.kind === "hand") return `<img class="px ul-img item" alt="" src="${Items.uri(u.item)}">`; const a = {}; a[it.kind] = u.item; return `<img class="px ul-img pj" alt="" src="${S().charImg(me() || "him", "down", 0, "wave1", "happy", "", a)}">`; }
     const st = styleOf(u.item);
     return `<span class="sc-banner mini big ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span>`;
   }
@@ -411,7 +440,7 @@
       $("ulFace").parentNode.hidden = true;
       $("ulWho").textContent = "";
       utypeLine(`${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
-      const actName = u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? "손에 들기" : "달기";
+      const actName = u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? (Items.BY[u.item].kind === "hand" ? "손에 들기" : "지금 하기") : "달기";
       $("ulBtns").innerHTML = `<button class="btn" data-u="next">${uq.length ? "다음" : "좋아"}</button><button class="btn primary" data-u="use">${actName}</button>`;
       const h = window.HSD;
       if (h && h.burst) {
@@ -434,7 +463,7 @@
     if (k === "use") {
       if (u.cat === "pet") { let list = placedOf(w) || placed().slice(0, MAXP - 1); list = list.filter((x) => x !== u.item); if (list.length >= MAXP) list = list.slice(1); Store.setPair("pets", w, list.concat(u.item)); document.dispatchEvent(new CustomEvent("hsd:pets")); }
       else if (u.cat === "pj") { if (window.Tale) Tale.setWear(u.item); document.dispatchEvent(new CustomEvent("hsd:wear")); }
-      else if (u.cat === "item") { Store.setPair("hold", w, u.item); applyHold(); }
+      else if (u.cat === "item") setAcc(Items.BY[u.item].kind, u.item);
       else setBan({ d: u.item });
     }
     markSeen(u.id);
@@ -461,6 +490,6 @@
   window.Deco = {
     open, back: close, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")),
     bindDrag, justDragged: () => { const el = $("banner"); return !!(el && Date.now() - Number(el.dataset.moved || 0) < 400); }, tab: () => tab,
-    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, ownedPets, ownedPajamas, ownedItems, holdOf, applyHold, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
+    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
   };
 })();

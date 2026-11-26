@@ -76,7 +76,39 @@
     el.innerHTML = `<span class="pal-clip"><img class="px" alt="" draggable="false"></span><i class="pal-say" hidden></i>`;
     layer.appendChild(el);
     const e = { kind, sp: id, el, img: el.querySelector("img"), clip: el.querySelector(".pal-clip"), say: el.querySelector(".pal-say"), x: 0, b: 6, flip: false, st: "", t: 0, frame: "stand", face: "", tail: 1, taps: [], src: "", fx: {}, acc: 0, blinkAt: 0, swim: false, rot: 0, lift: 0, scale: 1, tx: 0, sayT: 0 };
-    el.addEventListener("pointerdown", (ev) => { ev.stopPropagation(); tap(e); });
+    // 살짝 누르면 반응하고, 끌면 들려 올라가고, 휙 놓으면 날아가요
+    el.addEventListener("pointerdown", (ev) => {
+      ev.stopPropagation();
+      e.grab = { x0: ev.clientX, y0: ev.clientY, px: ev.clientX, py: ev.clientY, pt: performance.now(), vx: 0, vy: 0, moved: false };
+      try { el.setPointerCapture(ev.pointerId); } catch (err) { /* 괜찮아요 */ }
+    });
+    el.addEventListener("pointermove", (ev) => {
+      const g = e.grab;
+      if (!g) return;
+      if (!g.moved && Math.hypot(ev.clientX - g.x0, ev.clientY - g.y0) < 8) return;
+      if (!g.moved) { g.moved = true; e.held = true; e.thrown = null; e.swim = false; e.lift = 0; e.rot = 0; e.scale = 1; e.tx = 0; el.classList.add("held"); say(e, pick(["어어?", "들렸다!", "으앗"])); }
+      const now = performance.now(), dt = Math.max(8, now - g.pt) / 1000;
+      g.vx = g.vx * 0.5 + ((ev.clientX - g.px) / dt) * 0.5; g.vy = g.vy * 0.5 + ((ev.clientY - g.py) / dt) * 0.5;
+      g.px = ev.clientX; g.py = ev.clientY; g.pt = now;
+      const sr = scene.getBoundingClientRect();
+      e.x = Math.max(8, Math.min(W - 8, ev.clientX - sr.left));
+      e.b = Math.max(0, Math.min(H - 26, sr.bottom - ev.clientY - 16));
+      ev.preventDefault();
+    });
+    const drop = (ev) => {
+      const g = e.grab;
+      if (!g) return;
+      e.grab = null;
+      if (!g.moved) { if (ev.type === "pointerup") tap(e); return; }
+      e.held = false;
+      el.classList.remove("held");
+      const stale = performance.now() - g.pt > 120; // 멈췄다 놓으면 그냥 툭 떨어져요
+      const cl = (v, m) => Math.max(-m, Math.min(m, v));
+      e.thrown = { vx: stale ? 0 : cl(g.vx, 900), vy: stale ? 0 : cl(-g.vy, 1000), t: 0 };
+      if (Math.hypot(e.thrown.vx, e.thrown.vy) > 250) say(e, pick(["으아아!", "날아간다~", "슈우웅", "꺄아"]));
+    };
+    el.addEventListener("pointerup", drop);
+    el.addEventListener("pointercancel", drop);
     el.addEventListener("click", (ev) => ev.stopPropagation());
     if (kind === "hippo") { e.x = (pond.x0 + pond.x1) / 2; e.swim = true; e.st = "swim"; e.t = rand(4, 9); }
     if (kind === "sheep") { e.x = W * rand(0.55, 0.9); e.b = rand(5, 10); e.st = "graze"; e.t = rand(2, 4); }
@@ -281,6 +313,40 @@
   // ============================================================
   // 아기 양: 풀 뜯고, 깡총 뛰고, 비 오면 털을 털어요
   // ============================================================
+  // ---------- 던져졌을 때: 빙글빙글 날아가서 벽과 바닥에 튕기다 멈춰요 ----------
+  function flung(e, dt) {
+    const t = e.thrown;
+    t.t += dt;
+    const bird = e.kind === "bird";
+    t.vy -= (bird ? 500 : 1500) * dt;
+    e.x += t.vx * dt; e.b += t.vy * dt;
+    e.rot = (e.rot + t.vx * dt * 1.4) % 360;
+    e.frame = bird ? (Math.floor(t.t * 14) % 2 ? "fly1" : "fly2") : "stand";
+    e.face = "sweat";
+    if (e.x < 10) { e.x = 10; t.vx = Math.abs(t.vx) * 0.6; }
+    if (e.x > W - 10) { e.x = W - 10; t.vx = -Math.abs(t.vx) * 0.6; }
+    if (e.b > H - 26) { e.b = H - 26; t.vy = -Math.abs(t.vy) * 0.4; }
+    const floor = bird ? 30 : 4;
+    const done = () => {
+      e.thrown = null; e.rot = 0; e.lift = 0; e.face = ""; e.taps = [];
+      if (bird) { e.fx.tx = e.x; e.fx.tb = Math.max(e.b, H * 0.4); setState(e, "hover", 1.5); return; }
+      e.b = e.kind === "cat" ? 4 : 6;
+      if (e.kind === "hippo") {
+        if (e.x > pond.x0 + 8 && e.x < pond.x1 - 8) { e.swim = true; ring(e.x); drops(e.x, pond.b + 8, 14, 26, "#bfe6ff"); say(e, "첨벙!"); setState(e, "swim", rand(4, 8)); }
+        else setState(e, "land", 6);
+      } else if (e.kind === "cat") setState(e, "loaf", 2.5);
+      else setState(e, "idle", 2);
+      if (!e.swim) { e.el.animate([{ scale: "1.2 .8" }, { scale: ".95 1.08" }, { scale: "1" }], { duration: 260 }); say(e, pick(["휴…", "어질어질", "또 던져 줘!"])); }
+    };
+    if (bird && (t.t > 1.4 || Math.hypot(t.vx, t.vy) < 70)) { done(); return; }
+    if (e.b <= floor && t.vy < 0) {
+      e.b = floor;
+      if (!bird && Math.abs(t.vy) > 220) { t.vy = -t.vy * 0.45; t.vx *= 0.7; drops(e.x, 6, 4, 10, "#d8c8a0"); }
+      else if (bird) { t.vy = Math.abs(t.vy) * 0.5; }
+      else done();
+    }
+  }
+
   // ---------- 날아다니는 친구 ----------
   // 하늘 여기저기를 느긋하게 날고, 가끔 제자리에서 둥실 떠 있어요. 밤에는 지붕 높이로 내려와 졸아요.
   function bird(e, dt, E) {
@@ -601,6 +667,8 @@
     pondEl.classList.toggle("frozen", E.snowy && E.cold);
     ents.forEach((e) => {
       e.busy = ["loop", "dash", "jump", "dance", "dive", "climbin", "climbout", "puff", "roll", "cloud", "belly", "zoomies", "head", "pounce"].includes(e.st);
+      if (e.held) { e.frame = e.kind === "bird" ? (Math.floor(ts / 90) % 2 ? "fly1" : "fly2") : "stand"; e.face = "sweat"; render(e); return; }
+      if (e.thrown) { flung(e, dt); render(e); return; }
       if (e.kind === "hippo") hippo(e, dt, E);
       if (e.kind === "sheep") sheep(e, dt, E);
       if (e.kind === "cat") cat(e, dt, E);

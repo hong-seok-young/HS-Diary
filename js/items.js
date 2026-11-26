@@ -1,5 +1,7 @@
 // ============================================================
+// 장식품 1140가지: 손에 드는 것 580, 눈 장식 160, 머리 장식 280, 목 장식 120.
 // 손에 드는 것: 간식과 소품. 모양 29가지 × 맛(색) 20가지 = 580가지.
+// 눈, 머리, 목 장식은 캐릭터 그림 위에 직접 그려요 (js/f/sprites.js 의 drawAcc).
 // A 주색, a 그늘, B 포인트, W 흰색, C 크림, K 갈색(콘, 막대), G 초록
 // ============================================================
 (function () {
@@ -48,9 +50,19 @@
   };
   const LIST = [], BY = {};
   SHAPES.forEach(([sid, sname, rows], si) => FLAVORS.forEach(([fname, A, B], fi) => {
-    const it = { id: `${sid}${fi}`, name: `${fname} ${sname}`, rows, c: { A, a: shade(A, -0.2), B, W: "#ffffff", C: "#fff3dc", K: "#a8743e", G: "#5fae5f" }, si, fi };
+    const it = { id: `${sid}${fi}`, kind: "hand", name: `${fname} ${sname}`, rows, c: { A, a: shade(A, -0.2), B, W: "#ffffff", C: "#fff3dc", K: "#a8743e", G: "#5fae5f" }, si, fi };
     LIST.push(it); BY[it.id] = it;
   }));
+  // 몸에 걸치는 장식: [아이디, 이름]. 모양은 sprites.js 가 그려요.
+  const WEAR = {
+    eye: [["gr", "둥근 안경"], ["gs", "네모 안경"], ["sun", "선글라스"], ["half", "반테 안경"], ["mono", "외알 안경"], ["patch", "안대"], ["gem", "볼 보석"], ["shadow", "아이섀도"]],
+    hat: [["bow", "리본"], ["band", "머리띠"], ["crown", "왕관"], ["beret", "베레모"], ["cap", "야구모자"], ["straw", "밀짚모자"], ["beanie", "비니"], ["pin", "꽃핀"], ["cone", "고깔모자"], ["phone", "헤드폰"], ["bunny", "토끼 머리띠"], ["cat", "고양이 머리띠"], ["sprout", "새싹"], ["star", "별 핀"]],
+    neck: [["scarf", "목도리"], ["bowtie", "나비넥타이"], ["lace", "목걸이"], ["tie", "넥타이"], ["kerchief", "스카프"], ["bell", "방울 목줄"]],
+  };
+  Object.keys(WEAR).forEach((kind) => WEAR[kind].forEach(([sid, sname]) => FLAVORS.forEach(([fname, A, B], fi) => {
+    const it = { id: `${kind[0]}_${sid}${fi}`, kind, shape: sid, name: `${fname} ${sname}`, c: [A, shade(A, -0.22), B], fi };
+    LIST.push(it); BY[it.id] = it;
+  })));
   const cache = {};
   function img(id) {
     const it = BY[id];

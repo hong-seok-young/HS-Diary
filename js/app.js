@@ -11,7 +11,8 @@
   const WHO = { him: cfg.him || "석영", her: cfg.her || "예은" };
   const CATS = { date: "데이트", food: "맛집", cafe: "카페", travel: "여행", anniv: "기념일", etc: "기타" };
   const PLAN_CATS = ["date", "food", "cafe", "travel", "etc"];
-  const MOODS = ["", "최고", "좋아", "그냥", "슬퍼", "힘들어"];
+  const MOODS = ["", "최고", "좋아", "그냥", "슬퍼", "힘들어", "설레", "사랑해", "신나", "뿌듯", "편안", "졸려", "배고파", "심심", "걱정", "긴장", "화나", "삐짐", "아파", "피곤", "놀라"];
+  const MOOD_ORDER = [1, 2, 8, 6, 7, 9, 10, 3, 13, 11, 12, 20, 14, 15, 4, 5, 19, 18, 17, 16];
   const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
   // 할 거가 비어 있을 때 뽑기에서 대신 나오는 것들
   const IDEAS = {
@@ -587,7 +588,7 @@
       on = false; d = 0;
       if (ev.touches.length !== 1 || window.scrollY > 0) return;
       const t = ev.target;
-      if (!t.closest || t.closest("#banner, .idle, .unlock, .lightbox, input, textarea, select")) return;
+      if (!t.closest || t.closest("#banner, .pal, .unlock, .lightbox, input, textarea, select")) return;
       for (let n = t; n && n !== document.body; n = n.parentNode) if (n.scrollTop > 0) return;
       y0 = ev.touches[0].clientY; x0 = ev.touches[0].clientX; on = true;
     }, { passive: true });
@@ -656,7 +657,7 @@
     const key = "m:" + todayKey();
     MORPH($("moodNow"), ["him", "her"].map((w) => {
       const m = Number(Store.pair(key, w)) || 0;
-      return `<div class="mood-card"><span class="mood-face">${m ? PIXEL.sprite("mood" + m, 5) : '<i class="mood-none">?</i>'}</span><b>${esc(WHO[w])}</b><i>${m ? MOODS[m] : "아직"}</i></div>`;
+      return `<div class="mood-card"><span class="mood-face">${m ? PIXEL.sprite("mood" + m, 3) : '<i class="mood-none">?</i>'}</span><b>${esc(WHO[w])}</b><i>${m ? MOODS[m] : "아직"}</i></div>`;
     }).join(""));
     const me = Store.me();
     if (!me) {
@@ -664,7 +665,7 @@
       return;
     }
     const mine = Number(Store.pair(key, me)) || 0;
-    MORPH($("moodPick"), `<div class="mood-pick">${[1, 2, 3, 4, 5].map((n) => `<button class="mood-btn${mine === n ? " active" : ""}" data-mood="${n}" aria-label="${MOODS[n]}">${PIXEL.sprite("mood" + n, 4)}<b>${MOODS[n]}</b></button>`).join("")}</div>`);
+    MORPH($("moodPick"), `<div class="mood-pick">${MOOD_ORDER.map((n) => `<button class="mood-btn${mine === n ? " active" : ""}" data-mood="${n}" aria-label="${MOODS[n]}">${PIXEL.sprite("mood" + n, 3)}<b>${MOODS[n]}</b></button>`).join("")}</div>`);
   }
 
   // 하트 보내기: 그림 속 상대를 눌러요

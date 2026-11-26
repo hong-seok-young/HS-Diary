@@ -77,7 +77,61 @@
     antenna: { at: [4, -3], rows: ["k.", ".k", ".k"] },
     deer: { at: [2, -4], rows: ["A.A.", "AAA.", ".A..", ".A.."] },
   };
-  function charRows(who, dir, frame, pose, face, pj) {
+  // ---------- 장식 (눈, 머리, 목) ----------
+  // 색 글자: 눈 1 2 3, 머리 4 5 6, 목 7 8 9 (주색, 그늘, 포인트)
+  function drawAcc(g, acc, dir, oy, by, hasHood) {
+    const X = (x, y, c) => put(g, HX + x, oy + y, c);
+    const list = (pts, c, sx) => pts.forEach(([x, y]) => X(x + (sx || 0), y, c));
+    const sx = dir === "side" ? 1 : 0;
+    // 목
+    const nk = acc.neck;
+    if (nk) {
+      const B = (x, y, c) => put(g, x, by + y, c);
+      const row = (a, b, y, c) => { for (let x = a; x <= b; x++) B(x, y, c); };
+      if (nk === "scarf") { row(5, 12, 0, "7"); if (dir !== "up") { B(6, 1, "7"); B(6, 2, "7"); B(6, 3, "8"); } else row(5, 12, 1, "8"); }
+      else if (nk === "kerchief") { row(5, 12, 0, "7"); row(7, 10, 1, "7"); row(8, 9, 2, "8"); }
+      else if (nk === "bell") { row(5, 12, 0, "7"); if (dir !== "up") { B(8, 1, "9"); B(9, 1, "9"); } }
+      else if (dir !== "up") {
+        if (nk === "bowtie") { B(7, 0, "7"); B(10, 0, "7"); B(8, 0, "8"); B(9, 0, "8"); B(7, 1, "7"); B(10, 1, "7"); }
+        else if (nk === "lace") { B(6, 0, "9"); B(11, 0, "9"); B(7, 1, "9"); B(10, 1, "9"); B(8, 1, "7"); B(9, 1, "7"); B(8, 2, "7"); B(9, 2, "8"); }
+        else if (nk === "tie") { B(8, 0, "8"); B(9, 0, "8"); B(8, 1, "7"); B(9, 1, "7"); B(8, 2, "7"); B(9, 2, "7"); B(8, 3, "8"); B(9, 3, "8"); }
+      }
+    }
+    // 눈
+    const ey = acc.eye;
+    if (ey && dir !== "up") {
+      const E = dir === "side" ? [7, 12] : [4, 10];
+      const frame = (x, square) => { list([[x, 6], [x + 1, 6], [x, 9], [x + 1, 9], [x - 1, 7], [x - 1, 8], [x + 2, 7], [x + 2, 8]], "1"); if (square) list([[x - 1, 6], [x + 2, 6], [x - 1, 9], [x + 2, 9]], "1"); };
+      const bridge = () => { for (let x = E[0] + 3; x <= E[1] - 2; x++) X(x, 7, "1"); };
+      if (ey === "gr" || ey === "gs") { E.forEach((x) => frame(x, ey === "gs")); bridge(); }
+      else if (ey === "sun") { E.forEach((x) => { for (let i = -1; i <= 2; i++) { X(x + i, 7, "1"); X(x + i, 8, "2"); } X(x - 1, 7, "3"); }); bridge(); }
+      else if (ey === "half") { E.forEach((x) => list([[x - 1, 6], [x, 6], [x + 1, 6], [x + 2, 6], [x - 1, 7], [x + 2, 7]], "1")); bridge(); }
+      else if (ey === "mono") { frame(E[1], false); list([[E[1] + 2, 9], [E[1] + 3, 10], [E[1] + 3, 11]], "3"); }
+      else if (ey === "patch") { const x = E[0]; for (let j = 6; j <= 9; j++) for (let i = -1; i <= 2; i++) X(x + i, j, j === 9 || i === 2 ? "2" : "1"); for (let i = 0; i <= 15; i++) if (i < x - 1 || i > x + 2) X(i, 5, "2"); }
+      else if (ey === "gem") { const x = dir === "side" ? 13 : 12; list([[x, 9], [x + 1, 9], [x, 10], [x + 1, 10]], "1"); X(x, 9, "3"); }
+      else if (ey === "shadow") { E.forEach((x) => list([[x - 1, 6], [x, 6], [x + 1, 6], [x + 2, 6]], "1")); }
+    }
+    // 머리 (동물 잠옷 후드를 썼을 땐 후드가 머리 장식이에요)
+    const ht = acc.hat;
+    if (ht && !hasHood) {
+      const row = (a, b, y, c) => { for (let x = a; x <= b; x++) X(x + sx, y, c); };
+      if (ht === "bow") { list([[5, -2], [6, -2], [9, -2], [10, -2], [5, 0], [6, 0], [9, 0], [10, 0]], "4", sx); row(5, 10, -1, "4"); list([[7, -1], [8, -1]], "5", sx); }
+      else if (ht === "band") { row(1, 14, 2, "4"); list([[4, 2], [5, 2]], "6", sx); }
+      else if (ht === "crown") { list([[4, -3], [7, -3], [8, -3], [11, -3]], "4", sx); row(4, 11, -2, "4"); row(4, 11, -1, "5"); list([[6, -2], [9, -2]], "6", sx); }
+      else if (ht === "beret") { X(8 + sx, -3, "5"); row(5, 10, -2, "4"); row(3, 12, -1, "4"); row(2, 13, 0, "4"); row(2, 13, 1, "5"); }
+      else if (ht === "cap") { row(4, 11, -1, "4"); row(2, 13, 0, "4"); row(1, 14, 1, "4"); row(9, 16, 2, "5"); X(8 + sx, -2, "6"); }
+      else if (ht === "straw") { row(5, 10, -2, "4"); row(4, 11, -1, "4"); row(4, 11, 0, "6"); row(0, 15, 1, "4"); row(1, 14, 2, "5"); }
+      else if (ht === "beanie") { list([[7, -3], [8, -3]], "6", sx); row(5, 10, -2, "4"); row(3, 12, -1, "4"); row(2, 13, 0, "4"); row(1, 14, 1, "5"); }
+      else if (ht === "pin") { list([[3, 0], [2, 1], [4, 1], [3, 2]], "4", sx); X(3 + sx, 1, "6"); }
+      else if (ht === "cone") { X(8 + sx, -3, "6"); row(7, 8, -2, "4"); row(6, 9, -1, "5"); row(5, 10, 0, "4"); }
+      else if (ht === "phone") { row(3, 12, -1, "4"); list([[2, 0], [13, 0], [1, 1], [14, 1], [1, 2], [14, 2], [1, 3], [14, 3]], "4", sx); for (let y = 4; y <= 8; y++) { X(0 + sx, y, "5"); X(1 + sx, y, "4"); X(14 + sx, y, "4"); X(15 + sx, y, "5"); } }
+      else if (ht === "bunny") { [4, 10].forEach((x) => { list([[x, -3], [x + 1, -3], [x, -2], [x + 1, -2], [x, -1], [x + 1, -1]], "4", sx); X(x + (x === 4 ? 1 : 0) + sx, -2, "6"); }); row(3, 12, 0, "5"); }
+      else if (ht === "cat") { list([[3, -2], [3, -1], [4, -1], [12, -2], [12, -1], [11, -1]], "4", sx); list([[4, -1], [11, -1]], "6", sx); row(3, 12, 0, "5"); }
+      else if (ht === "sprout") { list([[8, -1], [8, -2]], "5", sx); list([[6, -3], [7, -3], [9, -3], [10, -3], [7, -2], [9, -2]], "4", sx); }
+      else if (ht === "star") { list([[12, 0], [11, 1], [13, 1], [12, 2]], "4", sx); X(12 + sx, 1, "6"); }
+    }
+  }
+  function charRows(who, dir, frame, pose, face, pj, acc) {
     const g = blank(CH_W, CH_H);
     const girl = who === "her";
     const P = pj && PJ[pj] ? pjView(PJ[pj]) : null;
@@ -202,7 +256,7 @@
       if (girl && dir === "side") { for (let y = 6; y <= 10; y++) { H(4, y, "H"); H(14, y, "H"); } H(5, 6, "H"); }
     }
     // 리본 (잠옷이 아닐 때)
-    if (girl && !P) {
+    if (girl && !P && !(acc && acc.hat)) {
       const rx = HX + (dir === "side" ? 3 : 10);
       put(g, rx, oy, "R"); put(g, rx + 2, oy, "R"); put(g, rx + 1, oy, "r"); put(g, rx, oy + 1, "R"); put(g, rx + 1, oy + 1, "r"); put(g, rx + 2, oy + 1, "R");
     }
@@ -226,6 +280,7 @@
       if (dir === "down") { dots([[2, oy + 8], [3, oy + 8], [4, oy + 8], [13, oy + 8], [14, oy + 8], [15, oy + 8], [2, oy + 9], [15, oy + 9]], "C"); dots([[0, oy + 8], [0, oy + 9], [17, oy + 8], [17, oy + 9]], "S"); }
     }
     // 표정
+    const accLate = () => { if (acc && (acc.eye || acc.hat || acc.neck)) drawAcc(g, acc, dir, oy, by, !!P); };
     if (dir !== "up" && (face === "cry1" || face === "cry2" || face === "hit")) {
       const eyes = dir === "side" ? [HX + 7, HX + 12] : [HX + 4, HX + 10];
       const ey = oy + 7, mx = dir === "side" ? HX + 10 : HX + 7;
@@ -254,15 +309,27 @@
       else eyes.forEach((x) => { rect(g, x, ey, 2, 1, "E"); put(g, x - 1, ey + 1, "E"); put(g, x + 2, ey + 1, "E"); });
       if (face === "happy") { if (dir === "down") { put(g, HX + 7, oy + 9, "M"); put(g, HX + 8, oy + 9, "M"); } else { put(g, HX + 10, oy + 9, "M"); put(g, HX + 11, oy + 9, "M"); } }
     }
+    accLate();
     return rows(outline(g));
   }
   // 지금 입은 잠옷은 바깥(옷장)에서 알려 줘요
   function wearing(who) { try { return (window.HSWear && window.HSWear(who)) || ""; } catch (e) { return ""; } }
-  function charImg(who, dir, frame, pose, face, pj) {
+  // 지금 건 장식(눈, 머리, 목)도 바깥(옷장)에서 알려 줘요
+  function accOf(who) { try { return (window.HSAcc && window.HSAcc(who)) || {}; } catch (e) { return {}; } }
+  function charImg(who, dir, frame, pose, face, pj, acc) {
     if (pj === undefined) pj = wearing(who);
+    if (acc === undefined) acc = accOf(who);
     const P = pj && PJ[pj];
-    const key = `ch7|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}`;
-    return A.fromRows(key, charRows(who, dir, frame, pose || "", face || "", P ? pj : ""), Object.assign({ o: OUT }, PEOPLE[who] || PEOPLE.him, P ? P.c : {})).uri;
+    const IT = window.Items ? Items.BY : {};
+    const pal = Object.assign({ o: OUT }, PEOPLE[who] || PEOPLE.him, P ? P.c : {});
+    const shapes = {};
+    [["eye", "1", "2", "3"], ["hat", "4", "5", "6"], ["neck", "7", "8", "9"]].forEach(([k, a, b, c]) => {
+      const it = acc && acc[k] && IT[acc[k]];
+      if (!it || it.kind !== k) return;
+      shapes[k] = it.shape; pal[a] = it.c[0]; pal[b] = it.c[1]; pal[c] = k === "neck" && it.shape !== "lace" ? "#ffd34d" : it.c[2];
+    });
+    const key = `ch8|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
+    return A.fromRows(key, charRows(who, dir, frame, pose || "", face || "", P ? pj : "", shapes), pal).uri;
   }
 
   function ell(g, cx, cy, rx, ry, c) {

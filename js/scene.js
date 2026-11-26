@@ -686,8 +686,8 @@
     if (w.kind === "thunder") pool.push("emoBang", "emoBang");
     if (w.wet) pool.push("emoDots", "emoQ");
     if (S.celebrate) pool.push("emoStar", "emoHeart", "emoHeart");
-    if (mood === 1 || mood === 2) pool.push("emoHeart", "emoNote", "emoNote");
-    if (mood === 4 || mood === 5) pool.push("emoSweat", "emoDots");
+    if ([1, 2, 6, 7, 8, 9].indexOf(mood) >= 0) pool.push("emoHeart", "emoNote", "emoNote");
+    if ([4, 5, 14, 15, 16, 17, 18, 19].indexOf(mood) >= 0) pool.push("emoSweat", "emoDots");
     if (S.act && ["walk", "cafe", "movie", "stargaze", "kite"].includes(S.act.key)) pool.push("emoHeart", "emoNote");
     pool.push("emoHeart", "emoNote", "emoStar", "emoQ");
     return pool[Math.floor(Math.random() * pool.length)];

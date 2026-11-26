@@ -1,6 +1,6 @@
 // 서비스 워커: 홈 화면 앱으로 설치할 수 있게 하고, 인터넷이 없을 때는 마지막으로 본 화면을 보여 줘요.
 // 항상 인터넷에서 먼저 받아 오기 때문에 새로 배포한 내용이 바로 보여요.
-const CACHE = "hsd-v28";
+const CACHE = "hsd-v29";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
