@@ -105,7 +105,8 @@
     if (!w) return;
     if (!plane.firstChild.firstChild) plane.innerHTML = planeHtml(0);
     if (!flyRaf) flyRaf = requestAnimationFrame(fly);
-    const n = unread().length + (myAnswer() ? 0 : 1);
+    const phNew = window.Phones ? Phones.fresh().length : 0;
+    const n = unread().length + (myAnswer() ? 0 : 1) + phNew;
     box.classList.toggle("has", n > 0);
     box.dataset.n = n > 9 ? "9+" : n ? String(n) : "";
     box.setAttribute("aria-label", n ? `우체통, 새 쪽지 ${n}개` : "우체통");
@@ -222,11 +223,18 @@
     const w = me();
     const inn = inbox(), out = sent();
     const qNew = !myAnswer();
-    $("mailTabs").innerHTML = `<button class="chip${tab === "q" ? " active" : ""}${qNew ? " dot" : ""}" data-mt="q">오늘의 질문</button><button class="chip${tab === "in" ? " active" : ""}${unread().length ? " dot" : ""}" data-mt="in">받은 쪽지 ${inn.length}</button><button class="chip${tab === "out" ? " active" : ""}" data-mt="out">보낸 쪽지 ${out.length}</button>`;
+    $("mailTabs").innerHTML = `<button class="chip${tab === "q" ? " active" : ""}${qNew ? " dot" : ""}" data-mt="q">질문</button><button class="chip${tab === "in" ? " active" : ""}${unread().length ? " dot" : ""}" data-mt="in">받은 쪽지 ${inn.length}</button><button class="chip${tab === "out" ? " active" : ""}" data-mt="out">보낸 쪽지 ${out.length}</button><button class="chip${tab === "ph" ? " active" : ""}${window.Phones && Phones.fresh().length ? " dot" : ""}" data-mt="ph">폰</button>`;
     $("mailQuest").hidden = tab !== "q";
     $("mailList").hidden = tab === "q";
-    $("mailWrite").hidden = tab === "q";
+    $("mailWrite").hidden = tab === "q" || tab === "ph";
     if (tab === "q") { if (H.renderQuest) H.renderQuest(); return; }
+    // 폰 소식: 누구 폰으로 골랐는지, 설치했는지, 알림을 허용했는지
+    if (tab === "ph") {
+      const h = window.Phones ? Phones.html() : "";
+      if (window.MORPH) MORPH($("mailList"), h); else $("mailList").innerHTML = h;
+      if (window.Phones && Phones.fresh().length) setTimeout(() => { if (tab === "ph") { Phones.markSeen(); renderScene(); renderMail(); } }, 1200);
+      return;
+    }
     const list = tab === "in" ? inn : out;
     const html = list.length
       ? list.map((n) => `<div class="mail-it ${esc(n.from)}${tab === "in" && !n.r ? " new" : ""}"><p>${esc(n.text).replace(/\n/g, "<br>")}</p><small>${tab === "in" ? esc(NAME[n.from]) : `${esc(call(n.to))}에게`} · ${when(n.c)}${tab === "out" ? (n.r ? " · 읽음" : " · 아직 안 읽음") : !n.r ? " · 새 쪽지" : ""}</small><button class="day-del" data-ndel="${esc(n.id)}" aria-label="지우기"></button></div>`).join("")
@@ -250,7 +258,7 @@
     if (!scene) return;
     scene.addEventListener("click", (ev) => {
       if (ev.target.closest("#plane")) { ev.stopPropagation(); if (H.play) H.play($("plane"), "boing"); H.setPanel("note"); renderWrite(); setTimeout(() => $("noteText").focus(), 250); return; }
-      if (ev.target.closest("#mailbox")) { ev.stopPropagation(); if (H.play) H.play($("mailbox"), "boing"); tab = unread().length ? "in" : "q"; H.setPanel("mail"); renderMail(); askNotify(); }
+      if (ev.target.closest("#mailbox")) { ev.stopPropagation(); if (H.play) H.play($("mailbox"), "boing"); tab = unread().length ? "in" : window.Phones && Phones.fresh().length && myAnswer() ? "ph" : "q"; H.setPanel("mail"); renderMail(); askNotify(); }
     });
     $("noteForm").addEventListener("submit", (ev) => { ev.preventDefault(); send(); });
     $("mailTabs").addEventListener("click", (ev) => { const b = ev.target.closest("[data-mt]"); if (b) { tab = b.dataset.mt; renderMail(); } });

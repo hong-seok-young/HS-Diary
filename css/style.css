@@ -1729,3 +1729,21 @@ button.day-it:active { transform: translateY(1px); }
 .mood-empty { margin: 0 0 6px; padding: 6px 8px; font-size: 13px; line-height: 18px; color: #8a4a5a; background: #ffeef2; box-shadow: inset 0 0 0 2px #ffc2d0; word-break: keep-all; }
 .pal-warp { position: absolute; z-index: 7; pointer-events: none; image-rendering: pixelated; }
 .pal-warp[hidden] { display: none; }
+
+/* ---------- 폰 소식 ---------- */
+.mail-tabs { grid-template-columns: minmax(0, .8fr) minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, .7fr); }
+.ph-card { padding: 7px 10px 8px 14px; background: #fffaf0; box-shadow: inset 6px 0 0 0 #4f86c0; }
+.ph-card.her { box-shadow: inset 6px 0 0 0 #e0709a; }
+.ph-card b { font-weight: normal; font-size: 15px; margin-right: 6px; }
+.ph-card span { font-size: 12.5px; color: var(--ink-soft); }
+.ph-card ul { list-style: none; margin: 4px 0 0; padding: 0; font-size: 13px; line-height: 19px; }
+.ph-card li::before { content: "· "; }
+.ph-card li.ok { color: #2e7d4a; } .ph-card li.ok::before { content: "✓ "; }
+.ph-card li.no { color: #b0553a; } .ph-card li.no::before { content: "✕ "; }
+.ph-warn { padding: 7px 10px; font-size: 13px; line-height: 19px; color: #8a3a2a; background: #ffe6dc; box-shadow: inset 0 0 0 2px #f0a890; word-break: keep-all; }
+.ph-sub { margin: 4px 2px 0; font-size: 12.5px; color: #a06a52; }
+.ph-ev { padding: 5px 10px 6px 14px; background: #fffaf0; box-shadow: inset 6px 0 0 0 #4f86c0; }
+.ph-ev.her { box-shadow: inset 6px 0 0 0 #e0709a; }
+.ph-ev p { margin: 0; font-size: 13.5px; line-height: 19px; word-break: keep-all; }
+.ph-ev small { font-size: 11.5px; color: var(--ink-soft); }
+.ph-note { margin: 2px; font-size: 11.5px; line-height: 16px; color: var(--ink-soft); word-break: keep-all; }
