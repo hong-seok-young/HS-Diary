@@ -507,6 +507,14 @@
     },
     sync,
     syncSoon() { schedule(600); },
+    // 같이 보는 순간의 일(동물 던지기 같은 것): 내 화면은 다시 그리지 않고, 바로 올려서 상대 폰에 전해요
+    live(key, who, value) {
+      if (!db.pairs[key]) db.pairs[key] = {};
+      db.pairs[key][who] = [value, Date.now()];
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(saveLocal, 400);
+      schedule(60);
+    },
     status() {
       return status;
     },

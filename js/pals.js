@@ -63,6 +63,54 @@
     return true;
   }
   // 그림에 둔 동물들 (꾸미기에서 고른 친구들). 물을 좋아하면 연못에서, 고양이 같으면 고양이처럼, 나머지는 양처럼 지내요.
+  // ---------- 같이 보기: 한 사람이 동물을 누르거나 던지면 상대 폰에서도 똑같이 일어나요 ----------
+  // 서버에 "방금 일어난 일"을 짧게 올리면, 열려 있는 상대 폰이 바로 받아서 따라 해요 (보통 1초 안).
+  const Live = (() => {
+    const fns = {};
+    let last = -1, sentAt = 0;
+    const who = () => (window.Store && Store.me()) || "";
+    function send(k, d) {
+      const w = who();
+      if (!w || !Store.live) return;
+      const now = Date.now();
+      if (k === "tap" && now - sentAt < 200) return; // 연타는 조금 솎아서
+      sentAt = now;
+      const cur = Store.pair("ev", w);
+      const list = (cur && Array.isArray(cur.list) ? cur.list.filter((x) => now - x.t < 5000) : []).slice(-5);
+      list.push({ i: now + Math.random(), k, d, t: now });
+      Store.live("ev", w, { list });
+    }
+    function recv() {
+      const w = who();
+      if (!w) return;
+      const v = Store.pair("ev", w === "him" ? "her" : "him");
+      const list = v && Array.isArray(v.list) ? v.list : [];
+      if (last < 0) { last = list.reduce((m, x) => Math.max(m, x.i), 0); return; } // 앱을 열기 전에 있던 일은 따라 하지 않아요
+      list.forEach((x) => {
+        if (x.i <= last) return;
+        last = x.i;
+        if (Math.abs(Date.now() - x.t) > 15000) return;
+        const f = fns[x.k];
+        if (f) { try { f(x.d || {}); } catch (e) { console.error(e); } }
+      });
+    }
+    if (window.Store) { Store.onChange(recv); setTimeout(recv, 0); }
+    return { send, on: (k, f) => { fns[k] = f; } };
+  })();
+  window.Live = Live;
+  Live.on("grab", (d) => { const e = ents.find((x) => x.id === d.id); if (e && !e.held) { say(e, pick(["어어?", "들렸다!", "으앗"])); e.el.animate([{ scale: "1" }, { scale: "1.15 .9" }, { scale: "1" }], { duration: 240 }); } });
+  Live.on("throw", (d) => {
+    const e = ents.find((x) => x.id === d.id);
+    if (!e || e.held) return;
+    endWarp(e);
+    e.swim = false; e.lift = 0; e.rot = 0; e.scale = 1; e.sx = 1; e.sy = 1; e.tx = 0; e.jig = null;
+    e.x = Math.max(8, Math.min(W - 8, d.x * W)); e.b = Math.max(0, Math.min(H - 26, d.b * H));
+    e.thrown = { vx: d.vx * W, vy: d.vy * H, t: 0 };
+    if (Math.hypot(e.thrown.vx, e.thrown.vy) > 250) say(e, pick(["으아아!", "날아간다~", "슈우웅", "꺄아"]));
+    kick();
+  });
+  Live.on("tap", (d) => { const e = ents.find((x) => x.id === d.id); if (e && !e.held && !e.thrown) tap(e); });
+
   // ---------- 자라는 친구들 ----------
   // 새로 온 친구는 알이나 아기로 와서, 둘이 이것저것 할수록 자라요 (그 친구가 온 뒤로 받은 선물 수로 셈해요).
   // 병아리는 닭이 되고, 올챙이는 개구리가, 애벌레는 번데기를 거쳐 나비가 돼요.
@@ -129,7 +177,7 @@
       const g = e.grab;
       if (!g) return;
       if (!g.moved && Math.hypot(ev.clientX - g.x0, ev.clientY - g.y0) < 8) return;
-      if (!g.moved) { g.moved = true; e.held = true; e.thrown = null; e.swim = false; e.lift = 0; e.rot = 0; e.scale = 1; e.sx = 1; e.sy = 1; e.tx = 0; el.classList.add("held"); say(e, pick(["어어?", "들렸다!", "으앗"])); }
+      if (!g.moved) { Live.send("grab", { id: e.id }); g.moved = true; e.held = true; e.thrown = null; e.swim = false; e.lift = 0; e.rot = 0; e.scale = 1; e.sx = 1; e.sy = 1; e.tx = 0; el.classList.add("held"); say(e, pick(["어어?", "들렸다!", "으앗"])); }
       const now = performance.now(), dt = Math.max(8, now - g.pt) / 1000;
       g.vx = g.vx * 0.5 + ((ev.clientX - g.px) / dt) * 0.5; g.vy = g.vy * 0.5 + ((ev.clientY - g.py) / dt) * 0.5;
       g.px = ev.clientX; g.py = ev.clientY; g.pt = now;
@@ -142,12 +190,13 @@
       const g = e.grab;
       if (!g) return;
       e.grab = null;
-      if (!g.moved) { if (ev.type === "pointerup") tap(e); return; }
+      if (!g.moved) { if (ev.type === "pointerup") { tap(e); Live.send("tap", { id: e.id }); } return; }
       e.held = false;
       el.classList.remove("held");
       const stale = performance.now() - g.pt > 120; // 멈췄다 놓으면 그냥 툭 떨어져요
       const cl = (v, m) => Math.max(-m, Math.min(m, v));
       e.thrown = { vx: stale ? 0 : cl(g.vx, 900), vy: stale ? 0 : cl(-g.vy, 1000), t: 0 };
+      Live.send("throw", { id: e.id, x: e.x / W, b: e.b / H, vx: e.thrown.vx / W, vy: e.thrown.vy / H });
       if (Math.hypot(e.thrown.vx, e.thrown.vy) > 250) say(e, pick(["으아아!", "날아간다~", "슈우웅", "꺄아"]));
     };
     el.addEventListener("pointerup", drop);

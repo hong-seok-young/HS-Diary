@@ -466,6 +466,7 @@
         if (me && who.dataset.who !== me) { sendHeart(who); return; }
         play(who, "jump");
         burstAt(who, 6);
+        if (window.Live) Live.send("bob", { who: who.dataset.who });
         const lines = bubbleLines(who.dataset.who);
         showBubble(lines[bubbleIdx % lines.length], who.dataset.who);
         bubbleIdx++;
@@ -1546,6 +1547,8 @@
 
   // ---------- 시작 ----------
   // 풍경과 게임이 쓰는 공용 도구
+  // 상대가 자기 캐릭터를 누르면 내 화면에서도 폴짝
+  if (window.Live) Live.on("bob", (d) => { const el = document.querySelector(`.bob[data-who="${d.who === "her" ? "her" : "him"}"]`); if (el) { play(el, "jump"); burstAt(el, 6); } });
   window.HSD = { toast, burst, bubble: showBubble, setPanel, mood: (who) => moodFeel(Store.pair("m:" + todayKey(), who)), moodId: (who) => Number(Store.pair("m:" + todayKey(), who)) || 0 };
   document.addEventListener("hsd:mood", () => { renderMoodTags(); renderSceneBits(); if (state.openPanel === "mood") renderMood(); if (window.CharAnim && CharAnim.mood) CharAnim.mood(Store.me()); });
   PIXEL.fill(document);
