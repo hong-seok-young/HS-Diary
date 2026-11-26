@@ -1,10 +1,11 @@
 // ============================================================
 // 꾸미기: 잠옷, 그림 속 동물, 이름표
 // - 무엇이 열렸는지는 저장된 기록에서 계산해요. 그래서 두 폰이 늘 같고, 한 사람이 열면 둘 다 가져요.
-// - 하루에 많아야 네 개가 열려요.
+// - 하루에 많아야 다섯 개가 열려요.
 //   · 석영이 출석: 동물 한 마리 / 예은이 출석: 잠옷 한 벌
 //   · 오늘의 질문에 답하거나 하트를 보내면: 이름표 하나
-//   · 그날 처음 기록, 할 일, 일기, 일정을 남기면: 손에 드는 것(간식, 소품) 하나
+//   · 그날 처음 기록, 할 일, 일기, 일정을 남기면: 장식품 하나
+//   · 그날 오늘의 기분을 고르면: 기분 얼굴 하나
 // - 열릴 때는 검은 그림자와 대화가 먼저 나오고, 누르면 폭죽과 함께 모습이 드러나요.
 // - 고른 것(입은 잠옷, 그림에 둔 동물, 이름표)은 상대 폰에도 바로 보여요.
 // ============================================================
@@ -38,6 +39,12 @@
   const IT0 = window.Items ? Items.LIST.map((x) => x.id) : [];
   const FIRST_IT = ["cake0", "e_gr1", "h_bow0", "n_scarf12", "cone7", "h_crown8", "e_sun15", "boba10"].filter((id) => IT0.indexOf(id) >= 0);
   const ITEMS = FIRST_IT.concat(shuffled(IT0.filter((id) => FIRST_IT.indexOf(id) < 0), 19930811));
+  // 기분 얼굴: 1~20번(기본 얼굴)은 처음부터 있고, 21번부터 하나씩 열려요
+  const MD = window.Moods;
+  const MD0 = [];
+  if (MD) for (let n = MD.NF + 1; n <= MD.COUNT; n++) MD0.push(n);
+  const FIRST_MD = MD ? [[2, 7], [3, 8], [1, 11], [5, 12], [11, 20], [4, 1], [7, 10], [8, 6]].map(([b, f]) => MD.idOf(b, f)) : [];
+  const MOODS = FIRST_MD.concat(shuffled(MD0.filter((n) => FIRST_MD.indexOf(n) < 0), 20260710));
   const PETS = FIRST_PET.concat(shuffled(ids.filter((id) => FIRST_PET.indexOf(id) < 0), 19970929));
 
   // ---------- 무엇이 열렸나 ----------
@@ -51,12 +58,13 @@
     St.pairKeys("a:").forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) day(k.slice(2))["a_" + w] = St.pairTime(k, w) || 1; }); });
     St.pairKeys("q:").concat(St.pairKeys("p:")).forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) { const o = day(k.slice(2)), t = St.pairTime(k, w) || 1; if (!o.q || t < o.q) { o.q = t; o.qk = k[0]; } } }); });
     ["entries", "plans", "diary", "cal"].forEach((col) => St.list(col).forEach((r) => { if (!r.c) return; const o = day(dayKey(new Date(r.c))); if (!o.r || r.c < o.r) o.r = r.c; }));
-    const n = { pet: 0, pj: 0, ban: 1, item: 0 };
-    const src = { pet: PETS, pj: PJS, ban: null, item: ITEMS };
+    St.pairKeys("m:").forEach((k) => { ["him", "her"].forEach((w) => { if (St.pair(k, w)) { const o = day(k.slice(2)), t = St.pairTime(k, w) || 1; if (!o.m || t < o.m) o.m = t; } }); });
+    const n = { pet: 0, pj: 0, ban: 1, item: 0, mood: 0 };
+    const src = { pet: PETS, pj: PJS, ban: null, item: ITEMS, mood: MOODS };
     const out = [];
     Object.keys(days).sort().forEach((d) => {
       const o = days[d];
-      [["a_him", "pet", "출석 선물"], ["a_her", "pj", "출석 선물"], ["q", "ban", o.qk === "p" ? "하트 선물" : "질문 선물"], ["r", "item", "기록 선물"]].forEach(([slot, cat, why]) => {
+      [["a_him", "pet", "출석 선물"], ["a_her", "pj", "출석 선물"], ["q", "ban", o.qk === "p" ? "하트 선물" : "질문 선물"], ["r", "item", "기록 선물"], ["m", "mood", "기분 선물"]].forEach(([slot, cat, why]) => {
         if (!o[slot]) return;
         const item = cat === "ban" ? (n.ban < BAN.length ? n.ban : -1) : src[cat][n[cat]];
         if (item === undefined || item === -1) return;
@@ -69,6 +77,7 @@
     return out;
   }
   const ownedItems = () => unlocks().filter((u) => u.cat === "item").map((u) => u.item);
+  const ownedMoods = () => unlocks().filter((u) => u.cat === "mood").map((u) => u.item);
   // 손에 든 것 (사람마다 따로 골라요)
   // 사람마다 손, 눈, 머리, 목에 하나씩 골라요
   const KINDS = ["hand", "eye", "hat", "neck"];
@@ -376,6 +385,15 @@
       unlocks().forEach((u) => { if (u.id.slice(0, today.length) < today) s1[u.id] = 1; });
       try { localStorage.setItem(SEEN, JSON.stringify(s1)); } catch (e) { /* 그냥 둬요 */ }
     }
+    // 기분 얼굴 선물이 생기기 전에 골랐던 날들은 이미 본 걸로 해요 (한꺼번에 줄줄이 뜨지 않게)
+    let old = "1";
+    try { old = localStorage.getItem(SEEN + ".m"); } catch (e) { /* 그냥 둬요 */ }
+    if (!old) {
+      const today = "u:" + dayKey(new Date());
+      const s2 = seenSet();
+      unlocks().forEach((u) => { if (u.cat === "mood" && u.id.slice(0, today.length) < today) s2[u.id] = 1; });
+      try { localStorage.setItem(SEEN, JSON.stringify(s2)); localStorage.setItem(SEEN + ".m", "1"); } catch (e) { /* 그냥 둬요 */ }
+    }
     const s0 = seenSet();
     return unlocks().filter((u) => !s0[u.id]);
   }
@@ -383,9 +401,10 @@
     item: [["어디서 달콤한 냄새가 나.", "누가 간식을 두고 갔나 봐!"], ["탁자 위에 뭐가 놓여 있어.", "우리 주려고 둔 걸까?"], ["봉지가 바스락거려.", "뭐가 들었는지 볼까?"], ["반짝이는 포장지다.", "손에 들면 귀엽겠다!"]],
     pet: [["어? 풀숲이 바스락거려.", "무언가가 우리를 찾아왔나 봐!"], ["저기 그림자 보여?", "누가 놀러 온 것 같아."], ["작은 발자국이 있어.", "살금살금 따라가 볼까?"], ["쉿, 무슨 소리 들리지?", "새 친구일지도 몰라!"], ["연못 쪽에 누가 있어.", "가까이 가 보자."]],
     pj: [["문 앞에 상자가 놓여 있어.", "뭐가 들어 있을까?"], ["폭신한 게 만져져.", "얼른 열어 보자!"], ["리본 묶인 꾸러미다.", "우리 거 맞지?"], ["옷장에서 부스럭 소리가 나.", "새 잠옷일까?"], ["택배가 왔어!", "둘이 같이 뜯자."]],
+    mood: [["머리 위에 뭐가 동동 떠 있어.", "새 표정일까?"], ["마음이 간질간질해.", "이 기분, 이름이 뭘까?"], ["거울 속 얼굴이 좀 달라 보여.", "자세히 볼까?"], ["어디서 작은 얼굴이 굴러왔어.", "우리 기분을 닮았네?"]],
     ban: [["바람에 뭔가 날아왔어.", "어디에 달면 예쁠까?"], ["반짝이는 게 떨어져 있어.", "주워 볼까?"], ["하늘에서 뭐가 내려와.", "우리 이름이 적혀 있네?"], ["누가 선물을 두고 갔어.", "펼쳐 보자!"]],
   };
-  const KIND = { pet: "새 친구", pj: "새 잠옷", ban: "새 이름표", item: "새 장식품" };
+  const KIND = { pet: "새 친구", pj: "새 잠옷", ban: "새 이름표", item: "새 장식품", mood: "새 기분" };
   let uroot = null, uq = [], ucur = null, ustep = 0, utype = 0, utotal = 0;
   function uensure() {
     if (uroot) return;
@@ -409,13 +428,14 @@
     utype = setInterval(() => { i += 2; p.textContent = text.slice(0, i); if (i >= text.length) { clearInterval(utype); utype = 0; } }, 30);
   }
   function artOf(u) {
+    if (u.cat === "mood") return `<img class="px ul-img mood" alt="" src="${MD.uri(u.item)}">`;
     if (u.cat === "pet") return `<img class="px ul-img pet" alt="" src="${S().petImg(u.item, "stand", "happy")}">`;
     if (u.cat === "pj") return `<img class="px ul-img pj" alt="" src="${S().charImg(me() || "him", "down", 0, "wave1", "happy", u.item)}">`;
     if (u.cat === "item") { const it = Items.BY[u.item]; if (it.kind === "hand") return `<img class="px ul-img item" alt="" src="${Items.uri(u.item)}">`; const a = {}; a[it.kind] = u.item; return `<img class="px ul-img pj" alt="" src="${S().charImg(me() || "him", "down", 0, "wave1", "happy", "", a)}">`; }
     const st = styleOf(u.item);
     return `<span class="sc-banner mini big ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span>`;
   }
-  const nameOf = (u) => (u.cat === "item" ? Items.BY[u.item].name : u.cat === "ban" ? BAN[u.item].name + " 이름표" : Z.BY[u.item].name + (u.cat === "pj" ? " 잠옷" : ""));
+  const nameOf = (u) => (u.cat === "mood" ? MD.name(u.item) : u.cat === "item" ? Items.BY[u.item].name : u.cat === "ban" ? BAN[u.item].name + " 이름표" : Z.BY[u.item].name + (u.cat === "pj" ? " 잠옷" : ""));
   function ushow() {
     const u = ucur;
     const talk = TALK[u.cat][(u.at + u.item.toString().length) % TALK[u.cat].length];
@@ -440,7 +460,7 @@
       $("ulFace").parentNode.hidden = true;
       $("ulWho").textContent = "";
       utypeLine(`${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
-      const actName = u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? (Items.BY[u.item].kind === "hand" ? "손에 들기" : "지금 하기") : "달기";
+      const actName = u.cat === "mood" ? "오늘 기분으로" : u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? (Items.BY[u.item].kind === "hand" ? "손에 들기" : "지금 하기") : "달기";
       $("ulBtns").innerHTML = `<button class="btn" data-u="next">${uq.length ? "다음" : "좋아"}</button><button class="btn primary" data-u="use">${actName}</button>`;
       const h = window.HSD;
       if (h && h.burst) {
@@ -461,7 +481,8 @@
     const u = ucur, w = me();
     if (!u) return;
     if (k === "use") {
-      if (u.cat === "pet") { let list = placedOf(w) || placed().slice(0, MAXP - 1); list = list.filter((x) => x !== u.item); if (list.length >= MAXP) list = list.slice(1); Store.setPair("pets", w, list.concat(u.item)); document.dispatchEvent(new CustomEvent("hsd:pets")); }
+      if (u.cat === "mood") { Store.setPair("m:" + dayKey(new Date()), w, u.item); document.dispatchEvent(new CustomEvent("hsd:mood")); }
+      else if (u.cat === "pet") { let list = placedOf(w) || placed().slice(0, MAXP - 1); list = list.filter((x) => x !== u.item); if (list.length >= MAXP) list = list.slice(1); Store.setPair("pets", w, list.concat(u.item)); document.dispatchEvent(new CustomEvent("hsd:pets")); }
       else if (u.cat === "pj") { if (window.Tale) Tale.setWear(u.item); document.dispatchEvent(new CustomEvent("hsd:wear")); }
       else if (u.cat === "item") setAcc(Items.BY[u.item].kind, u.item);
       else setBan({ d: u.item });
@@ -490,6 +511,6 @@
   window.Deco = {
     open, back: close, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")),
     bindDrag, justDragged: () => { const el = $("banner"); return !!(el && Date.now() - Number(el.dataset.moved || 0) < 400); }, tab: () => tab,
-    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
+    celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, ownedMoods, MOODS, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
   };
 })();

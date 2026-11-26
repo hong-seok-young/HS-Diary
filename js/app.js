@@ -378,7 +378,7 @@
     if (days > 0) lines.push(`오늘로 ${days}일째야`);
     const sent = Number(Store.pair("p:" + todayKey(), who)) || 0;
     if (sent) lines.push(`오늘 하트 ${sent}개 보냈어`);
-    const mood = Number(Store.pair("m:" + todayKey(), who)) || 0;
+    const mood = moodFeel(Store.pair("m:" + todayKey(), who));
     if (mood) lines.push(`오늘 기분은 ${MOODS[mood]}`);
     const ev = upcomingEvents()[0];
     if (ev) lines.push(ev.left === 0 ? `오늘은 ${ev.name}!` : `${ev.name}까지 ${ev.left}일 남았어`);
@@ -413,6 +413,8 @@
     clearTimeout(bubbleTimer);
     setOpen($("bubble"), false);
   }
+  // 기분 번호(1~500)에서 마음(1~20)만 꺼내요
+  function moodFeel(n) { return window.Moods ? Moods.feel(n) : Math.min(20, Number(n) || 0); }
   function renderMoodTags() {
     const me = Store.me();
     ["him", "her"].forEach((w) => {
@@ -421,7 +423,7 @@
       const k = String(m) + (w === me ? "me" : "");
       if (el.dataset.m !== k) {
         el.dataset.m = k;
-        el.innerHTML = m ? PIXEL.sprite("mood" + m, 2) : w === me ? '<u class="mood-add">?</u>' : "";
+        el.innerHTML = m ? Moods.html(m, false) : w === me ? '<u class="mood-add">?</u>' : "";
         el.classList.toggle("mine", w === me);
         if (m) play(el, "boing");
       }
@@ -648,24 +650,67 @@
     if (name === "mail" && window.Notes) Notes.renderMail();
     if (name === "day" && window.Cal) Cal.renderDay();
     Nav.sync();
+    if (!name) talePing(); // 창을 닫았으면, 그사이 생긴 선물을 바로 보여 줘요
   }
   function whoAsk() {
     return `<div class="who-ask"><p>이 폰은 누구 거야?</p><div class="who-pick"><button class="chip" data-me="him">${esc(WHO.him)}</button><button class="chip" data-me="her">${esc(WHO.her)}</button></div></div>`;
   }
 
+  const BLANK_IMG = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  let moodSig = "", moodIo = null, moodPopT = 0;
+  function hideMoodPop() { clearTimeout(moodPopT); const p = document.querySelector("#panel-mood .deco-pop"); if (p) p.remove(); }
+  function showMoodPop(tile, text) {
+    hideMoodPop();
+    const box = document.querySelector("#panel-mood .panel-box");
+    const p = document.createElement("div");
+    p.className = "deco-pop";
+    p.textContent = text;
+    box.appendChild(p);
+    const br = box.getBoundingClientRect(), tr = tile.getBoundingClientRect();
+    const w = Math.min(240, br.width - 16);
+    p.style.width = w + "px";
+    p.style.left = Math.max(8, Math.min(br.width - w - 8, tr.left - br.left + tr.width / 2 - w / 2)) + "px";
+    p.style.top = Math.max(4, tr.top - br.top - p.offsetHeight - 8) + "px";
+    moodPopT = setTimeout(hideMoodPop, 3600);
+  }
   function renderMood() {
     const key = "m:" + todayKey();
     MORPH($("moodNow"), ["him", "her"].map((w) => {
       const m = Number(Store.pair(key, w)) || 0;
-      return `<div class="mood-card"><span class="mood-face">${m ? PIXEL.sprite("mood" + m, 3) : '<i class="mood-none">?</i>'}</span><b>${esc(WHO[w])}</b><i>${m ? MOODS[m] : "아직"}</i></div>`;
+      return `<div class="mood-card"><span class="mood-face">${m ? Moods.html(m, false) : '<i class="mood-none">?</i>'}</span><b>${esc(WHO[w])}</b><i>${m ? MOODS[moodFeel(m)] : "아직"}</i></div>`;
     }).join(""));
     const me = Store.me();
     if (!me) {
-      MORPH($("moodPick"), whoAsk());
+      moodSig = "";
+      $("moodPick").innerHTML = whoAsk();
       return;
     }
     const mine = Number(Store.pair(key, me)) || 0;
-    MORPH($("moodPick"), `<div class="mood-pick">${MOOD_ORDER.map((n) => `<button class="mood-btn${mine === n ? " active" : ""}" data-mood="${n}" aria-label="${MOODS[n]}">${PIXEL.sprite("mood" + n, 3)}<b>${MOODS[n]}</b></button>`).join("")}</div>`);
+    const own = window.Deco ? Deco.ownedMoods() : [];
+    const all = window.Deco ? Deco.MOODS : [];
+    // 목록은 가진 게 달라질 때만 새로 그려요. 고른 표시만 바뀔 땐 그대로 두고 테두리만 옮겨요.
+    const sig = me + "|" + own.length;
+    if (sig !== moodSig || !$("moodPick").querySelector(".mood-pick")) {
+      moodSig = sig;
+      hideMoodPop();
+      const tile = (n, lazy) => `<button class="mood-btn" data-mood="${n}" aria-label="${esc(Moods.name(n))}">${lazy ? `<img class="px mood-img" alt="" data-n="${n}" src="${BLANK_IMG}" style="width:36px;height:36px">` : Moods.html(n, true)}<b>${MOODS[moodFeel(n)]}</b></button>`;
+      const lock = (n, left) => `<button class="mood-btn lock" data-mood-why="${left}"><img class="px mood-img" alt="" data-n="${n}" src="${BLANK_IMG}" style="width:36px;height:36px"><b>???</b></button>`;
+      $("moodPick").innerHTML = `<p class="mood-tip">기분 ${20 + own.length}개 / ${Moods.COUNT}개 · 기분을 고른 날마다 새 얼굴이 하나씩 생겨요</p><div class="mood-pick">` +
+        MOOD_ORDER.map((n) => tile(n, false)).join("") + own.slice().reverse().map((n) => tile(n, true)).join("") + all.slice(own.length).map((n, k) => lock(n, k + 1)).join("") + `</div>`;
+      // 그림은 화면에 보일 때 그려요 (수백 개를 한꺼번에 그리지 않게)
+      const box = $("moodPick").querySelector(".mood-pick");
+      const imgs = box.querySelectorAll("img[data-n]");
+      if (moodIo) moodIo.disconnect();
+      if (!window.IntersectionObserver) imgs.forEach((im) => { im.src = Moods.uri(im.dataset.n); });
+      else {
+        moodIo = new IntersectionObserver((list) => { list.forEach((e) => { if (e.isIntersecting) { e.target.src = Moods.uri(e.target.dataset.n); moodIo.unobserve(e.target); } }); }, { root: box, rootMargin: "160px" });
+        imgs.forEach((im) => moodIo.observe(im));
+      }
+      box.addEventListener("scroll", hideMoodPop, { passive: true });
+    }
+    $("moodPick").querySelectorAll(".mood-btn.active").forEach((b) => b.classList.remove("active"));
+    const on = mine && $("moodPick").querySelector(`.mood-btn[data-mood="${mine}"]`);
+    if (on) on.classList.add("active");
   }
 
   // 하트 보내기: 그림 속 상대를 눌러요
@@ -1153,6 +1198,9 @@
 
     $("panels").addEventListener("click", (ev) => {
       const t = ev.target;
+      hideMoodPop();
+      const why = t.closest("[data-mood-why]");
+      if (why) { showMoodPop(why, `오늘의 기분을 고른 날이 ${why.dataset.moodWhy}번 더 쌓이면 받아요. (하루에 하나, 둘 중 한 사람만 골라도 돼요)`); return; }
       const mood = t.closest("[data-mood]");
       if (mood) {
         const me = Store.me();
@@ -1163,6 +1211,7 @@
         renderSceneBits();
         const face = document.querySelector(`.mood-btn[data-mood="${n}"]`);
         if (face) { play(face, "boing"); burstAt(face, 6); }
+        if (window.CharAnim && CharAnim.mood) CharAnim.mood(me); // 고르자마자 그 표정을 한 번 지어요
         return;
       }
       if (t.closest("[data-quest-edit]")) { questEditing = true; renderQuest(); $("questInput").focus(); return; }
@@ -1494,7 +1543,8 @@
 
   // ---------- 시작 ----------
   // 풍경과 게임이 쓰는 공용 도구
-  window.HSD = { toast, burst, bubble: showBubble, setPanel, mood: (who) => Number(Store.pair("m:" + todayKey(), who)) || 0 };
+  window.HSD = { toast, burst, bubble: showBubble, setPanel, mood: (who) => moodFeel(Store.pair("m:" + todayKey(), who)), moodId: (who) => Number(Store.pair("m:" + todayKey(), who)) || 0 };
+  document.addEventListener("hsd:mood", () => { renderMoodTags(); renderSceneBits(); if (state.openPanel === "mood") renderMood(); if (window.CharAnim && CharAnim.mood) CharAnim.mood(Store.me()); });
   PIXEL.fill(document);
   bind();
   bindInstall();

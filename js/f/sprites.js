@@ -309,8 +309,76 @@
       else eyes.forEach((x) => { rect(g, x, ey, 2, 1, "E"); put(g, x - 1, ey + 1, "E"); put(g, x + 2, ey + 1, "E"); });
       if (face === "happy") { if (dir === "down") { put(g, HX + 7, oy + 9, "M"); put(g, HX + 8, oy + 9, "M"); } else { put(g, HX + 10, oy + 9, "M"); put(g, HX + 11, oy + 9, "M"); } }
     }
+    if (dir !== "up" && /^m\d+$/.test(face)) moodFace(g, Number(face.slice(1)), dir, oy);
     accLate();
     return rows(outline(g));
+  }
+  // ---------- 오늘의 기분 표정 (마음 20가지) ----------
+  // 새 색: V 사랑 분홍, Q 반짝 노랑, N 화 빨강, X 다크서클
+  function moodFace(g, n, dir, oy) {
+    const side = dir === "side";
+    const L = HX + (side ? 7 : 4), R = HX + (side ? 12 : 10), ey = oy + 7, mx = HX + (side ? 10 : 7), my = oy + 9;
+    const eyes = [L, R];
+    const P = (x, y, c) => put(g, x, y, c);
+    const clearE = () => eyes.forEach((x) => rect(g, x, ey, 2, 2, "S"));
+    const clearM = () => rect(g, mx, my, 2, 1, "S");
+    const arcs = () => { clearE(); eyes.forEach((x) => { rect(g, x, ey, 2, 1, "E"); P(x - 1, ey + 1, "E"); P(x + 2, ey + 1, "E"); }); }; // ^ ^
+    const cups = () => { clearE(); eyes.forEach((x) => { P(x - 1, ey, "E"); P(x + 2, ey, "E"); rect(g, x, ey + 1, 2, 1, "E"); }); }; // u u
+    const shut = () => { clearE(); eyes.forEach((x) => rect(g, x, ey + 1, 2, 1, "E")); }; // - -
+    const squeeze = () => { clearE(); eyes.forEach((x, k) => { const a = k === 0 && !side; P(x + (a ? 0 : 1), ey - 1, "E"); P(x + (a ? 1 : 0), ey, "E"); P(x + (a ? 0 : 1), ey + 1, "E"); }); }; // > <
+    const lids = (px) => { clearE(); eyes.forEach((x) => { rect(g, x, ey, 2, 1, "E"); P(x + px, ey + 1, "E"); P(x + 1 - px, ey + 1, "W"); }); }; // 반쯤 감은 눈
+    const worry = () => { P(L + 2, ey - 1, "h"); P(R - 1, ey - 1, "h"); }; // 안쪽이 올라간 눈썹
+    const smile = () => { clearM(); P(mx - 1, my, "M"); P(mx, my + 1, "M"); P(mx + 1, my + 1, "M"); P(mx + 2, my, "M"); };
+    const grin = () => { rect(g, mx - 1, my, 4, 1, "M"); P(mx, my, "W"); P(mx + 1, my, "W"); rect(g, mx, my + 1, 2, 1, "M"); };
+    const open = () => { rect(g, mx, my, 2, 2, "M"); };
+    const flat = () => { rect(g, mx - 1, my, 4, 1, "M"); };
+    const frown = () => { rect(g, mx, my, 2, 1, "M"); P(mx - 1, my + 1, "M"); P(mx + 2, my + 1, "M"); };
+    const wavy = () => { clearM(); P(mx - 1, my + 1, "M"); P(mx, my, "M"); P(mx + 1, my + 1, "M"); P(mx + 2, my, "M"); };
+    const sweat = () => { P(R + 3, ey - 2, "D"); P(R + 3, ey - 1, "D"); };
+    const cheeks = (c) => (side ? [HX + 5, HX + 6, HX + 13] : [HX + 2, HX + 3, HX + 12, HX + 13]).forEach((x) => P(x, my, c));
+    switch (n) {
+      case 1: arcs(); grin(); break; // 최고
+      case 2: smile(); break; // 좋아
+      case 3: flat(); break; // 그냥
+      case 4: worry(); frown(); P(R + 1, ey + 2, "D"); P(R + 1, ey + 3, "D"); break; // 슬퍼
+      case 5: squeeze(); wavy(); sweat(); break; // 힘들어
+      case 6: eyes.forEach((x) => { rect(g, x, ey - 1, 2, 3, "E"); P(x, ey - 1, "W"); P(x + 1, ey + 1, "W"); }); cheeks("V"); smile(); break; // 설레
+      case 7: // 사랑해
+        clearE();
+        eyes.forEach((x, k) => { const a = x - (k === 0 || side ? 1 : 0); P(a, ey - 1, "V"); P(a + 2, ey - 1, "V"); rect(g, a, ey, 3, 1, "V"); P(a + 1, ey + 1, "V"); });
+        cheeks("V"); smile();
+        break;
+      case 8: arcs(); rect(g, mx - 1, my, 4, 1, "M"); rect(g, mx, my + 1, 2, 1, "M"); P(L - 2, ey - 1, "Q"); P(R + 3, ey - 1, "Q"); break; // 신나
+      case 9: cups(); smile(); break; // 뿌듯
+      case 10: shut(); smile(); break; // 편안
+      case 11: // 졸려
+        shut(); rect(g, mx, my, 2, 1, "M");
+        rect(g, mx + 2, my - 1, 2, 2, "D"); P(mx + 2, my - 1, "W"); // 콧방울
+        break;
+      case 12: worry(); open(); P(mx + 2, my + 1, "D"); P(mx + 2, my + 2, "D"); break; // 배고파
+      case 13: lids(1); clearM(); rect(g, mx, my, 3, 1, "M"); break; // 심심
+      case 14: worry(); wavy(); sweat(); break; // 걱정
+      case 15: clearE(); eyes.forEach((x) => { rect(g, x, ey, 2, 2, "W"); P(x, ey + 1, "E"); }); rect(g, mx - 1, my, 4, 1, "M"); P(mx, my, "W"); P(mx + 2, my, "W"); sweat(); break; // 긴장
+      case 16: // 화나
+        clearE();
+        eyes.forEach((x, k) => { rect(g, x, ey - 1, 2, 1, "E"); P(k === 0 ? x + 2 : x - 1, ey, "E"); rect(g, x, ey + 1, 2, 1, "E"); });
+        frown();
+        [[13, -2], [15, -2], [14, -1], [13, 0], [15, 0]].forEach(([x, y]) => P(HX + x, oy + y, "N"));
+        break;
+      case 17: // 삐짐
+        shut(); clearM(); P(mx, my + 1, "M"); P(mx + 1, my, "M"); P(mx + 2, my + 1, "M");
+        (side ? [HX + 5, HX + 6] : [HX + 2, HX + 3, HX + 12, HX + 13]).forEach((x) => { P(x, my - 1, "C"); P(x, my, "C"); });
+        break;
+      case 18: // 아파
+        clearE();
+        P(L, ey + 1, "E"); P(L + 1, ey, "E"); P(R, ey, "E"); P(R + 1, ey + 1, "E");
+        clearM(); P(mx, my, "M"); P(mx + 1, my, "W"); P(mx + 2, my, "W"); P(mx + 3, my, "N");
+        cheeks("V");
+        break;
+      case 19: shut(); eyes.forEach((x) => rect(g, x, ey + 2, 2, 1, "X")); rect(g, mx, my, 2, 1, "M"); break; // 피곤
+      case 20: clearE(); eyes.forEach((x) => { rect(g, x, ey - 1, 2, 3, "W"); P(x + 1, ey, "E"); }); open(); break; // 놀라
+      default: break;
+    }
   }
   // 지금 입은 잠옷은 바깥(옷장)에서 알려 줘요
   function wearing(who) { try { return (window.HSWear && window.HSWear(who)) || ""; } catch (e) { return ""; } }
@@ -321,7 +389,7 @@
     if (acc === undefined) acc = accOf(who);
     const P = pj && PJ[pj];
     const IT = window.Items ? Items.BY : {};
-    const pal = Object.assign({ o: OUT }, PEOPLE[who] || PEOPLE.him, P ? P.c : {});
+    const pal = Object.assign({ o: OUT, V: "#ff6a8e", Z: "#8a7ad0", Q: "#ffc83a", N: "#e8504f", X: "#c9a4b6" }, PEOPLE[who] || PEOPLE.him, P ? P.c : {});
     const shapes = {};
     [["eye", "1", "2", "3"], ["hat", "4", "5", "6"], ["neck", "7", "8", "9"]].forEach(([k, a, b, c]) => {
       const it = acc && acc[k] && IT[acc[k]];

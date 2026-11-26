@@ -1572,3 +1572,22 @@ button.day-it:active { transform: translateY(1px); }
 .pal { touch-action: none; }
 .pal.held { z-index: 20 !important; cursor: grabbing; }
 .pal.held::before { display: none; }
+
+/* ---------- 기분 500가지 ---------- */
+.mood-tag { top: auto; bottom: calc(100% + 4px); left: 50%; margin-left: 0; transform: translateX(-50%); }
+.bob.has-hat .mood-tag { top: auto; bottom: calc(100% + 18px); }
+.mood-tag.boing { animation: moodBoing .5s var(--ease); }
+@keyframes moodBoing { 0% { transform: translateX(-50%) scale(.4); } 60% { transform: translateX(-50%) scale(1.25); } 100% { transform: translateX(-50%) scale(1); } }
+.mood-img { display: block; image-rendering: pixelated; }
+#panel-mood .panel-box { position: relative; }
+.mood-tip { margin: 0 0 4px; font-size: 11.5px; line-height: 16px; color: var(--ink-soft); word-break: keep-all; }
+.mood-pick { max-height: 252px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+.mood-btn { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 56px; }
+.mood-btn .mood-img { margin: auto; }
+.mood-btn b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mood-btn.lock { background: #eadcc0; color: #9a8470; box-shadow: inset 0 0 0 2px #dccba8; }
+.mood-btn.lock .mood-img { filter: brightness(0); opacity: .5; }
+.mood-face .mood-img { margin: auto; }
+.ul-img.mood { width: 96px; }
+@media (max-height: 620px) { .mood-pick { max-height: 196px; } }
+@media (max-width: 340px) { .mood-btn { min-height: 42px; } }

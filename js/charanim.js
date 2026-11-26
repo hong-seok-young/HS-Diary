@@ -25,7 +25,7 @@
         wrap.innerHTML = '<img class="px ch" alt="" draggable="false">';
         if (old) old.replaceWith(wrap); else b.appendChild(wrap);
       }
-      state[who] = { el: b, wrap, img: wrap.firstChild, blinkAt: performance.now() + 1500 + Math.random() * 3000, blinkTo: 0, lookAt: performance.now() + 6000 + Math.random() * 8000, lookTo: 0, waveTo: 0, src: "", dx: 0 };
+      state[who] = { el: b, wrap, img: wrap.firstChild, blinkAt: performance.now() + 1500 + Math.random() * 3000, blinkTo: 0, lookAt: performance.now() + 6000 + Math.random() * 8000, lookTo: 0, waveTo: 0, src: "", dx: 0, moodAt: performance.now() + 4000 + Math.random() * 4000, moodTo: 0, moodF: 0, moodT0: 0 };
     });
   }
   const H = () => window.HSD || {};
@@ -79,6 +79,21 @@
     act = { key: k, at: now, one: pick(["him", "her"]) };
     if (ACTS[k].start) ACTS[k].start(act);
   }
+  // 오늘 고른 기분 표정: 평소엔 무표정으로 있다가, 가끔 잠깐 그 표정을 지어요
+  function moodTick(st, who, now) {
+    if (now < st.moodAt || st.moodTo > now) return;
+    const h = H();
+    const f = h.mood ? h.mood(who) : 0;
+    st.moodF = f;
+    st.moodAt = now + 7000 + Math.random() * 8000;
+    if (!f) return;
+    st.moodT0 = now;
+    st.moodTo = now + 2400 + Math.random() * 1200;
+    st.moodAt += st.moodTo - now;
+    if (f === 7) burstAt(st.el, 3, "heart");
+    if (f === 1 || f === 8) hop(st, 6);
+    if (f === 20) hop(st, 9);
+  }
   function frame(now) {
     const scene = document.getElementById("scene");
     const couple = document.getElementById("couple");
@@ -89,9 +104,11 @@
     const stretch = scene.classList.contains("stretch");
     // 특별한 할 일(잠, 산책, 체조)이 없을 때만 자유롭게 움직여요
     const free = !walking && !sleeping && !stretch;
-    if (free && !act && now > nextAt) startAct(now);
-    const ouch = act && act.key === "ouch";
-    if (act && ((!free && !ouch) || now - act.at > (act.dur || ACTS[act.key].dur))) { act = null; nextAt = now + 3500 + Math.random() * 6000; }
+    const making = Object.keys(state).some((w) => state[w].moodTo > now); // 기분 표정을 짓는 동안은 다른 동작을 미뤄요
+    if (free && !act && !making && now > nextAt) startAct(now);
+    const wasOuch = act && act.key === "ouch";
+    if (act && ((!free && !wasOuch) || now - act.at > (act.dur || ACTS[act.key].dur))) { act = null; nextAt = now + 3500 + Math.random() * 6000; }
+    const ouch = !!act && act.key === "ouch";
     for (const who in state) {
       const st = state[who];
       if (st.el.classList.contains("jump") && st.waveTo < now) st.waveTo = now + 1100;
@@ -109,6 +126,8 @@
         dir = "side"; flip = left;
         const c = Math.floor(now / 150) % 4;
         fr = c === 1 ? 1 : c === 3 ? 2 : 0;
+        moodTick(st, who, now);
+        if (st.moodTo > now && st.moodF) face = "m" + st.moodF;
       } else if (stretch) {
         pose = Math.floor(now / 550) % 2 ? "raise" : "";
         face = pose ? "happy" : "";
@@ -121,6 +140,15 @@
         if (st.lookTo > now) { dir = "side"; flip = who === "her"; }
         if (now > st.blinkAt) { st.blinkTo = now + 140; st.blinkAt = now + 2600 + Math.random() * 3600; }
         if (st.blinkTo > now) face = "blink";
+        moodTick(st, who, now);
+        if (st.moodTo > now && st.moodF) {
+          const f = st.moodF, t = now - st.moodT0;
+          face = "m" + f;
+          if (f === 8) pose = Math.floor(t / 280) % 2 ? "" : "raise"; // 신나: 만세
+          if (f === 16) dx = Math.floor(t / 80) % 2 ? 1 : -1; // 화나: 부들부들
+          if (f === 15) dx = Math.floor(t / 70) % 2 ? 0.6 : -0.6; // 긴장: 덜덜
+          if (f === 17) { dir = "side"; flip = who === "him"; } // 삐짐: 고개를 돌려요
+        }
       }
       const src = S.charImg(who, dir, fr, pose, face);
       if (src !== st.src) { st.img.src = src; st.src = src; }
@@ -142,5 +170,5 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
-  window.CharAnim = { start, act: () => act, play(k, who) { if (!ACTS[k]) return; act = { key: k, at: performance.now(), one: who || pick(["him", "her"]) }; if (ACTS[k].start) ACTS[k].start(act); } };
+  window.CharAnim = { start, act: () => act, mood(who) { const st = state[who]; if (st) { st.moodAt = 0; st.moodTo = 0; } }, play(k, who) { if (!ACTS[k]) return; act = { key: k, at: performance.now(), one: who || pick(["him", "her"]) }; if (ACTS[k].start) ACTS[k].start(act); } };
 })();
