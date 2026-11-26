@@ -111,21 +111,22 @@
   // 모양과 색을 번갈아 섞어서, 새로 받을 때마다 느낌이 달라져요
   for (let r = 0; r < SHAPES.length; r++) for (let p = 0; p < PALS.length; p++) { const s = (p * 5 + r) % SHAPES.length; BANNERS.push({ s, p, name: `${PALS[p][0]} ${SHAPES[s]}` }); }
   const BAN = BANNERS;
-  const TITLES = () => [cfg.title || `${call("him")}와 ${call("her")}`, `${NAME.him} ♥ ${NAME.her}`, `${call("her")}와 ${call("him")}`, "우리 둘", "오늘도 좋아해", `${NAME.him}이랑 ${NAME.her}이랑`];
+  const defTitle = () => cfg.title || `${call("him")}와 ${call("her")}`;
   const MODES = ["며칠째 · 주년", "며칠째만", "몇 주", "몇 개월", "몇 시간"];
   function ban() {
     let v = null, t = -1;
     ["him", "her"].forEach((w) => { const x = Store.pair("ban", w), at = Store.pairTime("ban", w); if (x && at > t) { v = x; t = at; } });
     v = v && typeof v === "object" ? v : {};
     const di = Math.min(Math.max(0, Number(v.d) || 0), BAN.length - 1);
-    const ti = typeof v.t === "string" ? -1 : Math.min(Math.max(0, Number(v.t) || 0), TITLES().length - 1);
-    return { d: di < bannerCount() ? di : 0, t: ti < 0 ? v.t : TITLES()[ti], ti, m: Number(v.m) || 0 };
+    const title = typeof v.t === "string" && v.t.trim() ? v.t : defTitle();
+    const x = typeof v.x === "number" ? Math.min(0.95, Math.max(0.05, v.x)) : 0.5, y = typeof v.y === "number" ? Math.min(0.8, Math.max(0, v.y)) : 0.03;
+    return { d: di < bannerCount() ? di : 0, t: title, m: Number(v.m) || 0, x, y };
   }
   function setBan(patch) {
     const w = me();
     if (!w) return;
     const b = ban();
-    const cur = { d: b.d, t: b.ti < 0 ? b.t : b.ti, m: b.m };
+    const cur = { d: b.d, t: b.t, m: b.m, x: b.x, y: b.y };
     Store.setPair("ban", w, Object.assign(cur, patch));
     apply();
   }
@@ -135,29 +136,64 @@
     if (!el || !window.Store) return;
     const b = ban(), st = styleOf(b.d);
     el.className = "sc-banner " + st.cls;
-    el.setAttribute("style", st.vars);
+    if (!dragging) el.setAttribute("style", `${st.vars};left:${(b.x * 100).toFixed(1)}%;top:${(b.y * 100).toFixed(1)}%`);
     const t = $("diaryTitle");
     if (t && t.textContent !== b.t) t.textContent = b.t;
     document.dispatchEvent(new CustomEvent("hsd:ban", { detail: b }));
   }
 
+  // 이름표는 끌어서 옮겨요. 살짝 누르기만 하면 이름표 꾸미기가 열려요.
+  let dragging = false;
+  function bindDrag() {
+    const el = $("banner"), scene = $("scene");
+    if (!el || !scene || el.dataset.drag) return;
+    el.dataset.drag = "1";
+    let sx = 0, sy = 0, ox = 0, oy = 0, on = false, moved = false;
+    el.addEventListener("pointerdown", (ev) => {
+      const r = el.getBoundingClientRect(), sr = scene.getBoundingClientRect();
+      sx = ev.clientX; sy = ev.clientY; ox = r.left + r.width / 2 - sr.left; oy = r.top - sr.top; on = true; moved = false;
+      try { el.setPointerCapture(ev.pointerId); } catch (e) { /* 괜찮아요 */ }
+    });
+    el.addEventListener("pointermove", (ev) => {
+      if (!on) return;
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!moved && Math.abs(dx) + Math.abs(dy) < 8) return;
+      moved = true; dragging = true;
+      const sr = scene.getBoundingClientRect();
+      const x = Math.min(0.95, Math.max(0.05, (ox + dx) / sr.width)), y = Math.min(0.8, Math.max(0, (oy + dy) / sr.height));
+      el.style.left = (x * 100).toFixed(1) + "%"; el.style.top = (y * 100).toFixed(1) + "%";
+      el.dataset.x = String(x); el.dataset.y = String(y);
+      ev.preventDefault();
+    });
+    const end = () => {
+      if (!on) return;
+      on = false;
+      if (moved) { dragging = false; el.dataset.moved = String(Date.now()); setBan({ x: Number(el.dataset.x), y: Number(el.dataset.y) }); }
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+  }
+
   // ---------- 꾸미기 창 ----------
-  let root = null, tab = "pj";
+  let root = null, tab = "pj", solo = false;
   function ensure() {
     if (root) return;
     root = document.createElement("div");
     root.className = "deco";
     root.hidden = true;
-    root.innerHTML = `<div class="deco-dim" data-d="close"></div><div class="deco-box"><div class="deco-tabs" id="decoTabs"></div><p class="deco-tip" id="decoTip"></p><div class="deco-body" id="decoBody"></div></div>`;
+    root.innerHTML = `<div class="deco-dim" data-d="close"></div><div class="deco-box"><h2 class="deco-title" id="decoTitle"></h2><p class="deco-tip" id="decoTip"></p><div class="deco-body" id="decoBody"></div></div>`;
     document.body.appendChild(root);
     root.addEventListener("click", onClick);
-    root.addEventListener("submit", (ev) => { ev.preventDefault(); const v = $("decoText").value.trim().slice(0, 14); if (v) { setBan({ t: v }); render(); } });
+    root.addEventListener("submit", (ev) => { ev.preventDefault(); const v = $("decoText").value.trim().slice(0, 14); if (v) { setBan({ t: v }); render(); if (window.HSD && HSD.toast) HSD.toast("이름표를 바꿨어요"); } });
   }
   const layer = () => document.dispatchEvent(new Event("hsd:layer"));
   function open(t) {
     if (!me()) return;
     ensure();
-    tab = t || tab;
+    // 이름표를 눌러 열면 이름표만, 옷장 단추로 열면 잠옷과 동물만 보여요
+    // 이름표, 옷장, 동물 집을 눌러 열면 저마다 그것만 보여요
+    solo = true;
+    tab = t || "pj";
     root.hidden = false;
     root.classList.remove("closing");
     render();
@@ -186,14 +222,13 @@
       return;
     }
     if (k === "ban") { setBan({ d: Number(v) }); render(); return; }
-    if (k === "title") { setBan({ t: Number(v) }); render(); return; }
     if (k === "mode") { setBan({ m: Number(v) }); render(); return; }
   }
   if (window.Store) Store.onChange(() => { cache = null; });
   function lockTiles(n, total, how) { return n < total ? `<span class="deco-it lock wide"><b>+${total - n}</b><small>${how}</small></span>` : ""; }
   function render() {
     const w = me();
-    $("decoTabs").innerHTML = [["pj", "잠옷"], ["pet", "동물"], ["ban", "이름표"]].map(([k, n]) => `<button class="chip${tab === k ? " active" : ""}" data-d="tab" data-v="${k}">${n}</button>`).join("");
+    $("decoTitle").textContent = tab === "pj" ? "옷장" : tab === "pet" ? "동물 친구들" : "이름표";
     let html = "", tip = "";
     if (tab === "pj") {
       const own = ownedPajamas(), on = window.Tale ? Tale.wearOf(w) : "";
@@ -207,8 +242,8 @@
     } else {
       const n = bannerCount(), b = ban();
       tip = `이름표 ${n}개 / ${BAN.length}개 · 오늘의 질문에 답하거나 하트를 보내면 하루 하나씩 생겨요`;
-      html = `<div class="deco-row">${TITLES().map((t, i) => `<button class="chip${b.ti === i ? " active" : ""}" data-d="title" data-v="${i}">${esc(t)}</button>`).join("")}</div>
-        <form class="deco-form"><input type="text" id="decoText" maxlength="14" placeholder="직접 쓰기" value="${b.ti < 0 ? esc(b.t) : ""}" autocomplete="off"><button class="btn small primary" type="submit">쓰기</button></form>
+      html = `<form class="deco-form"><input type="text" id="decoText" maxlength="14" placeholder="이름표에 쓸 글자" value="${esc(b.t)}" autocomplete="off"><button class="btn small primary" type="submit">바꾸기</button></form>
+        <p class="deco-tip">이름표를 끌면 그림 안 어디로든 옮길 수 있어요</p>
         <div class="deco-row">${MODES.map((t, i) => `<button class="chip${b.m === i ? " active" : ""}" data-d="mode" data-v="${i}">${t}</button>`).join("")}</div>
         <div class="deco-grid ban">` + BAN.slice(0, n).map((x, i) => { const st = styleOf(i); return `<button class="deco-it bn${b.d === i ? " on" : ""}" data-d="ban" data-v="${i}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>${esc(x.name)}</small></button>`; }).join("") + lockTiles(n, BAN.length, "아직 못 받은 이름표") + `</div>`;
     }
@@ -340,6 +375,7 @@
 
   window.Deco = {
     open, back: close, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")),
+    bindDrag, justDragged: () => { const el = $("banner"); return !!(el && Date.now() - Number(el.dataset.moved || 0) < 400); }, tab: () => tab,
     celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, ownedPets, ownedPajamas, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
   };
 })();

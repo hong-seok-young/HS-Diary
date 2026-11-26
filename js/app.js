@@ -26,7 +26,6 @@
     view: "home",
     cat: "all", q: "", sort: "desc",
     planCat: "all",
-    pickCat: "all",
     openCard: null,
     openPanel: null,
     folded: new Set(),
@@ -440,11 +439,7 @@
     }
   }
   function renderSceneBits() {
-    const ans = ["him", "her"].filter((w) => Store.pair("q:" + todayKey(), w)).length;
-    const me = Store.me();
-    const sign = $("questSign");
-    sign.classList.toggle("todo", !!me && !Store.pair("q:" + todayKey(), me));
-    sign.dataset.n = String(ans);
+    if (window.Notes) Notes.renderScene();
     renderScenePlant();
   }
 
@@ -485,8 +480,8 @@
         bubbleIdx++;
         return;
       }
-      if (ev.target.closest("#dice")) { play($("dice"), "boing"); setPanel("pick"); return; }
-      if (ev.target.closest("#questSign")) { play($("questSign"), "boing"); setPanel("quest"); return; }
+      if (ev.target.closest(".house")) { if (window.Deco) Deco.open("pj"); return; } // 집을 누르면 옷장
+      if (ev.target.closest("#kennel")) { play($("kennel"), "boing"); if (window.Deco) Deco.open("pet"); return; }
       const pot = ev.target.closest(".sc-plant");
       if (pot) { play(pot, "boing"); if (window.Garden) Garden.open(); }
     });
@@ -515,6 +510,11 @@
       if (n > depth) { for (; depth < n; depth++) history.pushState({ hsd: depth + 1 }, ""); }
       else if (n < depth) { const d = depth - n; depth = n; skip++; history.go(-d); }
       $("backBtn").hidden = n === 0;
+      saveUi();
+    }
+    // 새로고침 전에, 쌓아 둔 방문 기록을 걷어 내요
+    function unwind(cb) {
+      if (depth > 0) { const d = depth; depth = 0; skip++; history.go(-d); setTimeout(cb, 150); } else cb();
     }
     window.addEventListener("popstate", () => {
       if (skip) { skip--; return; }
@@ -526,9 +526,109 @@
       history.pushState({ hsd: 0 }, "");
       toast("한 번 더 누르면 앱이 꺼져요");
     });
-    try { history.replaceState({ hsd: "base" }, ""); history.pushState({ hsd: 0 }, ""); } catch (e) { /* 방문 기록을 못 쓰는 곳에서도 앱은 돌아가요 */ }
+    try {
+      const st0 = history.state;
+      // 새로고침으로 다시 열렸으면 예전에 쌓인 기록 위에 서 있어요. 바닥으로 내려가요.
+      if (st0 && typeof st0.hsd === "number" && st0.hsd > 0) { skip++; history.go(-st0.hsd); }
+      else if (!(st0 && st0.hsd === 0)) { history.replaceState({ hsd: "base" }, ""); history.pushState({ hsd: 0 }, ""); }
+    } catch (e) { /* 방문 기록을 못 쓰는 곳에서도 앱은 돌아가요 */ }
     document.addEventListener("hsd:layer", () => sync());
-    return { sync, layers, back: () => history.back() };
+    return { sync, layers, unwind, back: () => history.back() };
+  })();
+
+  // ---------- 새로고침: 당겨서, 그리고 새 버전이 올라오면 저절로 ----------
+  // 새로고침해도 보고 있던 화면과 창, 쓰던 글이 그대로 돌아와요.
+  const UI_KEY = "hsd.ui", KEEP = ["noteText", "dayText", "dayTime", "planTitle", "questInput", "decoText"];
+  function saveUi() {
+    try {
+      const drafts = {};
+      KEEP.forEach((id) => { const el = $(id); if (el && el.value) drafts[id] = el.value; });
+      sessionStorage.setItem(UI_KEY, JSON.stringify({
+        t: Date.now(), view: state.view, panel: state.openPanel, game: !!(window.Garden && Garden.isOpen()),
+        deco: window.Deco && Deco.isOpen() ? Deco.tab() : "", day: window.Cal ? Cal.sel() : "", mail: window.Notes ? Notes.tab() : "", drafts,
+      }));
+    } catch (e) { /* 못 적어도 괜찮아요 */ }
+  }
+  function restoreUi() {
+    let u = null;
+    try { u = JSON.parse(sessionStorage.getItem(UI_KEY) || "null"); } catch (e) { u = null; }
+    if (!u || Date.now() - u.t > 15 * 60000 || !Store.me()) return;
+    if (u.view && u.view !== "home") go(u.view);
+    if (u.panel === "day" && window.Cal && u.day) Cal.pick(u.day);
+    else if (u.panel === "mail" && window.Notes) Notes.open(u.mail);
+    else if (u.panel === "note" && window.Notes) { setPanel("note"); Notes.renderWrite(); }
+    else if (u.panel) setPanel(u.panel);
+    if (u.game && window.Garden) Garden.open();
+    if (u.deco && window.Deco) Deco.open(u.deco);
+    setTimeout(() => { Object.keys(u.drafts || {}).forEach((id) => { const el = $(id); if (el && !el.value) el.value = u.drafts[id]; }); }, 350);
+  }
+  function reloadNow() {
+    saveUi();
+    Nav.unwind(() => location.reload());
+  }
+  window.addEventListener("pagehide", saveUi);
+  // 새 버전이 올라오면 저절로 바꿔요 (글을 쓰는 중이면 끝날 때까지 기다려요)
+  let ver = "";
+  async function checkVersion() {
+    try {
+      const r = await fetch("sw.js?t=" + Date.now(), { cache: "no-store" });
+      const m = /hsd-v(\d+)/.exec(await r.text());
+      if (!m) return;
+      if (!ver) { ver = m[1]; return; }
+      if (m[1] !== ver) autoReload();
+    } catch (e) { /* 인터넷이 없으면 다음에 */ }
+  }
+  let autoT = 0;
+  function autoReload() {
+    clearTimeout(autoT);
+    const a = document.activeElement;
+    const typing = a && /INPUT|TEXTAREA/.test(a.tagName) && a.value;
+    if (typing || openModalEl() || (window.Deco && Deco.celebrating()) || (window.Tale && Tale.isOpen())) { autoT = setTimeout(autoReload, 4000); return; }
+    toast("새 버전으로 바꿀게요");
+    setTimeout(reloadNow, 600);
+  }
+  setInterval(() => { if (!document.hidden) checkVersion(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) checkVersion(); });
+  checkVersion();
+  // 아래로 당기면 새로고침
+  (function bindPull() {
+    const el = document.createElement("div");
+    el.className = "ptr";
+    el.innerHTML = "<i></i><b>당겨서 새로고침</b>";
+    document.body.appendChild(el);
+    let y0 = 0, x0 = 0, on = false, d = 0;
+    const NEED = 120;
+    document.addEventListener("touchstart", (ev) => {
+      on = false; d = 0;
+      if (ev.touches.length !== 1 || window.scrollY > 0) return;
+      const t = ev.target;
+      if (!t.closest || t.closest("#banner, .idle, .unlock, .lightbox, input, textarea, select")) return;
+      for (let n = t; n && n !== document.body; n = n.parentNode) if (n.scrollTop > 0) return;
+      y0 = ev.touches[0].clientY; x0 = ev.touches[0].clientX; on = true;
+    }, { passive: true });
+    document.addEventListener("touchmove", (ev) => {
+      if (!on) return;
+      const dy = ev.touches[0].clientY - y0, dx = ev.touches[0].clientX - x0;
+      if (d === 0 && (dy < 12 || Math.abs(dx) > dy)) { if (dy < -6 || Math.abs(dx) > 14) on = false; return; }
+      d = Math.max(0, dy);
+      el.classList.add("on");
+      el.classList.toggle("ready", d > NEED);
+      el.style.transform = `translate(-50%, ${Math.min(76, d * 0.5).toFixed(0)}px)`;
+      el.lastChild.textContent = d > NEED ? "놓으면 새로고침" : "당겨서 새로고침";
+    }, { passive: true });
+    const end = () => {
+      if (!on) return;
+      on = false;
+      if (d > NEED) {
+        el.lastChild.textContent = "새로고침하는 중";
+        el.classList.add("spin");
+        if (Store.token()) Store.sync();
+        setTimeout(reloadNow, 450);
+      } else { el.classList.remove("on", "ready"); el.style.transform = ""; }
+      d = 0;
+    };
+    document.addEventListener("touchend", end, { passive: true });
+    document.addEventListener("touchcancel", end, { passive: true });
   })();
 
   function lockScroll() {
@@ -559,8 +659,7 @@
     document.querySelectorAll(".panel").forEach((p) => setOpen(p, p.id === "panel-" + name));
     document.body.classList.toggle("sheet-open", !!name);
     if (name === "mood") renderMood();
-    if (name === "quest") renderQuest();
-    if (name === "pick") renderPick();
+    if (name === "mail" && window.Notes) Notes.renderMail();
     if (name === "day" && window.Cal) Cal.renderDay();
     Nav.sync();
   }
@@ -635,54 +734,6 @@
     MORPH($("questBody"), myBox + theirBox);
   }
 
-  function pickPool() {
-    const cat = state.pickCat;
-    const plans = Store.list("plans").filter((p) => !p.done && (cat === "all" || p.category === cat));
-    if (plans.length) return plans.map((p) => ({ title: p.title, plan: p }));
-    const cats = cat === "all" ? PLAN_CATS : [cat];
-    return cats.flatMap((c) => (IDEAS[c] || []).map((t) => ({ title: t })));
-  }
-  function renderPick() {
-    MORPH($("pickCats"), ["all"].concat(PLAN_CATS).map((c) => `<button class="chip${state.pickCat === c ? " active" : ""}" data-pick-cat="${c}">${c === "all" ? "전체" : PIXEL.icon(c, 2) + CATS[c]}</button>`).join(""));
-  }
-  let picking = false;
-  function runPick() {
-    if (picking) return;
-    const pool = pickPool();
-    if (!pool.length) return;
-    picking = true;
-    $("pickMap").hidden = true;
-    const slot = $("pickSlot");
-    slot.classList.remove("done");
-    const winner = pool[Math.floor(Math.random() * pool.length)];
-    const total = reduced() ? 0 : 1500;
-    const t0 = performance.now();
-    let last = -1;
-    function tick(now) {
-      const k = total ? Math.min(1, (now - t0) / total) : 1;
-      // 처음엔 빠르게 넘기다가 점점 느려져요.
-      const step = Math.floor(22 * (1 - Math.pow(1 - k, 2.2)));
-      if (k < 1) {
-        if (step !== last) {
-          last = step;
-          slot.textContent = pool[(step * 7 + 3) % pool.length].title;
-          restart(slot, "flip");
-        }
-        requestAnimationFrame(tick);
-        return;
-      }
-      slot.textContent = winner.title;
-      slot.classList.add("done");
-      play(slot, "boing");
-      burstAt(slot, 10);
-      const place = winner.plan && (winner.plan.place || winner.plan.map) ? winner.plan : null;
-      $("pickMap").hidden = !place;
-      if (place) $("pickMap").href = mapUrl(place);
-      picking = false;
-    }
-    requestAnimationFrame(tick);
-  }
-
   function renderSync() {
     const st = Store.status();
     const pend = Store.pendingPhotoCount();
@@ -706,8 +757,7 @@
   function talePing() {
     clearTimeout(taleT);
     taleT = setTimeout(() => {
-      $("btnCloset").hidden = !Store.me();
-      if (Store.me() && window.FSprites && !$("closetIco").getAttribute("src")) $("closetIco").src = FSprites.charImg(Store.me(), "down", 0, "", "happy");
+      if (window.Deco) Deco.bindDrag();
       if (!Store.me() || !$("hello").hidden) return;
       // 새로 열린 선물이 있으면 그것부터, 그다음에 이야기
       if (window.Deco && (Deco.celebrating() || (Nav.layers() === 0 && Deco.celebrate()))) return;
@@ -725,7 +775,7 @@
     const qk = "q:" + todayKey();
     $("couple").classList.toggle("blessed", !!(Store.pair(qk, "him") && Store.pair(qk, "her")));
     if (state.openPanel === "mood") renderMood();
-    if (state.openPanel === "quest" && !questEditing && !(document.activeElement && document.activeElement.id === "questInput")) renderQuest();
+    if (state.openPanel === "mail" && window.Notes && !questEditing && !(document.activeElement && document.activeElement.id === "questInput")) Notes.renderMail();
     if (window.Garden && Garden.isOpen() && !quiet) Garden.render();
   }
 
@@ -1109,9 +1159,9 @@
 
     bindScene();
 
-    $("btnCloset").addEventListener("click", (ev) => { ev.stopPropagation(); if (window.Deco) Deco.open(); });
     $("banner").addEventListener("click", (ev) => {
       ev.stopPropagation();
+      if (window.Deco && Deco.justDragged()) return;
       play($("banner"), "boing");
       if (window.Deco) Deco.open("ban");
     });
@@ -1132,9 +1182,6 @@
         return;
       }
       if (t.closest("[data-quest-edit]")) { questEditing = true; renderQuest(); $("questInput").focus(); return; }
-      const pc = t.closest("[data-pick-cat]");
-      if (pc) { state.pickCat = pc.dataset.pickCat; renderPick(); return; }
-      if (t.closest("#btnPick")) { play($("btnPick"), "boing"); runPick(); return; }
     });
     $("panels").addEventListener("submit", (ev) => {
       if (ev.target.id !== "questForm") return;
@@ -1143,7 +1190,7 @@
       if (!text) return;
       questEditing = false;
       silently(() => Store.setPair("q:" + todayKey(), Store.me(), text));
-      renderQuest();
+      if (window.Notes) Notes.renderMail(); else renderQuest();
       renderSceneBits();
       renderScenePlant();
       burstAt($("questText"), 8);
@@ -1474,13 +1521,15 @@
   }
   if (window.Deco) Deco.attend();
   document.addEventListener("hsd:ban", () => {});
+  if (window.Notes) Notes.bind({ toast, silently, setPanel, play, burstAt, bubble: showBubble, panel: () => state.openPanel, todayKey, renderQuest });
   if (window.Cal) Cal.bind({ toast, silently, setPanel, panel: () => state.openPanel });
   if (window.Scene) Scene.init();
   lockScroll();
   renderView();
   startHello();
+  restoreUi();
   talePing();
-  document.addEventListener("hsd:wear", () => { $("closetIco").removeAttribute("src"); talePing(); });
+  document.addEventListener("hsd:wear", () => talePing());
   document.addEventListener("hsd:layer", () => talePing());
   document.addEventListener("visibilitychange", () => { if (!document.hidden) talePing(); });
 

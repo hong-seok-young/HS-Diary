@@ -45,8 +45,9 @@
             <canvas class="sc-fx back" id="fxBack" aria-hidden="true"></canvas>
             <div class="sc-deco" id="deco"></div>
             <button class="sc-plant" id="plant" aria-label="우리 텃밭"></button>
-            <button class="sc-quest" id="questSign" aria-label="오늘의 질문"><i></i></button>
-            <button class="sc-dice" id="dice" aria-label="뭐 하지 뽑기"><i></i></button>
+            <button class="sc-mailbox" id="mailbox" aria-label="우체통" hidden><i></i></button>
+            <button class="sc-kennel" id="kennel" aria-label="동물 친구들 집"><i></i></button>
+            <button class="sc-plane" id="plane" aria-label="쪽지 보내기" hidden><u></u></button>
             <div class="sc-tint" id="tint"></div>
             <div class="couple" id="couple">
               <button class="bob" data-who="him" aria-label="석영"><i class="mood-tag" id="moodHim"></i><i class="prop-top" id="topHim"></i><span class="ch-wrap"><img class="px ch" alt="" draggable="false"></span></button>
@@ -57,9 +58,8 @@
             <div class="sc-flash" id="flash"></div>
             <button class="weather-chip" id="weatherChip" aria-label="날씨"></button>
             <span class="phase-chip" id="phaseChip"></span>
-            <button class="sc-banner" id="banner" aria-label="우리 이름표"><b id="diaryTitle">석영이와 예은이</b><span id="dday">D+0</span></button>
+            <button class="sc-banner" id="banner" aria-label="우리 이름표"><b id="diaryTitle">석영이와 예은이</b><span id="dday">D+0</span><em id="banNext" hidden></em></button>
             <i class="sync-dot" id="syncDot" hidden></i>
-            <button class="closet-chip" id="btnCloset" aria-label="옷장" hidden><img class="px" alt="" id="closetIco"></button>
           </div>
           <div class="bubble" id="bubble" role="status"></div>
         </div>
@@ -85,20 +85,25 @@
         <div id="moodPick"></div>
       </div></section>
 
-      <section class="panel" id="panel-quest"><div class="panel-box box">
-        <h2>오늘의 질문 <i class="streak" id="streak"></i></h2>
-        <p class="quest-text" id="questText"></p>
-        <div id="questBody"></div>
+      <section class="panel" id="panel-mail"><div class="panel-box box">
+        <h2>우체통</h2>
+        <div class="mail-tabs" id="mailTabs"></div>
+        <div class="mail-quest" id="mailQuest">
+          <p class="quest-text" id="questText"></p>
+          <i class="streak" id="streak"></i>
+          <div id="questBody"></div>
+        </div>
+        <div class="day-list mail-list" id="mailList"></div>
+        <button class="btn primary block" type="button" id="mailWrite">쪽지 쓰기</button>
       </div></section>
 
-      <section class="panel" id="panel-pick"><div class="panel-box box">
-        <h2>뭐 하지 뽑기</h2>
-        <div class="filters" id="pickCats"></div>
-        <div class="pick-slot" id="pickSlot">버튼을 눌러 봐</div>
-        <div class="pick-actions">
-          <a class="btn small" id="pickMap" target="_blank" rel="noopener" hidden>지도</a>
-          <button class="btn primary" id="btnPick">뽑기</button>
-        </div>
+      <section class="panel" id="panel-note"><div class="panel-box box">
+        <h2 id="noteTo">쪽지</h2>
+        <form id="noteForm">
+          <textarea id="noteText" rows="3" maxlength="300" placeholder="하고 싶은 말을 적어요"></textarea>
+          <p class="hint" id="noteLast"></p>
+          <button class="btn primary block" type="submit">종이비행기 날리기</button>
+        </form>
       </div></section>
 
       <section class="panel" id="panel-day"><div class="panel-box box">
@@ -317,6 +322,7 @@
   <script src="js/f/sprites.js"></script>
   <script src="js/idle.js"></script>
   <script src="js/cal.js"></script>
+  <script src="js/notes.js"></script>
   <script src="js/tale.js"></script>
   <script src="js/deco.js"></script>
   <script src="js/charanim.js"></script>

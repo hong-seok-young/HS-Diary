@@ -78,6 +78,8 @@
       <div class="cal-grid" style="grid-template-rows:repeat(${rows},minmax(0,1fr))">${cells}</div>`;
     if (window.MORPH) MORPH(el, html); else el.innerHTML = html;
     if (H.panel && H.panel() === "day") renderDay();
+    const nx = $("banNext");
+    if (nx) { const line = nextLine(); if (nx.textContent !== line) nx.textContent = line; nx.hidden = !line; }
   }
 
   // ---------- 그날 일정 ----------
@@ -163,5 +165,21 @@
     return `오늘 일정: ${ev[0].time ? timeText(ev[0].time) + " " : ""}${ev[0].title}${ev.length > 1 ? ` 외 ${ev.length - 1}개` : ""}`;
   }
 
-  window.Cal = { bind, render, renderDay, todayLine, special, timeText };
+  // 그림에 띄울 한 줄: 오늘 일정이 있으면 오늘, 없으면 가장 가까운 일정까지 남은 날
+  function nextLine() {
+    const t0 = parse(keyOf(new Date()));
+    const today = keyOf(t0);
+    const ev = eventsOn(today);
+    if (ev.length) return `오늘은 ${ev[0].title}${ev.length > 1 ? ` 외 ${ev.length - 1}개` : ""}!`;
+    const sp = special(t0);
+    if (sp.length) return `오늘은 ${sp[0]}!`;
+    let best = null;
+    Store.list("cal").forEach((e) => { if (e.date > today && (!best || e.date < best.date || (e.date === best.date && (e.time || "99") < (best.time || "99")))) best = e; });
+    if (!best) return "";
+    const left = Math.round((parse(best.date) - t0) / 86400000);
+    if (left > 200) return "";
+    return left === 1 ? `내일은 ${best.title}` : `${best.title}까지 ${left}일`;
+  }
+
+  window.Cal = { bind, render, renderDay, todayLine, nextLine, special, timeText, sel: () => sel, pick: (k) => pickDay(k, true) };
 })();

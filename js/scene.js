@@ -352,7 +352,9 @@
     const skyH = Math.max(40, S.H - 70);
     const dayFrac = clamp((t - st.rise) / Math.max(1, st.set - st.rise), 0, 1);
     const sunUp = S.elev > -3;
-    sun.style.transform = `translate(${Math.round(8 + dayFrac * (S.W - 50))}px, ${Math.round(8 + (1 - clamp(S.elev / Math.max(10, st.maxE), 0, 1)) * skyH)}px)`;
+    // 이름표 아래로 지나가게, 하늘 위쪽은 조금 비워 둬요
+    const TOPY = 50, sx = Math.round(8 + dayFrac * (S.W - 50)), sy = Math.round(TOPY + (1 - clamp(S.elev / Math.max(10, st.maxE), 0, 1)) * Math.max(10, skyH - TOPY));
+    sun.style.transform = `translate(${sx}px, ${sy}px)`;
     const veil = S.w.kind === "thunder" ? 0.15 : S.w.wet || S.w.snowy ? 0.3 : S.w.kind === "cloudy" ? 0.45 : S.w.kind === "fog" ? 0.5 : 1;
     sun.style.opacity = sunUp ? String(clamp((S.elev + 3) / 5, 0, 1) * veil) : "0";
     sun.classList.toggle("low", S.elev < 8);
@@ -360,7 +362,16 @@
     const nightLen = 86400000 - (st.set - st.rise);
     const sinceSet = ((t - st.set) % 86400000 + 86400000) % 86400000;
     const nightFrac = clamp(sinceSet / Math.max(1, nightLen), 0, 1);
-    moon.style.transform = `translate(${Math.round(8 + nightFrac * (S.W - 50))}px, ${Math.round(10 + Math.abs(nightFrac - 0.5) * 2 * skyH * 0.7)}px)`;
+    const mx = Math.round(8 + nightFrac * (S.W - 50)), my = Math.round(TOPY + Math.abs(nightFrac - 0.5) * 2 * Math.max(10, skyH - TOPY) * 0.7);
+    moon.style.transform = `translate(${mx}px, ${my}px)`;
+    // 기온은 낮엔 해를, 밤엔 달을 따라다녀요
+    const chip = $("weatherChip");
+    if (chip) {
+      const night = S.dark > 0.5, bx = night ? mx : sx, by = night ? my : sy;
+      const right = bx < S.W - 110;
+      chip.style.transform = `translate(${right ? bx + 32 : bx - 6}px, ${by + 6}px)` + (right ? "" : " translateX(-100%)");
+      chip.classList.toggle("night", night);
+    }
     moon.style.opacity = String(clamp(S.dark * 1.3 - 0.2, 0, 1) * (S.w.wet || S.w.snowy ? 0.4 : 1));
     const phaseKey = Math.round(moonPhase(t) * 16);
     if (moon.dataset.p !== String(phaseKey)) { moon.dataset.p = String(phaseKey); moon.innerHTML = PIXEL.moon(phaseKey / 16, 3); }
@@ -403,7 +414,8 @@
   function renderChips() {
     const w = S.w;
     const icon = S.dark > 0.55 && (w.kind === "clear" || w.kind === "partly") ? "wmoon" : KIND_ICON[w.kind] || "wsun";
-    $("weatherChip").innerHTML = `${PIXEL.icon(icon, 2)}<b>${w.temp == null ? KIND_LABEL[w.kind] : Math.round(w.temp) + "°"}</b>`;
+    // 맑을 땐 해와 달이 곧 날씨 그림이라, 숫자만 붙여요
+    $("weatherChip").innerHTML = `${w.kind === "clear" ? "" : PIXEL.icon(icon, 2)}<b>${w.temp == null ? KIND_LABEL[w.kind] : Math.round(w.temp) + "°"}</b>`;
     const sp = S.specials[0];
     $("phaseChip").textContent = sp ? sp.label : S.act ? S.act.label : S.phase.label;
   }

@@ -9,7 +9,7 @@
   "use strict";
 
   const KEY = { db: "hsd.db", dev: "hsd.dev", join: "hsd.join", me: "hsd.me", old: "hs-diary-local-entries" };
-  const COLS = ["entries", "plans", "diary", "garden", "cal"];
+  const COLS = ["entries", "plans", "diary", "garden", "cal", "notes"];
   const cfg = typeof DIARY_CONFIG !== "undefined" ? DIARY_CONFIG : {};
 
   const API = String(cfg.api || "").replace(/\/+$/, "");
@@ -24,7 +24,7 @@
     return null;
   }
   function emptyDb() {
-    return { v: 1, entries: {}, plans: {}, diary: {}, garden: {}, cal: {}, pairs: {} };
+    return { v: 1, entries: {}, plans: {}, diary: {}, garden: {}, cal: {}, notes: {}, pairs: {} };
   }
   function normalize(db) {
     const out = emptyDb();

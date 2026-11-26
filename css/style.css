@@ -1335,7 +1335,8 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 .deco.closing { opacity: 0; transition: opacity .16s ease; }
 .deco-dim { position: absolute; inset: 0; background: rgba(40, 28, 20, .4); animation: fadeIn .2s ease; }
 .deco-box { position: relative; width: min(520px, 100%); max-height: 100%; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 8px; background: #fff8e6; color: #3b2a20; box-shadow: 0 -3px 0 0 #3b2a20, 0 3px 0 0 #3b2a20, -3px 0 0 0 #3b2a20, 3px 0 0 0 #3b2a20, 0 8px 0 0 rgba(40, 28, 20, .25); animation: taleUp .3s cubic-bezier(.3, 1.4, .5, 1); }
-.deco-tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.deco-tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.deco-tabs[hidden] { display: none; }
 .deco-tabs .chip { justify-content: center; }
 .deco-tip { flex: 0 0 auto; font-size: 12.5px; line-height: 17px; color: #7a5a40; }
 .deco-body { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
@@ -1380,3 +1381,86 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 .ul-hint { min-height: 18px; font-style: normal; font-size: 13px; color: #c8c0e0; animation: taleBob .8s steps(2) infinite; }
 .unlock[data-step="0"] .ul-stage::after { content: "?"; position: absolute; left: 50%; top: 42%; margin: -30px 0 0 -14px; font-size: 54px; line-height: 60px; color: #6a5a9a; animation: taleBob .8s steps(2) infinite; }
 .ul-box { flex: 0 0 auto; margin-top: 30px; }
+
+/* ============================================================
+   쪽지: 종이비행기와 우체통
+   ============================================================ */
+.phase-chip { display: none !important; }
+.sc-plane { position: absolute; left: 0; top: 0; z-index: 8; width: 26px; height: 20px; border: 0; padding: 0; background: none; animation: planeFly 34s ease-in-out infinite; }
+.sc-plane[hidden], .sc-mailbox[hidden] { display: none; }
+.sc-plane::after { content: ""; position: absolute; inset: -12px; }
+.sc-plane u { position: absolute; left: 0; top: 2px; width: 26px; height: 16px; background: #fff; clip-path: polygon(0 38%, 100% 0, 62% 100%, 46% 60%); filter: drop-shadow(1px 0 0 #6a7a8a) drop-shadow(-1px 0 0 #6a7a8a) drop-shadow(0 1px 0 #6a7a8a) drop-shadow(0 -1px 0 #6a7a8a) drop-shadow(0 2px 0 rgba(60, 40, 30, .3)); animation: planeBob 1.6s ease-in-out infinite; }
+.sc-plane u::after { content: ""; position: absolute; inset: 0; background: #d6dde6; clip-path: polygon(46% 60%, 100% 0, 62% 100%); }
+.sc-plane.boing u { animation: boing .5s var(--ease); }
+.sc-plane.fly { animation: none; pointer-events: none; z-index: 12; }
+@keyframes planeFly { 0% { transform: translate(12cqw, 58px); } 25% { transform: translate(52cqw, 44px) rotate(-6deg); } 50% { transform: translate(78cqw, 66px) rotate(4deg); } 50.01% { transform: translate(78cqw, 66px) scaleX(-1); } 75% { transform: translate(40cqw, 50px) scaleX(-1) rotate(-5deg); } 99.99% { transform: translate(12cqw, 58px) scaleX(-1); } 100% { transform: translate(12cqw, 58px); } }
+@keyframes planeBob { 50% { transform: translateY(-4px) rotate(-3deg); } }
+.scene { container-type: inline-size; }
+.night .sc-plane u { filter: drop-shadow(0 2px 0 rgba(0, 0, 0, .4)) brightness(.9); }
+.sc-mailbox { position: absolute; left: calc(50% + 96px); bottom: 12px; z-index: 5; width: 22px; height: 32px; border: 0; padding: 0; background: none; }
+.sc-mailbox::before { content: ""; position: absolute; left: 9px; bottom: 0; width: 4px; height: 16px; background: #8a5f3f; box-shadow: 0 0 0 2px #4a3428; }
+.sc-mailbox i { position: absolute; left: 1px; top: 2px; width: 20px; height: 14px; background: #e8504f; box-shadow: 0 0 0 2px #4a3428, inset 0 -3px 0 0 #c0392b, inset 0 3px 0 0 #ff8a80; }
+.sc-mailbox i::before { content: ""; position: absolute; left: 4px; top: 6px; width: 12px; height: 2px; background: #4a3428; }
+.sc-mailbox i::after { content: ""; position: absolute; right: -6px; top: 4px; width: 4px; height: 8px; background: #f0b52e; box-shadow: 0 0 0 2px #4a3428; transform-origin: 50% 100%; transform: rotate(90deg) translate(4px, 0); transition: transform .3s var(--spring); }
+.sc-mailbox.has i::after { transform: none; }
+.sc-mailbox.has i { animation: hop 1.4s ease-in-out infinite; }
+.sc-mailbox.has::after { content: attr(data-n); position: absolute; left: 12px; top: -12px; min-width: 14px; height: 14px; padding: 0 2px; font-size: 11px; line-height: 14px; text-align: center; color: #fff; background: #e05a88; box-shadow: 0 0 0 2px #4a3428; }
+.sc-mailbox.boing { animation: boing .5s var(--ease); }
+.night .sc-mailbox { filter: brightness(.8); }
+.mail-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.mail-tabs .chip { justify-content: center; position: relative; font-size: 13px; padding: 0; min-width: 0; }
+.mail-tabs .chip.dot::after { content: ""; position: absolute; right: -2px; top: -4px; width: 8px; height: 8px; background: #e05a88; box-shadow: 0 0 0 2px var(--ink); }
+.mail-quest[hidden], .mail-list[hidden], #mailWrite[hidden] { display: none; }
+.mail-quest .streak { display: block; font-style: normal; font-size: 12px; color: var(--orange); min-height: 4px; }
+.mail-list { max-height: 40dvh; }
+.mail-it { position: relative; padding: 6px 36px 6px 12px; background: #fffaf0; box-shadow: inset 6px 0 0 0 #4f86c0; }
+.mail-it.her { box-shadow: inset 6px 0 0 0 #e0709a; }
+.mail-it.new { background: #fff1c8; }
+.mail-it p { word-break: break-word; line-height: 1.45; }
+.mail-it small { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-soft); }
+.mail-it .day-del { position: absolute; right: 0; top: 2px; }
+.btn.block { display: block; width: 100%; }
+#noteForm textarea { width: 100%; margin-bottom: 4px; }
+#noteForm .hint { min-height: 18px; margin-bottom: 8px; font-size: 12px; }
+
+/* 기온: 해와 달 옆에 붙어 다녀요 (상자 없이 글자만) */
+.scene > .weather-chip { left: 0; top: 0; z-index: 2; padding: 0; gap: 3px; line-height: 18px; font-size: 15px; background: none; box-shadow: none; color: #fff; text-shadow: 1px 0 0 #6a5446, -1px 0 0 #6a5446, 0 1px 0 #6a5446, 0 -1px 0 #6a5446, 0 2px 0 rgba(60, 40, 30, .35); transition: transform 2s linear; white-space: nowrap; }
+.scene > .weather-chip svg { filter: drop-shadow(1px 0 0 #6a5446) drop-shadow(-1px 0 0 #6a5446) drop-shadow(0 1px 0 #6a5446) drop-shadow(0 -1px 0 #6a5446); color: #fff; }
+.scene > .weather-chip.night { color: #fff3c4; text-shadow: 1px 0 0 #1c2244, -1px 0 0 #1c2244, 0 1px 0 #1c2244, 0 -1px 0 #1c2244; }
+.scene > .weather-chip.night svg { filter: drop-shadow(1px 0 0 #1c2244) drop-shadow(-1px 0 0 #1c2244) drop-shadow(0 1px 0 #1c2244) drop-shadow(0 -1px 0 #1c2244); color: #fff3c4; }
+.scene > .weather-chip::after { content: ""; position: absolute; inset: -10px; }
+.sc-banner { max-width: calc(100% - 24px); }
+/* 다가오는 일정 한 줄 (이름표 바로 아래, 상자 없이) */
+.sc-banner em { position: absolute; left: 50%; top: 100%; margin-top: 7px; transform: translateX(-50%); font-style: normal; font-size: 13px; line-height: 16px; white-space: nowrap; max-width: 92cqw; overflow: hidden; text-overflow: ellipsis; color: #fff; text-shadow: 1px 0 0 #6a5446, -1px 0 0 #6a5446, 0 1px 0 #6a5446, 0 -1px 0 #6a5446, 0 2px 0 rgba(60, 40, 30, .3); pointer-events: none; }
+.sc-banner em[hidden] { display: none; }
+.sc-banner.bn-s2 em, .sc-banner.bn-s5 em, .sc-banner.bn-s8 em { margin-top: 16px; }
+.night .sc-banner em { color: #fff3c4; text-shadow: 1px 0 0 #1c2244, -1px 0 0 #1c2244, 0 1px 0 #1c2244, 0 -1px 0 #1c2244; }
+
+/* 그림 속 옷장과 동물 집 */
+.sc-closet { position: absolute; left: calc(50% - 100px); bottom: 12px; z-index: 4; width: 20px; height: 28px; border: 0; padding: 0; background: none; }
+.sc-closet i { position: absolute; inset: 0 0 2px 0; background: #b8743c; box-shadow: 0 0 0 2px #4a2c18, inset 0 3px 0 0 #e0a060, inset 0 -3px 0 0 #8a4f26; }
+.sc-closet i::before { content: ""; position: absolute; left: 9px; top: 3px; bottom: 3px; width: 2px; background: #4a2c18; box-shadow: -3px 9px 0 0 #ffd06a, 3px 9px 0 0 #ffd06a; }
+.sc-closet::before { content: ""; position: absolute; left: 2px; right: 2px; bottom: 0; height: 2px; background: #4a2c18; }
+.sc-kennel { position: absolute; left: calc(50% + 126px); bottom: 12px; z-index: 4; width: 26px; height: 24px; border: 0; padding: 0; background: none; }
+.sc-kennel i { position: absolute; left: 2px; right: 2px; bottom: 0; height: 14px; background: #f3d6a0; box-shadow: 0 0 0 2px #4a3428; }
+.sc-kennel i::before { content: ""; position: absolute; left: 6px; bottom: 0; width: 10px; height: 10px; background: #4a3428; border-radius: 5px 5px 0 0; }
+.sc-kennel::before { content: ""; position: absolute; left: -2px; right: -2px; top: 0; height: 12px; background: #e8504f; clip-path: polygon(50% 0, 100% 100%, 0 100%); filter: drop-shadow(0 2px 0 #4a3428); z-index: 1; }
+.sc-closet::after, .sc-kennel::after { content: ""; position: absolute; inset: -8px; z-index: 2; }
+.sc-closet.boing, .sc-kennel.boing { animation: boing .5s var(--ease); }
+.night .sc-closet, .night .sc-kennel { filter: brightness(.8); }
+.sc-banner { touch-action: none; cursor: grab; }
+.deco-title { font-size: 20px; line-height: 26px; font-weight: normal; }
+
+/* 당겨서 새로고침 */
+.ptr { position: fixed; left: 50%; top: calc(var(--sa-t, 0px) - 44px); z-index: 500; transform: translate(-50%, 0); display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: 13px; line-height: 18px; color: #5b4638; background: #fff8e6; box-shadow: 0 -2px 0 0 #5b4638, 0 2px 0 0 #5b4638, -2px 0 0 0 #5b4638, 2px 0 0 0 #5b4638; opacity: 0; pointer-events: none; transition: transform .2s ease, opacity .2s ease; white-space: nowrap; }
+.ptr.on { opacity: 1; transition: opacity .1s ease; }
+.ptr b { font-weight: normal; }
+.ptr i { width: 12px; height: 12px; border: 6px solid transparent; border-top: 8px solid #c9735f; border-bottom: 0; transition: transform .2s ease; }
+.ptr.ready { background: var(--butter); }
+.ptr.ready i { transform: rotate(180deg); }
+.ptr.spin i { animation: spin .6s linear infinite; }
+
+/* 그림 속 자리: 화분(텃밭)은 두 사람 오른쪽, 우체통, 동물 집 순서 */
+.sc-plant { left: calc(50% + 58px) !important; }
+.sc-kennel { left: auto; right: 4px; }
+.sc-mailbox { left: calc(50% + 98px); }
