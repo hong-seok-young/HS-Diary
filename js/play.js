@@ -39,7 +39,7 @@
     back: (t) => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); },
     el: (t) => (t <= 0 ? 0 : t >= 1 ? 1 : Math.pow(2, -9 * t) * Math.sin((t * 10 - 0.75) * 2.094) + 1),
   };
-  const GY = 12, CW = 54, CH = 78; // 사람이 서는 높이, 사람 그림판 크기
+  const GY = 12, CW = 60, CH = 78; // 사람이 서는 높이, 사람 그림판 크기
   let scene = null, layer = null, couple = null, W = 360, H = 200, pond = { x0: 14, x1: 106 };
   const runs = [], gfx = [], flyers = [];
   let cur = null, nextAt = 8, clock = 0, dragAt = 0, busyAt = -99, paused = false, cOff = 0;
@@ -470,7 +470,7 @@
   }
 
   // ---------- 조각: 머리, 몸통, 팔, 다리 ----------
-  const PARTS = { head: [27, 36, 21], torso: [27, 60, 7], armL: [12, 60, 6], armR: [42, 60, 6], legL: [21, 72, 6], legR: [33, 72, 6] };
+  const PARTS = { head: [30, 36, 21], torso: [30, 60, 7], armL: [15, 60, 6], armR: [45, 60, 6], legL: [24, 72, 6], legR: [36, 72, 6] };
   function Part(who, name, face) {
     const d = PARTS[name];
     this.who = who; this.name = name; this.cx = d[0]; this.cy = d[1]; this.r = d[2];
@@ -482,7 +482,7 @@
   }
   Part.prototype.rest = function () { return GY + (this.name === "head" ? 18 : 6); };
   // 사람이 (ax, ab)에 서 있을 때 이 조각이 있어야 할 자리
-  Part.prototype.at = function (ax, ab) { return { x: ax - 27 + this.cx, b: ab + CH - this.cy }; };
+  Part.prototype.at = function (ax, ab) { return { x: ax - 30 + this.cx, b: ab + CH - this.cy }; };
   Part.prototype.apply = function () {
     const src = S.charCut(this.who, this.dir, 0, "", this.face, this.name);
     if (src !== this.src) { this.el.src = src; this.src = src; }

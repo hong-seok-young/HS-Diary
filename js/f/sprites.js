@@ -64,7 +64,7 @@
     return (y >= 5 && y <= 10 && x >= 4 && x <= 14) || (y === 11 && x >= 5 && x <= 12);
   }
   // 머리 위로 6칸을 비워 둬요: 토끼 귀(5칸)와 테두리 한 칸까지 잘리지 않게
-  const CH_W = 18, CH_H = 26, TOP = 6, FOOT = 24, HX = 1;
+  const CH_W = 18, CH_H = 26, TOP = 6, FOOT = 24, HX = 1, CH_FULL = 20; // 그릴 땐 18칸, 내보낼 땐 좌우 여백을 더해 20칸
   // 귀 모양 (왼쪽 귀, 머리 왼쪽 위 기준. 오른쪽은 거울로)
   const EARS = {
     round: { at: [1, -2], rows: [".UU.", "UiiU", "UiiU"] },
@@ -333,6 +333,8 @@
     }
     if (dir !== "up" && /^m\d+$/.test(face)) moodFace(g, Number(face.slice(1)), dir, oy);
     accLate();
+    // 좌우로 한 칸씩 여백을 둬요: 옆으로 처진 귀나 큰 귀의 테두리가 잘리지 않게
+    g.forEach((r) => { r.unshift("."); r.push("."); });
     return rows(outline(g));
   }
   // ---------- 오늘의 기분 표정 (마음 20가지) ----------
@@ -418,7 +420,7 @@
       if (!it || it.kind !== k) return;
       shapes[k] = it.shape; pal[a] = it.c[0]; pal[b] = it.c[1]; pal[c] = k === "neck" && it.shape !== "lace" ? "#ffd34d" : it.c[2];
     });
-    const key = `ch11|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
+    const key = `ch12|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
     const ck = key + "|" + (cut || "");
     if (URI[ck]) return URI[ck];
     const uri = build();
@@ -429,12 +431,12 @@
     if (!cut) return A.fromRows(key, full, pal).uri;
     // 한 조각만 남겨요 (머리, 머리 없는 몸, 몸통, 팔, 다리). 그림판 크기는 그대로라 제자리에 포개면 다시 한 사람이 돼요.
     const by = TOP + (pose === "crouch" ? 2 : frame ? 1 : 0) + 12;
-    const head = (x, y) => y < by || ((x <= 2 || x >= 15) && y < by + 3);
+    const head = (x, y) => y < by || ((x <= 3 || x >= 16) && y < by + 3);
     const IN = {
       head, body: (x, y) => !head(x, y),
-      torso: (x, y) => !head(x, y) && x >= 5 && x <= 12 && y < by + 4,
-      armL: (x, y) => !head(x, y) && x <= 4 && y < by + 4, armR: (x, y) => !head(x, y) && x >= 13 && y < by + 4,
-      legL: (x, y) => y >= by + 4 && x <= 8, legR: (x, y) => y >= by + 4 && x >= 9,
+      torso: (x, y) => !head(x, y) && x >= 6 && x <= 13 && y < by + 4,
+      armL: (x, y) => !head(x, y) && x <= 5 && y < by + 4, armR: (x, y) => !head(x, y) && x >= 14 && y < by + 4,
+      legL: (x, y) => y >= by + 4 && x <= 9, legR: (x, y) => y >= by + 4 && x >= 10,
     }[cut];
     const g = full.map((r, y) => r.split("").map((c, x) => (c !== "o" && IN(x, y) ? c : ".")));
     return A.fromRows(key + "|" + cut, rows(outline(g)), pal).uri;
@@ -812,5 +814,5 @@
     const P = PJ[wearing(who)];
     return !P ? 0 : P.ear === "long" ? 3 : P.ear === "deer" ? 2 : 0;
   }
-  window.FSprites = { earRise, charCut, TOP, petImg, PAJAMAS, PJ, CH_W, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
+  window.FSprites = { earRise, charCut, TOP, petImg, PAJAMAS, PJ, CH_W: CH_FULL, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
 })();

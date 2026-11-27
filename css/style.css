@@ -199,7 +199,7 @@ input, select, textarea, .up-item, .dday, .month-label span {
   position: relative; display: block; border: 0; background: none; padding: 0; line-height: 0;
 }
 .bob span { display: block; }
-.bob .ch { display: block; width: 54px; height: auto; margin-top: -9px; image-rendering: pixelated; }
+.bob .ch { display: block; width: 60px; max-width: none; height: auto; margin: -9px -3px 0; image-rendering: pixelated; }
 .bob .ch.flip { transform: scaleX(-1); }
 .bob.b2 { animation-delay: -.8s; }
 .bob.jump .ch-wrap { animation: jump .6s ease-out; }
@@ -1105,7 +1105,7 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 .hello .hint { margin-bottom: 12px; }
 .hello-pick { display: flex; gap: 12px; justify-content: center; padding: 2px 2px 6px; }
 .hello-who { flex: 1 1 0; max-width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 6px 10px; border: 0; background: var(--panel); color: var(--ink); font: inherit; box-shadow: 0 -2px 0 0 var(--ink), 0 2px 0 0 var(--ink), -2px 0 0 0 var(--ink), 2px 0 0 0 var(--ink); }
-.hello-who img { width: 72px; height: auto; image-rendering: pixelated; }
+.hello-who img { width: 80px; height: auto; image-rendering: pixelated; }
 .hello-who b { font-size: 17px; }
 .hello-who:active { transform: translateY(2px); }
 .hello .field-row { margin: 4px 0 10px; }
@@ -1125,7 +1125,7 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 .tale-body { display: flex; gap: 10px; align-items: flex-start; min-height: 66px; }
 .tale-face { flex: 0 0 auto; width: 60px; height: 60px; background: #f3dcae; overflow: hidden; box-shadow: 0 0 0 2px #3b2a20; display: flex; align-items: flex-start; justify-content: center; }
 .tale-face[hidden] { display: none; }
-.tale-face img { width: 72px; height: auto; margin-top: -16px; image-rendering: pixelated; }
+.tale-face img { width: 80px; max-width: none; flex: 0 0 auto; height: auto; margin-top: -16px; image-rendering: pixelated; }
 .tale-text { flex: 1; min-width: 0; }
 .tale-name { display: block; font-size: 13px; color: #a0622e; margin-bottom: 2px; }
 .tale-text p { font-size: 15.5px; line-height: 1.5; word-break: keep-all; }
@@ -1134,7 +1134,7 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 @keyframes taleBob { 50% { transform: translateY(3px); } }
 .tale-gift { display: flex; justify-content: center; gap: 10px; margin: 8px 0 4px; }
 .tale-gift[hidden] { display: none; }
-.tale-gift > img { width: 72px; height: auto; image-rendering: pixelated; animation: taleHop .9s ease-in-out infinite; }
+.tale-gift > img { width: 80px; height: auto; image-rendering: pixelated; animation: taleHop .9s ease-in-out infinite; }
 .tale-gift > img + img { animation-delay: -.45s; }
 @keyframes taleHop { 50% { transform: translateY(-5px); } }
 .tale-btns { display: flex; gap: 8px; justify-content: flex-end; }
@@ -1375,7 +1375,7 @@ html.lock .view[data-view="home"].is-active { height: calc(100% - var(--nav-h));
 @keyframes ulWobble { 0%, 100% { transform: rotate(-4deg) scale(1); } 50% { transform: rotate(4deg) scale(1.04); } }
 @keyframes ulPop { 0% { transform: scale(.4); filter: brightness(3); } 60% { filter: brightness(1.4); } 100% { transform: none; filter: none; } }
 .ul-img { height: auto; image-rendering: pixelated; }
-.ul-img.pet { width: 144px; } .ul-img.pj { width: 126px; }
+.ul-img.pet { width: 144px; } .ul-img.pj { width: 140px; }
 .ul-art .sc-banner.mini.big { zoom: 1.4; }
 .ul-name { min-height: 30px; font-weight: normal; font-size: 22px; line-height: 30px; color: #fff3c4; text-shadow: 2px 2px 0 #3b2a20; text-align: center; }
 .ul-hint { min-height: 18px; font-style: normal; font-size: 13px; color: #c8c0e0; animation: taleBob .8s steps(2) infinite; }
