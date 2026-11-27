@@ -75,6 +75,9 @@
       const now = Date.now();
       if (k === "tap" && now - sentAt < 200) return; // 연타는 조금 솎아서
       sentAt = now;
+      // 줄이 이어져 있으면 그걸로 바로 (훨씬 빨라요). 아니면 기록에 잠깐 적어서 전해요.
+      if (Store.cast && Store.cast({ k, d, w, t: now })) return;
+      if (k === "pdrag") return; // 잡고 흔드는 건 줄로만 보내요
       const cur = Store.pair("ev", w);
       const list = (cur && Array.isArray(cur.list) ? cur.list.filter((x) => now - x.t < 5000) : []).slice(-5);
       list.push({ i: now + Math.random(), k, d, t: now });
@@ -95,6 +98,7 @@
       });
     }
     if (window.Store) { Store.onChange(recv); setTimeout(recv, 0); }
+    if (window.Store && Store.onCast) Store.onCast((m) => { if (!m || !m.k || Math.abs(Date.now() - (m.t || 0)) > 15000) return; const f = fns[m.k]; if (f) { try { f(m.d || {}, m); } catch (e) { console.error(e); } } });
     return { send, on: (k, f) => { fns[k] = f; } };
   })();
   window.Live = Live;

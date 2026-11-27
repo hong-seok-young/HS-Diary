@@ -8,7 +8,7 @@
   "use strict";
   if (!window.Play) return;
   const K = Play.kit;
-  const { E, rand, pick, clamp, wait, tween, all, until, fork, pow, puff, stars, dust, feathers, quake, orbit, stick, Prop, A, hold, climbOut, landX, geo } = K;
+  const { E, rand, pick, rnd, dec, dpick, clamp, wait, tween, all, until, fork, pow, puff, stars, dust, feathers, quake, orbit, stick, Prop, A, hold, climbOut, landX, geo } = K;
   const PL = () => window.Pals;
   const dirTo = (a, b) => ((typeof b === "number" ? b : b.x) >= a.x ? 1 : -1);
   const impact = (x, b, word, big) => { pow(x, b, word, { big: big !== false }); stars(x, b - 6, big === false ? 3 : 6); quake(big === false ? 1.5 : 3); };
@@ -87,7 +87,7 @@
     // 머리를 감싸고 도망, 새는 끝까지 쫓아와요
     p.pose = "clutch";
     let run = true;
-    fork((function* () { let t = 0; while (run) { t += yield; e.x = p.x; e.flip = p.flip; e.frame = Math.floor(t * 12) % 2 ? "fly1" : "fly2"; e.b = p.b + 84 - Math.abs(Math.sin(t * 9)) * 16; if (Math.abs(Math.sin(t * 9)) > 0.97 && Math.random() < 0.3) pow(p.x, p.b + 82, "콕", { ms: 240 }); } })());
+    fork((function* () { let t = 0; while (run) { t += yield; e.x = p.x; e.flip = p.flip; e.frame = Math.floor(t * 12) % 2 ? "fly1" : "fly2"; e.b = p.b + 84 - Math.abs(Math.sin(t * 9)) * 16; if (Math.abs(Math.sin(t * 9)) > 0.97 && rnd() < 0.3) pow(p.x, p.b + 82, "콕", { ms: 240 }); } })());
     for (let i = 0; i < 3; i++) yield* p.walk(i % 2 ? g.W - 30 : g.pond.x1 + 30, 135, { pose: "clutch" });
     run = false;
     A.say(e, pick(["짹짹!", "삐약삐약"])); e.face = "happy";
@@ -112,7 +112,7 @@
     yield* wait(0.4, (k) => { p.y = -26 - Math.sin(k * Math.PI) * 6; });
     // 물속을 저벅저벅 다가가서
     p.look(e);
-    yield* wait(0.5, (k, dt, t) => { p.x += (e.x + 16 - p.x) * Math.min(1, dt * 4); p.y = -26 + Math.sin(t * 9) * 1.5; if (Math.random() < dt * 5) P.ring(p.x); });
+    yield* wait(0.5, (k, dt, t) => { p.x += (e.x + 16 - p.x) * Math.min(1, dt * 4); p.y = -26 + Math.sin(t * 9) * 1.5; if (rnd() < dt * 5) P.ring(p.x); });
     // 영차… 번쩍!
     p.pose = "crouch"; p.y = -30;
     yield* wait(0.3);
@@ -120,10 +120,10 @@
     p.front(); p.pose = "hold"; p.y = -26;
     e.swim = false; e.zz = 12; e.b = 12; e.x = e.x;
     const ex = e.x;
-    yield* wait(0.3, (k) => { const q = E.back(k); e.x = ex + (p.x - ex) * q; e.b = 12 + (p.b + 58 - 12) * q; if (Math.random() < 0.5) P.drops(e.x + rand(-12, 12), e.b, 1, 6, "#bfe6ff"); });
+    yield* wait(0.3, (k) => { const q = E.back(k); e.x = ex + (p.x - ex) * q; e.b = 12 + (p.b + 58 - 12) * q; if (rnd() < 0.5) P.drops(e.x + rand(-12, 12), e.b, 1, 6, "#bfe6ff"); });
     A.say(e, pick(["뿌우?!", "어어 내려놔!"]));
     // 머리 위에서 버둥버둥
-    yield* wait(0.7, (k, dt, t) => { e.frame = Math.floor(t * 10) % 2 ? "walk1" : "walk2"; e.tx = Math.sin(t * 30) * 1.5; p.sy = 1 - Math.abs(Math.sin(t * 12)) * 0.03; if (Math.random() < dt * 8) P.drops(e.x + rand(-12, 12), e.b, 1, 6, "#bfe6ff"); });
+    yield* wait(0.7, (k, dt, t) => { e.frame = Math.floor(t * 10) % 2 ? "walk1" : "walk2"; e.tx = Math.sin(t * 30) * 1.5; p.sy = 1 - Math.abs(Math.sin(t * 12)) * 0.03; if (rnd() < dt * 8) P.drops(e.x + rand(-12, 12), e.b, 1, 6, "#bfe6ff"); });
     e.tx = 0; p.sy = 1;
     // 뒤로 젖혔다가
     p.look(g.W);
@@ -147,7 +147,7 @@
     yield* A.move(e, p.x - 22 * d, 220);
     impact(p.x - 8 * d, p.b + 24, "쾅!");
     yield* all(pFly(p, 300 * d, 460), (function* () { e.face = "happy"; yield* A.hop(e, 8, 0.22); A.say(e, "뿌우~"); yield* wait(0.6); })());
-  }, { n: 2, w: 4 });
+  }, { n: 2, w: 4, chk: (v) => !!v.e.swim });
 
   // 공처럼 뻥 차기 → 씩씩대며 돌아와 들이받아요
   reg("pa:kick", "동물 뻥 차기", (c, o) => { const p = who(c, o); return p && c.ground.length ? { p, e: near(c.ground, p) } : null; }, function* (v) {
@@ -543,13 +543,13 @@
     const px = p.x;
     yield* wait(1.1, (k, dt, t) => { p.x = px + 22 * E.out(k); p.rot = 12 - Math.sin(t * 30) * 2; p.face = Math.floor(t * 8) % 2 ? "hit" : "ko"; });
     p.rot = 0; p.pose = ""; p.front(); p.face = "blink";
-    fork(wait(0.8, (k, dt) => { if (Math.random() < dt * 24) P.drops(p.x + rand(-14, 14), p.b + rand(20, 50), 1, 14, "#bfe6ff"); }));
+    fork(wait(0.8, (k, dt) => { if (rnd() < dt * 24) P.drops(p.x + rand(-14, 14), p.b + rand(20, 50), 1, 14, "#bfe6ff"); }));
     yield* p.jitter(0.8, 2, 26);
     e.face = "happy"; A.say(e, "뿌우~");
     p.face = "hit"; p.say("에취!", 700);
     yield* p.hop(5, 0.2);
     yield* p.angry(0.9);
-  }, { n: 2 });
+  }, { n: 2, chk: (v) => !!v.e.swim });
 
   // 들이받기 기습
   reg("ap:ram", "들이받기", (c, o) => { const p = who(c, o); return p && c.ground.length ? { p, e: pick(c.ground) } : null; }, function* (v) {
@@ -665,12 +665,12 @@
     yield* wait(2.0, (k, dt, t) => {
       cl.sx = 1 + Math.sin(t * 23) * 0.1; cl.sy = 1 + Math.cos(t * 19) * 0.1; cl.rot = Math.sin(t * 11) * 6; cl.x = m + Math.sin(t * 3.4) * 12;
       acc += dt;
-      if (acc > 0.15) { acc = 0; pow(cl.x + rand(-28, 28), 14 + rand(8, 40), pick(["퍽!", "냐악!", "메에!", "콱!", "팍!", "하악!"]), { ms: 380, big: Math.random() < 0.25 }); stars(cl.x + rand(-20, 20), 20 + rand(0, 20), 1); puff(cl.x, 16, 1, { c: Math.random() < 0.5 ? color(a) : color(b), s: 4, sp: 40, up: 30, fall: 12, ms: 800 }); }
+      if (acc > 0.15) { acc = 0; pow(cl.x + rand(-28, 28), 14 + rand(8, 40), pick(["퍽!", "냐악!", "메에!", "콱!", "팍!", "하악!"]), { ms: 380, big: rnd() < 0.25 }); stars(cl.x + rand(-20, 20), 20 + rand(0, 20), 1); puff(cl.x, 16, 1, { c: rnd() < 0.5 ? color(a) : color(b), s: 4, sp: 40, up: 30, fall: 12, ms: 800 }); }
     });
     yield* tween(cl, { sx: 1.5, sy: 1.5 }, 0.12, E.out);
     cl.remove(); puff(m, 20, 10, { c: "#efe6d8", s: 4, sp: 44, up: 26, fall: 6 });
     a.scale = 1; b.scale = 1; a.x = m - 22 * d; b.x = m + 22 * d;
-    const lose = pick([a, b]), win = lose === a ? b : a;
+    const lose = dpick("lose", [a, b]), win = lose === a ? b : a;
     yield* all(aKO(lose, 1.4), (function* () { win.face = "happy"; yield* A.hop(win, 10, 0.24); A.say(win, pick(["메에~", "냥."])); yield* wait(0.6); })());
   }, { n: 2, w: 3 });
   // 땅 친구가 낮게 나는 새를 낚아채요
@@ -757,13 +757,13 @@
     yield* wait(0.34);
     b.face = "sweat";
     const x0 = b.x;
-    yield* wait(0.9, (k, dt) => { b.x = clamp(x0 + 50 * E.out(k), 20, g.W - 20); b.rot = 10; b.tx = Math.sin(k * 80) * 1; if (Math.random() < dt * 20) dust(b.x - 8, 6, 1); });
+    yield* wait(0.9, (k, dt) => { b.x = clamp(x0 + 50 * E.out(k), 20, g.W - 20); b.rot = 10; b.tx = Math.sin(k * 80) * 1; if (rnd() < dt * 20) dust(b.x - 8, 6, 1); });
     b.rot = 0; b.tx = 0;
     yield* A.jitter(b, 0.8, 2, 26);
     fork(wait(0.1, () => P.drops(b.x, b.b + 14, 8, 20, "#bfe6ff")));
     A.say(b, pick(["메에… 젖었어", "냐…"])); a.face = "happy"; A.say(a, "뿌우~");
     yield* wait(0.8);
-  }, { n: 1 });
+  }, { n: 1, chk: (v) => !!v.a.swim });
   // 꼬리 물고 늘어지기
   reg("aa:tail", "꼬리 잡아당기기", pair, function* (v) {
     const a = hold(v.a), b = hold(v.b), g = geo();
@@ -775,7 +775,7 @@
     b.face = "sweat"; A.say(b, pick(["메?!", "냐?!"]));
     // b 는 달아나려 하고 a 는 버텨요: 몸이 쭈욱 늘어나요
     const bx = b.x, ax = a.x;
-    yield* wait(1.0, (k, dt, t) => { const q = E.out(k); b.sx = 1 + 0.5 * q; b.x = bx + 12 * d * q; a.x = ax + 3 * d * q + Math.sin(t * 40) * 0.6; b.frame = Math.floor(t * 12) % 2 ? "walk1" : "walk2"; if (Math.random() < dt * 14) dust(b.x + 8 * d, 6, 1); });
+    yield* wait(1.0, (k, dt, t) => { const q = E.out(k); b.sx = 1 + 0.5 * q; b.x = bx + 12 * d * q; a.x = ax + 3 * d * q + Math.sin(t * 40) * 0.6; b.frame = Math.floor(t * 12) % 2 ? "walk1" : "walk2"; if (rnd() < dt * 14) dust(b.x + 8 * d, 6, 1); });
     // 탁! 놓치면 앞으로 튕겨 나가고 뒤로 벌러덩
     impact((a.x + b.x) / 2, 24, "탁!", false);
     b.sx = 1;

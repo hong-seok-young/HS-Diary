@@ -12,8 +12,26 @@
   const S = window.FSprites, GA = window.GArt;
   if (!S || !GA) return;
   const PL = () => window.Pals, CA = () => window.CharAnim;
-  const rand = (a, b) => a + Math.random() * (b - a);
-  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  // 저절로 시작한 장난은 씨앗 하나로 갈래(누가 이기나, 어떻게 되갚나)를 정해요. 그래야 두 폰에서 똑같이 흘러가요.
+  // 프레임마다 도는 자잘한 효과(먼지, 떨림)는 폰마다 달라도 돼서 그냥 주사위를 굴려요.
+  let frameCtx = 0;
+  function h01(seed, tag, n) {
+    let h = (seed ^ 0x9e3779b9) >>> 0;
+    const t = tag + ":" + n;
+    for (let i = 0; i < t.length; i++) { h = Math.imul(h ^ t.charCodeAt(i), 2654435761) >>> 0; h ^= h >>> 15; }
+    h = Math.imul(h ^ (h >>> 13), 0x5bd1e995) >>> 0; h ^= h >>> 15;
+    return (h >>> 0) / 4294967296;
+  }
+  // 이름표가 붙은 갈림길: 같은 씨앗이면 어느 폰에서나 같은 값
+  function dec(tag) {
+    if (!cur || cur.seed == null) return Math.random();
+    cur.cnt[tag] = (cur.cnt[tag] || 0) + 1;
+    return h01(cur.seed, tag, cur.cnt[tag]);
+  }
+  const dpick = (tag, a) => a[Math.floor(dec(tag) * a.length)];
+  function rnd() { return cur && cur.seed != null && !frameCtx ? dec("r") : Math.random(); }
+  const rand = (a, b) => a + rnd() * (b - a);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   // 움직임의 빠르기 곡선
   const E = {
@@ -32,7 +50,7 @@
   const hist = [];
 
   // ---------- 순서 조각 (제너레이터) ----------
-  function* wait(sec, fn) { let t = 0; while (t < sec) { const dt = yield; t += dt; if (fn) fn(Math.min(1, t / sec), dt, t); } }
+  function* wait(sec, fn) { let t = 0; while (t < sec) { const dt = yield; t += dt; if (fn) { frameCtx++; try { fn(Math.min(1, t / sec), dt, t); } finally { frameCtx--; } } } }
   function* tween(o, to, sec, ease) { const from = {}; Object.keys(to).forEach((k) => { from[k] = o[k] || 0; }); const f = ease || E.io; yield* wait(sec, (k) => { const q = f(k); Object.keys(to).forEach((key) => { o[key] = from[key] + (to[key] - from[key]) * q; }); }); }
   function* all() { let live = Array.prototype.slice.call(arguments).filter(Boolean); live = live.filter((g) => !g.next(0).done); while (live.length) { const dt = yield; live = live.filter((g) => !g.next(dt).done); } }
   function* until(fn, max) { let t = 0; while (!fn() && t < (max || 8)) t += yield; }
@@ -590,7 +608,7 @@
     yield* head.go(G + side * 30, 120);
     head.rot = 0; head.face = "";
     yield* wait(0.12);
-    const backwards = Math.random() < 0.4;
+    const backwards = dec("backw") < 0.4;
     if (backwards) head.dir = "up";
     yield* head.jump(tgt(head).x, tgt(head).b, 46, 0.42);
     [torso].concat(legs, arms).forEach((k) => { k.sy = 0.86; fork(tween(k, { sy: 1 }, 0.3, E.el)); });
@@ -657,7 +675,7 @@
     p.pose = "act"; p.front();
     yield* wait(0.3);
     // 더듬더듬: 처음엔 엉뚱한 쪽으로 몇 걸음
-    if (Math.random() < 0.5) { yield* p.walk(p.x - Math.sign(head.x - p.x || 1) * 16, 26, { pose: "act" }); yield* wait(0.25); pow(p.x, p.b + 50, "?", { ms: 400 }); }
+    if (dec("wrong") < 0.5) { yield* p.walk(p.x - Math.sign(head.x - p.x || 1) * 16, 26, { pose: "act" }); yield* wait(0.25); pow(p.x, p.b + 50, "?", { ms: 400 }); }
     const side = p.x < head.x ? -1 : 1;
     yield* p.walk(head.x + side * 24, 44, { pose: "act" });
     p.look(head.x); p.pose = "crouch";
@@ -741,7 +759,7 @@
   // ---------- 장난 돌리기 ----------
   function startRun(gen, o) {
     o = o || {};
-    const run = { gen: null, forks: [], props: [], people: [], pets: [], auto: !!o.auto, key: o.key || "", t: 0 };
+    const run = { gen: null, forks: [], props: [], people: [], pets: [], auto: !!o.auto, key: o.key || "", t: 0, seed: o.seed == null ? null : o.seed, cnt: {} };
     runs.push(run);
     const prev = cur;
     cur = run;
@@ -861,6 +879,7 @@
     collide();
     Object.keys(people).forEach((w) => people[w].apply());
     runs.forEach((r) => r.props.forEach((k) => { if (!k.dead) k.apply(); }));
+    tryPending();
     for (let i = gfx.length - 1; i >= 0; i--) if (!gfx[i].update(dt)) { if (gfx[i].end) gfx[i].end(); gfx.splice(i, 1); }
     // 가끔 저절로 장난이 시작돼요
     if (free && !paused && !runs.length && clock > nextAt && clock - busyAt > 12 && CA() && CA().free() && !document.body.classList.contains("sheet-open")) {
@@ -892,23 +911,67 @@
     const c = cast();
     const args = d.pick(c, o || {});
     if (!args) return false;
-    hist.push(id); if (hist.length > 14) hist.shift();
-    startRun(function* () { yield* d.run(args, c); const ps = cur.people.slice(); yield* all.apply(null, ps.map((p) => goHome(p))); }, { auto: true, key: id });
+    begin(d, args, o && o.seed != null ? o.seed : Math.floor(Math.random() * 2147483647));
     return true;
+  }
+  // 누가 나오는지 적어 보내기 / 받아서 다시 찾기
+  function pack(args) {
+    const o = {};
+    Object.keys(args).forEach((k) => { const v = args[k]; if (v instanceof Person) o[k] = "P:" + v.who; else if (v && v.el && v.id && v.kind) o[k] = "E:" + v.id; else if (Array.isArray(v)) o[k] = v.map((e) => "E:" + e.id); });
+    return o;
+  }
+  function unpack(o) {
+    const args = { o: {} };
+    const ent = (t) => PL().ents.find((e) => "E:" + e.id === t && !e.held && !e.thrown && !e.script && e.kind !== "egg") || null;
+    for (const k of Object.keys(o || {})) {
+      const v = o[k];
+      if (Array.isArray(v)) { const l = v.map(ent); if (l.some((e) => !e)) return null; args[k] = l; }
+      else if (/^P:/.test(v)) { const p = people[v.slice(2)]; if (!p || p.on) return null; args[k] = p; }
+      else if (/^E:/.test(v)) { const e = ent(v); if (!e) return null; args[k] = e; }
+    }
+    return args;
+  }
+  function begin(d, args, seed) {
+    hist.push(d.id); if (hist.length > Math.min(14, Math.max(2, DEFS.length - 3))) hist.shift();
+    startRun(function* () { yield* d.run(args, cast()); const ps = cur.people.slice(); yield* all.apply(null, ps.map((p) => goHome(p))); }, { auto: true, key: d.id, seed });
   }
   function auto() {
     const c = cast();
     const pool = [];
     DEFS.forEach((d) => { if (hist.indexOf(d.id) >= 0) return; if (c.env.night && !d.night) return; for (let i = 0; i < (d.w || 2); i++) pool.push(d); });
     for (let tries = 0; tries < 8 && pool.length; tries++) {
-      const d = pick(pool), args = d.pick(c, {});
+      const d = pool[Math.floor(Math.random() * pool.length)], args = d.pick(c, {});
       if (!args) continue;
-      hist.push(d.id); if (hist.length > Math.min(14, Math.max(2, DEFS.length - 3))) hist.shift();
-      startRun(function* () { yield* d.run(args, c); const ps = cur.people.slice(); yield* all.apply(null, ps.map((p) => goHome(p))); }, { auto: true, key: d.id });
+      const seed = Math.floor(Math.random() * 2147483647);
+      if (window.Live) Live.send("prank", { id: d.id, seed, cast: pack(args) });
+      begin(d, args, seed);
       return;
     }
     hist.length = 0;
   }
+  // 상대 폰에서 장난이 시작됐어요: 같은 장난을 같은 씨앗으로 따라 해요
+  let pending = null;
+  const myWho = () => (window.Store && Store.me && Store.me()) || "";
+  function remotePrank(m, meta) {
+    if (!ensure() || !BY[m.id] || !sceneFree()) return;
+    if (runs.some((r) => !r.auto && r.key !== "home")) return; // 손으로 던지고 노는 중이면 그게 먼저예요
+    const mine = runs.find((r) => r.auto);
+    // 거의 동시에 서로 다른 장난을 시작했다면 석영 폰 것을 따라요
+    if (mine && mine.t < 2.5 && myWho() === "him" && !(meta && meta.w === "him")) return;
+    runs.slice().forEach((r) => { if (r.auto) soften(r); });
+    pending = { m, until: clock + 5 };
+  }
+  function tryPending() {
+    if (!pending) return;
+    if (clock > pending.until) { pending = null; return; }
+    if (runs.length) return; // 사람들이 제자리로 돌아올 때까지 잠깐 기다려요
+    const m = pending.m, d = BY[m.id];
+    pending = null;
+    const args = unpack(m.cast);
+    if (!args || (d.chk && !d.chk(args))) return;
+    begin(d, args, m.seed);
+  }
+  if (window.Live) Live.on("prank", remotePrank);
 
   // ---------- 사람을 손으로 끌어서 던지기 ----------
   function bindDrag(p) {
@@ -945,31 +1008,41 @@
     el.addEventListener("pointerup", up);
     el.addEventListener("pointercancel", up);
   }
+  const rheld = {}; // 상대 폰에서 잡고 있는 사람
   function grab(p, g) {
     if (window.Deco && Deco.celebrating && Deco.celebrating()) return false;
     if (window.Notes && Notes.busy && Notes.busy()) return false;
     runs.slice().forEach((r) => { if (r.auto || r.key === "home") soften(r, p); });
     if (p.on && p.owner) return false; // 이미 날아가는 중이거나 조립 중이면 건드리지 않아요
+    g.pop = g.headZone && Math.random() < 0.35; // 머리 쪽을 잡으면 가끔 머리만 쏙
+    if (window.Live) Live.send("pgrab", { who: p.who, pop: g.pop });
+    held(p, g, false);
+    return true;
+  }
+  // 잡혀서 대롱대롱 → 놓으면 날아가기. remote 면 상대 폰이 보내 주는 손가락 자리를 따라가요.
+  function held(p, g, remote) {
     const other = people[p.who === "him" ? "her" : "him"];
     if (window.HSD && HSD.bubble && other && !other.on) HSD.bubble(pick(["어어, 어디 가!", "내려놔~", "살살 해", "ㅋㅋㅋ 들렸다"]), other.who);
-    const pop = g.headZone && Math.random() < 0.35; // 머리 쪽을 잡으면 가끔 머리만 쏙
     startRun(function* () {
       p.take();
       p.setPivot("feet").norm();
       if (Math.abs(p.rot) > 1) yield* tween(p, { rot: 0 }, 0.08, E.out);
       p.rot = 0; p.sx = 1; p.sy = 1; p.clip = 0;
       p.front(); p.face = "hit"; p.z = 20; p.setPivot("head");
+      if (g.tx == null) { g.tx = p.x; g.tb = p.b + 46; }
       // 손가락을 향해 스르륵 딸려 올라가요 (툭 튀지 않게)
-      let pull = 0;
+      let pull = 0, sent = 0;
       p.say(pick(["으아 내려 줘!", "어어어?", "높아 높아!", "살살…!"]), 1200);
       let th = 0, om = 0, t = 0, head = null;
       while (!g.done) {
         const dt = yield;
         t += dt;
+        if (remote && clock - g.last > 2.5) { g.done = { vx: 0, vy: 0 }; break; } // 소식이 끊기면 그냥 내려놔요
+        if (!remote && t - sent > 0.08 && window.Live) { sent = t; Live.send("pdrag", { who: p.who, x: g.tx / W, b: g.tb / H, vx: (g.vx || 0) / W }); }
         if (!head) {
           // 머리를 잡혀 대롱대롱: 몸이 추처럼 흔들리고 다리를 버둥거려요
           pull = Math.min(1, pull + dt * 7);
-          const k = Math.min(1, dt * (8 + 40 * pull));
+          const k = Math.min(1, dt * (remote ? 14 : 8 + 40 * pull));
           const tx = p.x + (g.tx - p.x) * k, ty = p.y + (Math.max(-4, g.tb - 46 - GY) - p.y) * k;
           const ax = (tx - p.x) / Math.max(dt, 0.008);
           p.x = tx; p.y = ty;
@@ -978,7 +1051,7 @@
           p.frame = Math.floor(t * 9) % 2 ? 1 : 2;
           p.pose = Math.floor(t * 5) % 2 ? "raise" : "";
           if (t > 1.6) p.face = Math.floor(t * 6) % 2 ? "cry1" : "cry2";
-          if (pop && t > 0.16 && p.y > 14) {
+          if (g.pop && t > 0.16 && p.y > 14) {
             // 쭈욱… 뽁! 머리만 빠졌어요
             head = headOff(p);
             pow(p.x, p.b + 60, "뽁!", { big: true }); stars(p.x, p.b + 50, 5);
@@ -989,20 +1062,39 @@
             head.say(pick(["어? 몸이 없어!", "내 몸 어디 갔어!", "머리만 왔네…"]), 1300);
           }
         } else {
-          { const k = Math.min(1, dt * 40); head.x += (g.tx - head.x) * k; head.b += (clamp(g.tb, head.rest(), H - 20) - head.b) * k; } head.z = 20;
-          head.rot = clamp(g.vx * 0.03, -30, 30);
+          { const k = Math.min(1, dt * (remote ? 16 : 40)); head.x += (g.tx - head.x) * k; head.b += (clamp(g.tb, head.rest(), H - 20) - head.b) * k; } head.z = 20;
+          head.rot = clamp((g.vx || 0) * 0.03, -30, 30);
           head.face = Math.floor(t * 7) % 2 ? "cry1" : "hit";
         }
       }
+      if (rheld[p.who] === g) delete rheld[p.who];
       const v = g.done;
-      const brk = Math.random() < 0.6;
-      if (window.Live) Live.send("pthrow", { who: p.who, x: (head ? head.x : p.x) / W, b: (head ? head.b : p.y) / H, vx: v.vx / W, vy: v.vy / H, head: !!head, brk });
+      const brk = remote ? !!g.brk : Math.random() < 0.6;
+      if (!remote && window.Live) Live.send("pthrow", { who: p.who, x: (head ? head.x : p.x) / W, b: (head ? head.b : p.y) / H, vx: v.vx / W, vy: v.vy / H, head: !!head, brk });
       if (Math.hypot(v.vx, v.vy) > 260) (head || p).say(pick(["으아아아!", "날아간다~", "꺄아아", "살려 줘!"]), 1000);
       if (head) yield* thrownHead(p, head, v.vx, v.vy);
       else yield* thrownBody(p, v.vx, v.vy, brk);
     }, { key: "held" });
-    return true;
   }
+  // 상대 폰에서 잡았어요 / 흔들고 있어요
+  function remoteGrab(d) {
+    if (!ensure()) return;
+    const p = people[d.who === "her" ? "her" : "him"];
+    if (!p) return;
+    if (window.Deco && Deco.celebrating && Deco.celebrating()) return;
+    runs.slice().forEach((r) => { if (r.auto || r.key === "home") soften(r, p); });
+    if (p.on && p.owner) return;
+    const g = { pop: !!d.pop, last: clock, vx: 0 };
+    rheld[p.who] = g;
+    held(p, g, true);
+    if (PL().kick) PL().kick();
+  }
+  function remoteDrag(d) {
+    const g = rheld[d.who === "her" ? "her" : "him"];
+    if (!g) return;
+    g.tx = clamp(d.x * W, 14, W - 14); g.tb = clamp(d.b * H, 0, H - 8); g.vx = (d.vx || 0) * W; g.last = clock;
+  }
+  if (window.Live) { Live.on("pgrab", remoteGrab); Live.on("pdrag", remoteDrag); }
   function* thrownBody(p, vx, vy, brk) {
     const res = yield* p.launch(vx, vy, { brk });
     if (res === "land") { yield* p.dizzy(1.1); yield* p.getUp(); yield* p.shakeHead(4); p.say(pick(["어질어질…", "또 던져 봐!", "누가 던졌어!", "세상이 돈다"]), 1300); yield* wait(0.5); }
@@ -1021,6 +1113,8 @@
     if (!ensure()) return;
     const p = people[d.who === "her" ? "her" : "him"];
     if (!p) return;
+    const hg = rheld[p.who];
+    if (hg && !hg.done) { hg.brk = !!d.brk; if (!!d.head !== !!hg.pop) hg.pop = false; hg.done = { vx: d.vx * W, vy: d.vy * H }; return; }
     runs.slice().forEach((r) => { if (r.auto || r.key === "home") soften(r, p); });
     if (p.on && p.owner) return;
     startRun(function* () {
@@ -1043,8 +1137,8 @@
 
   window.Play = {
     tick, abort: () => abort((r) => r.auto), soft: () => runs.slice().forEach((r) => { if (r.auto) soften(r); }), play, def, ids: () => DEFS.map((d) => d.id), count: () => DEFS.reduce((n, d) => n + (d.n || 1), 0),
-    remote: remoteThrow, clock: () => clock, pause: (v) => { paused = !!v; }, dragged: () => Date.now() - dragAt < 400, busy: () => runs.length > 0, people, runs,
+    remote: remoteThrow, testAuto: () => auto(), clock: () => clock, pause: (v) => { paused = !!v; }, dragged: () => Date.now() - dragAt < 400, busy: () => runs.length > 0, people, runs,
     // js/plays.js 가 쓰는 도구들
-    kit: { E, rand, pick, clamp, wait, tween, all, until, fork, pow, puff, stars, dust, sweat, feathers, quake, orbit, bubble, stick, Prop, Part, A, hold, headOff, headOn, panic, reunite, burst, assemble, shatter, splashIn, climbOut, inPond, landX, headPos, geo: () => ({ W, H, pond, GY }), spr },
+    kit: { E, rand, pick, rnd, dec, dpick, clamp, wait, tween, all, until, fork, pow, puff, stars, dust, sweat, feathers, quake, orbit, bubble, stick, Prop, Part, A, hold, headOff, headOn, panic, reunite, burst, assemble, shatter, splashIn, climbOut, inPond, landX, headPos, geo: () => ({ W, H, pond, GY }), spr },
   };
 })();

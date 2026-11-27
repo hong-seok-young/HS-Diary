@@ -9,7 +9,7 @@
   "use strict";
   if (!window.Play) return;
   const K = Play.kit;
-  const { E, rand, pick, clamp, wait, tween, all, until, fork, pow, puff, stars, dust, quake, orbit, stick, Prop, A, headOff, headOn, panic, splashIn, landX, geo } = K;
+  const { E, rand, pick, rnd, dec, dpick, clamp, wait, tween, all, until, fork, pow, puff, stars, dust, quake, orbit, stick, Prop, A, headOff, headOn, panic, splashIn, landX, geo } = K;
   const PL = () => window.Pals;
   const dirTo = (a, b) => ((typeof b === "number" ? b : b.x) >= a.x ? 1 : -1);
   const two = (c, o) => {
@@ -67,7 +67,7 @@
     yield* wait(sec, (k, dt, t) => {
       cl.sx = 1 + Math.sin(t * 23) * 0.09; cl.sy = 1 + Math.cos(t * 19) * 0.09; cl.rot = Math.sin(t * 11) * 5; cl.x = mx + Math.sin(t * 3.1) * 14;
       acc += dt; acc2 += dt;
-      if (acc > 0.16) { acc = 0; pow(cl.x + rand(-34, 34), 20 + rand(10, 50), pick(words), { ms: 420, big: Math.random() < 0.3 }); }
+      if (acc > 0.16) { acc = 0; pow(cl.x + rand(-34, 34), 20 + rand(10, 50), pick(words), { ms: 420, big: rnd() < 0.3 }); }
       if (acc2 > 0.22) {
         acc2 = 0;
         const ang = rand(0, Math.PI), r = 34;
@@ -80,7 +80,7 @@
     // 펑, 구름이 걷히면
     yield* tween(cl, { sx: 1.5, sy: 1.5 }, 0.12, E.out);
     cl.remove(); puff(mx, 30, 12, { c: "#efe6d8", s: 4, sp: 50, up: 30, fall: 6 });
-    const loser = pick(list);
+    const loser = dpick("loser", list);
     list.forEach((t, i) => {
       const off = (i - (list.length - 1) / 2) * 44;
       t.x = clamp(mx + off, 24, g.W - 24);
@@ -98,13 +98,13 @@
   }
   // 맞은 쪽(b)이 어떻게 나오나. depth 는 되갚기를 한 번만 하려고.
   function* react(a, b, depth, self) {
-    const r = Math.random();
+    const r = dec("react");
     b.pose = ""; a.pose = "";
     if (depth >= 1 || r < 0.26) {
       // 엉엉 울고, 때린 쪽은 깔깔 → 가끔은 미안하다고 쓰담
       a.look(b);
       yield* all(b.cry(1.7), a.laugh(1.3));
-      if (Math.random() < 0.55) yield* comfort(a, b);
+      if (dec("comfort") < 0.55) yield* comfort(a, b);
       else { b.face = "m17"; b.look(b.x + (b.x < a.x ? -30 : 30)); b.say(pick(["흥!", "너랑 안 놀아", "두고 봐…"]), 1200); yield* wait(0.9); }
     } else if (r < 0.66) {
       // 부들부들 화내고 그대로 되갚아요
@@ -112,7 +112,7 @@
       b.say(pick(["너도 맞아 봐!", "가만 안 둬!", "이번엔 내 차례야", "복수다!"]), 1200);
       a.face = "hit"; a.front();
       yield* wait(0.3);
-      const v = pick(MEAN.filter((m) => m !== self && !m.long));
+      const v = dpick("revenge", MEAN.filter((m) => m !== self && !m.long));
       yield* v(b, a, depth + 1);
     } else if (r < 0.86) {
       yield* chaseFight(b, a);
@@ -238,7 +238,7 @@
     yield* all(a.fall(-d), b.fall(d));
     yield* wait(0.8);
     yield* all(a.getUp(), b.getUp());
-    if (depth < 1 && Math.random() < 0.5) yield* react(a, b, 1, butt);
+    if (depth < 1 && dec("butt") < 0.5) yield* react(a, b, 1, butt);
     else { a.face = "happy"; b.face = "happy"; yield* all(a.laugh(0.9), b.laugh(0.9)); }
   });
   // 눈 찌르기: 눈알이 띠용 튀어나와 굴러가요
@@ -267,7 +267,7 @@
     yield* until(() => rolled >= 2, 4);
     // 고양이가 있으면 눈알 하나를 앞발로 톡톡 굴려요
     const cat = PL().ents.find((e) => e.kind === "cat" && !e.held && !e.thrown && !e.script);
-    if (cat && Math.random() < 0.7) {
+    if (cat && dec("cat") < 0.7) {
       K.hold(cat);
       yield* A.move(cat, ev[1].x - 16, 70);
       for (let i = 0; i < 3; i++) { cat.frame = "walk1"; yield* wait(0.1); cat.frame = "stand"; pow(ev[1].x, 20, "톡", { ms: 300 }); yield* ev[1].arc(clamp(ev[1].x + 14, 30, g.W - 20), 6, 10, 0.22, 360); yield* A.move(cat, ev[1].x - 16, 80); }
@@ -463,7 +463,7 @@
     // 주르륵 미끄러져요 (뒤로 젖힌 채 발로 버팀)
     b.look(g.W); b.face = "hit"; b.pose = "raise";
     const x0 = b.x;
-    yield* wait(0.55, (k, dt) => { b.x = x0 + (edge - x0) * E.out(k); b.rot = 14 * (1 - k); if (Math.random() < dt * 30) dust(b.x - 10, 12, 1); });
+    yield* wait(0.55, (k, dt) => { b.x = x0 + (edge - x0) * E.out(k); b.rot = 14 * (1 - k); if (rnd() < dt * 30) dust(b.x - 10, 12, 1); });
     fork((function* () { a.pose = ""; yield* a.lean(0, 0.1); yield* a.walk(edge + 30, 70); a.look(b); })());
     // 끝에서 아슬아슬 버둥버둥
     b.say(pick(["어어어어어", "안 돼 안 돼", "빠진다!"]), 1100);
@@ -487,7 +487,7 @@
     yield* all(approach(a, b, 24, 46), wait(0.1));
     b.look(a);
     for (const w of ["가위", "바위", "보!"]) { pow((a.x + b.x) / 2, a.b + 80, w, { ms: 360, rot: 0 }); a.pose = "act"; b.pose = "act"; yield* all(tween(a, { y: 5 }, 0.09, E.out), tween(b, { y: 5 }, 0.09, E.out)); yield* all(tween(a, { y: 0 }, 0.09, E.in), tween(b, { y: 0 }, 0.09, E.in)); yield* wait(0.14); }
-    const win = Math.random() < 0.5 ? a : b, lose = win === a ? b : a, d = dirTo(win, lose);
+    const win = dec("win") < 0.5 ? a : b, lose = win === a ? b : a, d = dirTo(win, lose);
     win.pose = "raise"; win.face = "happy"; lose.face = "hit"; lose.pose = "";
     win.say(pick(["이겼다!", "아싸!", "이마 대!"]), 1000);
     yield* win.hop(8, 0.24);
@@ -718,7 +718,7 @@
     fork(clap(b, 1.2));
     // 점점 크게 흔들리다가
     yield* wait(1.6, (k, dt, t) => { a.rot = 180 + Math.sin(t * 6) * (3 + 16 * k); a.face = k > 0.6 ? "hit" : "m15"; });
-    const d = pick([-1, 1]);
+    const d = dpick("side", [-1, 1]);
     yield* tween(a, { rot: 180 + 90 * d, y: -11 }, 0.22, E.in);
     a.rot = 90 * d * -1 + 0; a.face = "ko";
     impact(a.x + 20 * d, 34, "쿠당", false); dust(a.x, 12, 7);
@@ -731,7 +731,7 @@
     a.front(); a.face = "m15";
     yield* tween(a, { sy: 0.8, sx: 1.14 }, 0.22, E.out); // 웅크려 힘을 모으고
     a.sx = 0.94; a.sy = 1.1; a.pose = "raise"; a.pivot = "mid";
-    const fail = Math.random() < 0.4;
+    const fail = dec("fail") < 0.4;
     yield* wait(0.62, (k) => { a.y = Math.sin(k * Math.PI) * 52; a.rot = -(fail ? 540 : 360) * E.io(k); a.sx = 1; a.sy = 1; });
     if (!fail) {
       a.rot = 0; a.pivot = "feet"; a.y = 0; a.face = "happy";
@@ -794,7 +794,7 @@
     yield* a.dizzy(1.2, true);
     a.face = "ko";
     b.look(a); fork(b.laugh(1.0));
-    yield* a.fall(pick([-1, 1]));
+    yield* a.fall(dpick("side", [-1, 1]));
     yield* wait(0.6);
     yield* a.getUp();
   });
@@ -810,7 +810,7 @@
     yield* wait(0.28, (k) => { a.rot = 90 * d * E.in(k); a.x = x0 + 12 * d * k; });
     impact(a.x + 24 * d, 30, "철퍼덕"); dust(a.x + 24 * d, 12, 8);
     // 얼굴로 주르륵
-    yield* wait(0.4, (k, dt) => { a.x = clamp(a.x + d * 50 * (1 - k) * dt, 24, g.W - 24); if (Math.random() < dt * 20) dust(a.x + 28 * d, 12, 1); });
+    yield* wait(0.4, (k, dt) => { a.x = clamp(a.x + d * 50 * (1 - k) * dt, 24, g.W - 24); if (rnd() < dt * 20) dust(a.x + 28 * d, 12, 1); });
     a.face = "ko"; a.pose = "";
     b.look(a); b.face = "hit";
     yield* wait(0.7);

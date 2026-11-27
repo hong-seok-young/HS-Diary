@@ -76,7 +76,11 @@ export class Couple extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reqs (id TEXT PRIMARY KEY, who TEXT, at INTEGER, status TEXT, tok TEXT, ua TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS subs (endpoint TEXT PRIMARY KEY, who TEXT, p256dh TEXT, auth TEXT, at INTEGER, ok INTEGER, fail TEXT)`);
   }
-  webSocketMessage() { /* 폰은 듣기만 해요 */ }
+  // 폰이 보낸 짧은 소식(장난 시작, 잡고 흔들기 같은 것)을 이어져 있는 다른 폰들에 바로 전해요. 기록에는 남기지 않아요.
+  webSocketMessage(ws, msg) {
+    if (typeof msg !== "string" || msg.length > 2000 || msg[0] !== "{") return;
+    this.ctx.getWebSockets().forEach((w) => { if (w !== ws) { try { w.send(msg); } catch (e) { /* 끊긴 줄 */ } } });
+  }
   webSocketClose(ws) { try { ws.close(); } catch (e) { /* 이미 닫힘 */ } }
   webSocketError() { /* 다시 이으면 돼요 */ }
   get(k) { const r = this.sql.exec(`SELECT v FROM kv WHERE k = ?`, k).toArray()[0]; return r ? r.v : null; }

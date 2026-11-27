@@ -299,13 +299,20 @@
   // ---------- 실시간 ----------
   // 서버와 줄을 하나 이어 두고, 상대 폰이 저장하면 바로 받아 와요. 줄이 끊기면 알아서 다시 이어요.
   let ws = null, wsTimer = 0, wsWait = 1000, lastV = -1;
+  const casts = [];
   function live() {
     if (!API || !token() || ws || document.visibilityState !== "visible") return;
     let sock;
     try { sock = new WebSocket(API.replace(/^http/, "ws") + "/live?k=" + encodeURIComponent(token())); } catch (e) { return; }
     ws = sock;
     sock.onopen = () => { wsWait = 1000; };
-    sock.onmessage = (ev) => { const v = Number(ev.data); if (!(v === lastV)) schedule(0); };
+    sock.onmessage = (ev) => {
+      const d = String(ev.data);
+      // 상대 폰이 방금 보낸 짧은 소식 (장난 시작, 잡고 흔들기): 저장 없이 바로 전해 받아요
+      if (d[0] === "{") { let m = null; try { m = JSON.parse(d); } catch (e) { m = null; } if (m) casts.forEach((f) => { try { f(m); } catch (e) { console.error(e); } }); return; }
+      const v = Number(d);
+      if (!(v === lastV)) schedule(0);
+    };
     sock.onclose = sock.onerror = () => {
       if (ws === sock) ws = null;
       clearTimeout(wsTimer);
@@ -524,6 +531,9 @@
       if (!res.ok) return null;
       return res.json().catch(() => null);
     },
+    // 줄이 이어져 있으면 짧은 소식을 저장 없이 바로 상대 폰에 보내요. 못 보냈으면 false.
+    cast(msg) { if (ws && ws.readyState === 1) { try { ws.send(JSON.stringify(msg)); return true; } catch (e) { /* 줄이 끊겼어요 */ } } return false; },
+    onCast(fn) { casts.push(fn); },
     // 같이 보는 순간의 일(동물 던지기 같은 것): 내 화면은 다시 그리지 않고, 바로 올려서 상대 폰에 전해요
     live(key, who, value) {
       if (!db.pairs[key]) db.pairs[key] = {};
