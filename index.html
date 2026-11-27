@@ -180,6 +180,18 @@
     </main>
   </section>
 
+  <!-- ==================== 지도 ==================== -->
+  <section class="view" data-view="map">
+    <main class="container">
+      <header class="view-head">
+        <h1>우리 지도</h1>
+      </header>
+      <div class="deco-row map-tabs" id="mapTabs"></div>
+      <div class="box map-box"><canvas id="mapCv"></canvas><span class="map-count" id="mapCount"></span></div>
+      <div class="deco-grid map-list" id="mapList"></div>
+    </main>
+  </section>
+
   <button class="fab" id="btnAdd" aria-label="추가" hidden>+</button>
   <button class="back-btn" id="backBtn" aria-label="뒤로" hidden><i></i></button>
 
@@ -188,6 +200,7 @@
     <button class="nav-btn" data-go="log"><span data-icon="pin" data-scale="3"></span><b>기록</b></button>
     <button class="nav-btn" data-go="plans"><span data-icon="todo" data-scale="3"></span><b>할 거</b></button>
     <button class="nav-btn" data-go="diary"><span data-icon="book" data-scale="3"></span><b>일기</b></button>
+    <button class="nav-btn" data-go="map"><span class="nav-globe"><svg class="px px-icon" width="24" height="24" viewBox="0 0 8 8" shape-rendering="crispEdges" fill="currentColor"><path d="M2 0h4v1H2zM1 1h1v1H1zM3 1h2v1H3zM6 1h1v1H6zM0 2h3v1H0zM5 2h3v1H5zM0 3h1v1H0zM3 3h2v1H3zM7 3h1v1H7zM0 4h3v1H0zM5 4h3v1H5zM1 5h1v1H1zM3 5h2v1H3zM6 5h1v1H6zM2 6h4v1H2z"/></svg></span><b>지도</b></button>
   </nav>
 
   <div class="toast" id="toast" role="status"></div>
@@ -340,6 +353,9 @@
   <script src="js/tale.js"></script>
   <script src="js/deco.js"></script>
   <script src="js/charanim.js"></script>
+  <script src="js/geo.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/trip.js"></script>
   <script src="js/pals.js"></script>
   <script src="js/play.js"></script>
   <script src="js/plays.js"></script>

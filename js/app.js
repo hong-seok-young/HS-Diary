@@ -1051,6 +1051,7 @@
     else if (state.view === "log") renderLog();
     else if (state.view === "plans") renderPlans();
     else if (state.view === "diary") renderDiary();
+    else if (state.view === "map" && window.MapView) MapView.render();
   }
 
   // ---------- 입력창 공통 ----------
