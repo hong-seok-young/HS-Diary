@@ -463,6 +463,7 @@
       if (tag && tag.classList.contains("mine")) { play(tag, "boing"); setPanel("mood"); return; }
       const who = ev.target.closest(".bob");
       if (who) {
+        if (window.Play && Play.dragged()) return; // 끌어서 던진 직후에는 누른 걸로 치지 않아요
         // 상대를 누르면 하트, 나를 누르면 한마디
         if (me && who.dataset.who !== me) { sendHeart(who); return; }
         play(who, "jump");

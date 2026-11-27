@@ -105,12 +105,15 @@
     // 특별한 할 일(잠, 산책, 체조)이 없을 때만 자유롭게 움직여요
     const free = !walking && !sleeping && !stretch;
     const making = Object.keys(state).some((w) => state[w].moodTo > now); // 기분 표정을 짓는 동안은 다른 동작을 미뤄요
-    if (free && !act && !making && now > nextAt) startAct(now);
+    const puppet = Object.keys(state).some((w) => state[w].ctl);
+    if (puppet) nextAt = Math.max(nextAt, now + 2500); // 놀이(js/play.js)가 데리고 있는 동안은 다른 동작을 미뤄요
+    if (free && !act && !making && !puppet && now > nextAt) startAct(now);
     const wasOuch = act && act.key === "ouch";
     if (act && ((!free && !wasOuch) || now - act.at > (act.dur || ACTS[act.key].dur))) { act = null; nextAt = now + 3500 + Math.random() * 6000; }
     const ouch = !!act && act.key === "ouch";
     for (const who in state) {
       const st = state[who];
+      if (st.ctl) { paint(who); continue; }
       if (st.el.classList.contains("jump") && st.waveTo < now) st.waveTo = now + 1100;
       let dir = "down", fr = 0, pose = "", face = "", flip = false, dx = 0;
       if (st.waveTo > now) {
@@ -156,6 +159,14 @@
       if (Math.abs(dx - st.dx) > 0.2) { st.dx = dx; st.el.style.translate = `${dx.toFixed(1)}px 0`; }
     }
   }
+  // 놀이가 정해 준 모습 그대로 그려요 (자세, 표정, 방향, 조각)
+  function paint(who) {
+    const st = state[who], c = st && st.ctl;
+    if (!c) return;
+    const src = c.cut ? S.charCut(who, c.dir || "down", c.frame || 0, c.pose || "", c.face || "", c.cut) : S.charImg(who, c.dir || "down", c.frame || 0, c.pose || "", c.face || "");
+    if (src !== st.src) { st.img.src = src; st.src = src; }
+    st.img.classList.toggle("flip", !!c.flip);
+  }
   function loop() {
     if (document.hidden || document.body.classList.contains("game-open")) return;
     const home = document.querySelector('.view[data-view="home"].is-active');
@@ -170,5 +181,7 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
   else start();
-  window.CharAnim = { start, act: () => act, mood(who) { const st = state[who]; if (st) { st.moodAt = 0; st.moodTo = 0; } }, play(k, who) { if (!ACTS[k]) return; act = { key: k, at: performance.now(), one: who || pick(["him", "her"]) }; if (ACTS[k].start) ACTS[k].start(act); } };
+  window.CharAnim = { start, paint, state: (who) => state[who], free: () => !act && !Object.keys(state).some((w) => state[w].moodTo > performance.now() || state[w].waveTo > performance.now()),
+    ctl(who, c) { const st = state[who]; if (!st) return; st.ctl = c || null; st.src = ""; if (!c) { st.dx = 0; st.el.style.translate = ""; nextAt = performance.now() + 3000 + Math.random() * 4000; } },
+    act: () => act, mood(who) { const st = state[who]; if (st) { st.moodAt = 0; st.moodTo = 0; } }, play(k, who) { if (!ACTS[k]) return; if (window.Play && Play.abort) Play.abort(); act = { key: k, at: performance.now(), one: who || pick(["him", "her"]) }; if (ACTS[k].start) ACTS[k].start(act); } };
 })();

@@ -1872,3 +1872,21 @@ button.day-it:active { transform: translateY(1px); }
 .bn-c10::before { content: ""; left: 3px; top: -8px; width: 3px; height: 12px; border: 2px solid var(--b3); border-radius: 4px; box-shadow: 0 0 0 1px var(--b2); }
 /* 11 끈 */
 .bn-c11 { border-left: 5px solid var(--b3); border-right: 5px solid var(--b3); }
+
+/* ============================================================
+   놀이 (js/play.js): 사람 던지기, 조각으로 흩어지기, 치고받는 장난의 소품과 효과
+   ============================================================ */
+.sc-play { position: absolute; inset: 0; pointer-events: none; }
+.sc-play > * { position: absolute; pointer-events: none; }
+.play-prop, .play-part { left: 0; bottom: 0; z-index: 9; image-rendering: pixelated; }
+.play-part { height: auto; }
+.play-pow { z-index: 14; font-style: normal; font-size: 13px; line-height: 14px; white-space: nowrap; color: #fff; text-shadow: 1px 0 0 #3b2a20, -1px 0 0 #3b2a20, 0 1px 0 #3b2a20, 0 -1px 0 #3b2a20, 1px 1px 0 #3b2a20, -1px 1px 0 #3b2a20, 1px -1px 0 #3b2a20, -1px -1px 0 #3b2a20; }
+.play-pow.big { font-size: 17px; line-height: 18px; color: #ffe14a; }
+.play-bit { z-index: 12; width: 3px; height: 3px; }
+.play-bit.ch { width: auto; height: auto; font-style: normal; font-size: 10px; line-height: 10px; text-shadow: 1px 0 0 #6a4a1a, -1px 0 0 #6a4a1a, 0 1px 0 #6a4a1a, 0 -1px 0 #6a4a1a; }
+.pal-say.play-say { z-index: 15; left: 0; bottom: 0; }
+.bob { touch-action: none; }
+.bob.puppet { transition: none; animation: none !important; cursor: grab; }
+.bob.puppet .ch-wrap { animation: none !important; }
+.bob.nohead .mood-tag, .bob.nohead .prop-top, .bob.nohead .stuck-plane { visibility: hidden; }
+.play-stick { position: absolute; left: 50%; z-index: 3; image-rendering: pixelated; pointer-events: none; transform-origin: 50% 100%; }

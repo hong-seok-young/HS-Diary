@@ -1009,7 +1009,7 @@
     const swimH = Math.round(sw * SC + (e.fx.sink ? -e.fx.sink * sw * SC : 0));
     e.clip.style.height = e.kind === "hippo" && e.swim ? Math.max(0, swimH) + "px" : "";
     e.el.classList.toggle("swim", e.kind === "hippo" && e.swim);
-    e.el.style.zIndex = e.kind === "cat" && e.st === "head" ? "8" : e.b > 8 ? "4" : "6";
+    e.el.style.zIndex = e.zz ? String(e.zz) : e.kind === "cat" && e.st === "head" ? "8" : e.b > 8 ? "4" : "6";
     if (e.sayT > 0) {
       e.sayT -= 1 / 60;
       if (e.sayT <= 0) e.say.hidden = true;
@@ -1024,11 +1024,14 @@
     if (scene.clientWidth !== W) layout(false);
     const E = env();
     pondEl.classList.toggle("frozen", E.snowy && E.cold);
+    if (window.Play && Play.tick) Play.tick(dt);
     ents.forEach((e) => {
       e.busy = ["loop", "dash", "jump", "dance", "dive", "climbin", "climbout", "puff", "roll", "cloud", "belly", "zoomies", "head", "pounce", "swoop", "toperch", "walkpond"].includes(e.st);
       if (e.held) { e.frame = e.kind === "bird" ? (Math.floor(ts / 90) % 2 ? "fly1" : "fly2") : "stand"; e.face = "sweat"; e.jig = null; endWarp(e); render(e); return; }
       jiggleStep(e, dt);
       if (e.thrown) { flung(e, dt); render(e); return; }
+      // 놀이(js/play.js)가 이 친구를 데리고 있는 동안은 제 버릇대로 움직이지 않아요
+      if (e.script) { e.busy = true; if (e.sayT == null) e.sayT = 0; render(e); return; }
       if (e.kind === "hippo") hippo(e, dt, E);
       if (e.kind === "sheep") sheep(e, dt, E);
       if (e.kind === "cat") cat(e, dt, E);
@@ -1059,5 +1062,16 @@
   let growT = 0;
   if (window.Store) Store.onChange(() => { clearTimeout(growT); growT = setTimeout(sync, 400); });
   if (window.Store) Store.onChange(() => setTimeout(sync, 50));
-  window.Pals = { growth, ents, tap, env, sync };
+  // 놀이가 끝나면 제 버릇으로 돌려보내요
+  function release(e) {
+    e.script = null; e.zz = 0; e.rot = 0; e.lift = 0; e.tx = 0; e.scale = 1; e.sx = 1; e.sy = 1; e.face = ""; e.fx.target = 0;
+    if (e.thrown || e.held) return;
+    if (e.kind === "bird") { e.fx.tx = e.x; e.fx.tb = Math.max(e.b, H * 0.4); e.vx = 0; e.vb = 0; setState(e, "hover", 1.2); }
+    else if (e.kind === "hippo") { if (e.swim || (e.x > pond.x0 + 6 && e.x < pond.x1 - 6 && e.b < 16)) { e.swim = true; setState(e, "swim", rand(3, 6)); } else { e.b = 6; toPond(e); } }
+    else if (e.kind === "egg") { e.b = 5; setState(e, "sit", 3); }
+    else if (e.kind === "cat") { e.b = 4; setState(e, "sit", 2); }
+    else { e.b = 6; setState(e, "idle", 2); }
+  }
+  function throwEnt(e, vx, vy) { endWarp(e); e.swim = false; e.lift = 0; e.rot = 0; e.scale = 1; e.sx = 1; e.sy = 1; e.tx = 0; e.jig = null; e.thrown = { vx, vy, t: 0 }; }
+  window.Pals = { growth, ents, tap, env, sync, say, hearts, drops, ring, zzz, release, throwEnt, flyType, CALLS, kick, geo: () => ({ W, H, pond, scene, layer }) };
 })();

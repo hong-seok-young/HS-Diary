@@ -181,6 +181,8 @@
       // 머리를 그린 뒤에 올려요
     } else if (dir === "side") {
       if (pose === "act") { rect(g, 10, by + 1, 4, 1, armC); put(g, 14, by + 1, "S"); }
+      else if (pose === "punch") { rect(g, 4, by, 1, 2, P ? (P.limbs || "u") : "t"); put(g, 4, by + 2, "S"); rect(g, 11, by + 1, 4, 1, armC); rect(g, 15, by, 2, 2, "S"); }
+      else if (pose === "back") { rect(g, 13, by, 1, 2, armC); put(g, 13, by + 2, "S"); rect(g, 2, by, 3, 1, P ? (P.limbs || "u") : "t"); rect(g, 1, by - 1, 1, 2, "S"); }
       else { rect(g, 4, by, 1, 2, P ? (P.limbs || "u") : "t"); put(g, 4, by + 2 - (swing > 0 ? 1 : 0), "S"); rect(g, 13, by, 1, 2, armC); put(g, 13 + (swing < 0 ? 1 : 0), by + 2, "S"); }
     } else if (pose === "act") {
       rect(g, 4, by, 1, 2, armC); rect(g, 13, by, 1, 2, armC);
@@ -195,6 +197,10 @@
     if (crouch) {
       rect(g, 4, FOOT - 1, 2, 1, legC); rect(g, 12, FOOT - 1, 2, 1, legC);
       rect(g, 4, FOOT, 2, 1, footC); rect(g, 12, FOOT, 2, 1, footC);
+    } else if (dir === "side" && pose === "kick") {
+      // 발차기: 뒷다리로 서고 앞다리를 쭉 뻗어요
+      leg(6, FOOT, legC); put(g, 8, FOOT, footC);
+      rect(g, 10, by + 4, 4, 2, legC); rect(g, 14, by + 3, 2, 3, footC);
     } else if (dir === "side") {
       if (frame === 1) { leg(6, FOOT, legC); leg(11, FOOT - 1, legC); put(g, 13, FOOT - 1, footC); }
       else if (frame === 2) { leg(10, FOOT, legC); leg(6, FOOT - 1, legC); put(g, 8, FOOT - 1, footC); }
@@ -310,6 +316,21 @@
       else eyes.forEach((x) => { rect(g, x, ey, 2, 1, "E"); put(g, x - 1, ey + 1, "E"); put(g, x + 2, ey + 1, "E"); });
       if (face === "happy") { if (dir === "down") { put(g, HX + 7, oy + 9, "M"); put(g, HX + 8, oy + 9, "M"); } else { put(g, HX + 10, oy + 9, "M"); put(g, HX + 11, oy + 9, "M"); } }
     }
+    if (dir !== "up" && /^(noeye|noL|noR|dz[1-4]|ko|cross)$/.test(face)) {
+      const eyes = dir === "side" ? [HX + 7, HX + 12] : [HX + 4, HX + 10];
+      const ey = oy + 7, mx = dir === "side" ? HX + 10 : HX + 7;
+      eyes.forEach((x, k) => {
+        rect(g, x, ey, 2, 2, "S");
+        if (face === "noeye" || (face === "noL" && k === 0) || (face === "noR" && k === 1)) { rect(g, x, ey, 2, 2, "M"); put(g, x, ey, "E"); } // 눈 자리가 휑하니 비었어요
+        else if (face === "noL" || face === "noR") { rect(g, x, ey - 1, 2, 3, "W"); put(g, x + (k ? 0 : 1), ey, "E"); }
+        else if (face === "ko") { const a = k === 0 && dir !== "side" ? 1 : 0; put(g, x + (a ? 0 : 1), ey - 1, "E"); put(g, x + (a ? 1 : 0), ey, "E"); put(g, x + (a ? 0 : 1), ey + 1, "E"); }
+        else if (face === "cross") { rect(g, x, ey, 2, 2, "W"); put(g, x + (k === 0 ? 1 : 0), ey + 1, "E"); }
+        else { const q = (Number(face[2]) - 1 + k * 2) % 4; rect(g, x, ey, 2, 2, "W"); put(g, x + (q === 1 || q === 2 ? 1 : 0), ey + (q >= 2 ? 1 : 0), "E"); } // 눈동자가 뱅글뱅글
+      });
+      if (face === "noeye" || face === "noL" || face === "noR") { rect(g, mx, oy + 9, 2, 2, "M"); }
+      else if (face === "ko") { put(g, mx - 1, oy + 10, "M"); put(g, mx, oy + 9, "M"); put(g, mx + 1, oy + 10, "M"); put(g, mx + 2, oy + 9, "M"); }
+      else { rect(g, mx, oy + 9, 2, 1, "M"); }
+    }
     if (dir !== "up" && /^m\d+$/.test(face)) moodFace(g, Number(face.slice(1)), dir, oy);
     accLate();
     return rows(outline(g));
@@ -385,7 +406,7 @@
   function wearing(who) { try { return (window.HSWear && window.HSWear(who)) || ""; } catch (e) { return ""; } }
   // 지금 건 장식(눈, 머리, 목)도 바깥(옷장)에서 알려 줘요
   function accOf(who) { try { return (window.HSAcc && window.HSAcc(who)) || {}; } catch (e) { return {}; } }
-  function charImg(who, dir, frame, pose, face, pj, acc) {
+  function charImg(who, dir, frame, pose, face, pj, acc, cut) {
     if (pj === undefined) pj = wearing(who);
     if (acc === undefined) acc = accOf(who);
     const P = pj && PJ[pj];
@@ -397,9 +418,31 @@
       if (!it || it.kind !== k) return;
       shapes[k] = it.shape; pal[a] = it.c[0]; pal[b] = it.c[1]; pal[c] = k === "neck" && it.shape !== "lace" ? "#ffd34d" : it.c[2];
     });
-    const key = `ch10|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
-    return A.fromRows(key, charRows(who, dir, frame, pose || "", face || "", P ? pj : "", shapes), pal).uri;
+    const key = `ch11|${who}|${dir}|${frame}|${pose || ""}|${face || ""}|${P ? pj : ""}|${(acc && acc.eye) || ""}|${(acc && acc.hat) || ""}|${(acc && acc.neck) || ""}`;
+    const ck = key + "|" + (cut || "");
+    if (URI[ck]) return URI[ck];
+    const uri = build();
+    URI[ck] = uri;
+    return uri;
+    function build() {
+    const full = charRows(who, dir, frame, pose || "", face || "", P ? pj : "", shapes);
+    if (!cut) return A.fromRows(key, full, pal).uri;
+    // 한 조각만 남겨요 (머리, 머리 없는 몸, 몸통, 팔, 다리). 그림판 크기는 그대로라 제자리에 포개면 다시 한 사람이 돼요.
+    const by = TOP + (pose === "crouch" ? 2 : frame ? 1 : 0) + 12;
+    const head = (x, y) => y < by || ((x <= 2 || x >= 15) && y < by + 3);
+    const IN = {
+      head, body: (x, y) => !head(x, y),
+      torso: (x, y) => !head(x, y) && x >= 5 && x <= 12 && y < by + 4,
+      armL: (x, y) => !head(x, y) && x <= 4 && y < by + 4, armR: (x, y) => !head(x, y) && x >= 13 && y < by + 4,
+      legL: (x, y) => y >= by + 4 && x <= 8, legR: (x, y) => y >= by + 4 && x >= 9,
+    }[cut];
+    const g = full.map((r, y) => r.split("").map((c, x) => (c !== "o" && IN(x, y) ? c : ".")));
+    return A.fromRows(key + "|" + cut, rows(outline(g)), pal).uri;
+    }
   }
+  const URI = {};
+  // 조각 하나의 그림 (part: head, body, torso, armL, armR, legL, legR)
+  const charCut = (who, dir, frame, pose, face, part) => charImg(who, dir, frame, pose, face, undefined, undefined, part);
 
   function ell(g, cx, cy, rx, ry, c) {
     for (let y = Math.floor(cy - ry - 1); y <= Math.ceil(cy + ry + 1); y++) for (let x = Math.floor(cx - rx - 1); x <= Math.ceil(cx + rx + 1); x++) {
@@ -769,5 +812,5 @@
     const P = PJ[wearing(who)];
     return !P ? 0 : P.ear === "long" ? 3 : P.ear === "deer" ? 2 : 0;
   }
-  window.FSprites = { earRise, petImg, PAJAMAS, PJ, CH_W, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
+  window.FSprites = { earRise, charCut, TOP, petImg, PAJAMAS, PJ, CH_W, CH_H, HIPPO_SWIM, DOG_W, DOG_H, charImg, charRows, dogImg, henImg, hippoImg, sheepImg, catImg, toolImg, toolUri, decoImg, decoUri, frames, PEOPLE };
 })();
