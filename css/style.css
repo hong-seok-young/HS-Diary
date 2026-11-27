@@ -1899,3 +1899,17 @@ button.day-it:active { transform: translateY(1px); }
 .mail-it.dev b { font-weight: normal; }
 .dev-me { font-style: normal; font-size: 11px; padding: 0 5px; background: var(--butter); box-shadow: 0 0 0 2px var(--ink); margin-left: 4px; }
 .dev-tip { font-size: 12px; line-height: 1.5; color: #7a6a5a; margin: 0 0 4px; }
+
+/* ============================================================
+   폰을 가로로 눕히면: 홈에서는 그림만 화면 가득 (달력과 아래 메뉴는 세우면 다시 나와요)
+   ============================================================ */
+@media (orientation: landscape) and (max-height: 560px) {
+  body:has(.view[data-view="home"].is-active) .nav { display: none; }
+  html.lock .view[data-view="home"].is-active, .view[data-view="home"].is-active { height: 100vh; height: 100dvh; }
+  .view[data-view="home"] .hero { flex: 1 1 auto; height: 100%; padding: 0 var(--sa-r) 0 var(--sa-l); }
+  .view[data-view="home"] .hero-inner { max-width: none; padding: 0; margin: 0; border: 0; box-shadow: none; background: none; }
+  .view[data-view="home"] .hero-inner::before, .view[data-view="home"] .hero-inner::after { display: none; }
+  .view[data-view="home"] .scene-wrap { flex: 1 1 auto; height: 100%; min-height: 0; padding: 0; margin: 0; }
+  .view[data-view="home"] .scene { margin: 0; box-shadow: none; }
+  .view[data-view="home"] .home-body { display: none; }
+}
