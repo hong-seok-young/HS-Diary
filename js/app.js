@@ -357,12 +357,13 @@
       const left = Math.round((ann - today0()) / 86400000);
       if (years > 0) nx = left === 0 ? `오늘 ${years}주년!` : `${years}주년 D-${left}`;
     }
-    const bm = window.Deco ? Deco.ban().m : 0;
-    state.ddayMode = [0, 0, 1, 2, 3][bm] || 0;
+    // 며칠째와 기념일은 저마다 따로 떠 있는 표예요
+    state.ddayMode = window.Deco ? Deco.part("a").m : 0;
     const text = ddayText();
-    const html = `<i>${esc(text)}</i>` + (nx && bm === 0 ? `<i>${esc(nx)}</i>` : "");
+    if ($("dday").textContent !== text) $("dday").textContent = text;
+    if ($("ddayB").textContent !== nx) $("ddayB").textContent = nx;
+    $("banB").hidden = !nx;
     if (window.Deco) Deco.apply();
-    if ($("dday").innerHTML !== html) $("dday").innerHTML = html;
   }
 
   // ---------- 풍경 ----------
@@ -591,7 +592,7 @@
       on = false; d = 0;
       if (ev.touches.length !== 1 || window.scrollY > 0) return;
       const t = ev.target;
-      if (!t.closest || t.closest("#banner, .pal, .unlock, .lightbox, input, textarea, select")) return;
+      if (!t.closest || t.closest(".sc-banner, .pal, .unlock, .lightbox, input, textarea, select")) return;
       for (let n = t; n && n !== document.body; n = n.parentNode) if (n.scrollTop > 0) return;
       y0 = ev.touches[0].clientY; x0 = ev.touches[0].clientX; on = true;
     }, { passive: true });
@@ -1253,12 +1254,12 @@
 
     bindScene();
 
-    $("banner").addEventListener("click", (ev) => {
+    [["banner", "t"], ["banA", "a"], ["banB", "b"], ["banS", "s"]].forEach(([id, part]) => $(id).addEventListener("click", (ev) => {
       ev.stopPropagation();
       if (window.Deco && Deco.justDragged()) return;
-      play($("banner"), "boing");
-      if (window.Deco) Deco.open("ban");
-    });
+      play($(id), "boing");
+      if (window.Deco) Deco.open("ban", part);
+    }));
     $("backBtn").addEventListener("click", () => Nav.back());
 
     $("panels").addEventListener("click", (ev) => {
@@ -1661,7 +1662,7 @@
   renderView();
   // 누를 수 있는 것들 위에 번갈아 반짝이를 띄워요
   (function sparkles() {
-    const sel = "#plane, #mailbox, #kennel, #closet, .house, #banner, .mood-tag.mine, .pal";
+    const sel = "#plane, #mailbox, #kennel, #closet, .house, .sc-banner:not([hidden]), .mood-tag.mine, .pal";
     let k = 0;
     setInterval(() => {
       const scene = $("scene");

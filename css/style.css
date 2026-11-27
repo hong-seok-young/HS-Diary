@@ -1755,3 +1755,120 @@ button.day-it:active { transform: translateY(1px); }
 .cmt-form .btn.small { min-height: 40px; flex: 0 0 auto; }
 .nav-btn { position: relative; }
 .nav-btn.dot::after { content: ""; position: absolute; right: 22%; top: 6px; width: 9px; height: 9px; background: #e05a88; box-shadow: 0 0 0 2px var(--ink); }
+
+/* ============================================================
+   이름표 네 조각: 이름(#banner), 며칠째(#banA), 기념일(#banB), 일정(#banS)
+   저마다 따로 옮기고, 모양도 따로 있어요. (--b1 바탕, --b2 테두리와 글자, --b3 포인트)
+   ============================================================ */
+.sc-banner[hidden] { display: none; }
+.sc-banner.pt { top: 34px; padding: 1px 7px 2px; animation: tagGlow 5s ease-in-out infinite; }
+.sc-banner.pt b { font-size: 14px; line-height: 17px; }
+#banB { animation-delay: -1.6s; }
+#banS { animation-delay: -3.2s; max-width: calc(100% - 16px); }
+#banS b { font-size: 13px; line-height: 16px; }
+@keyframes tagGlow { 0%, 80%, 100% { filter: none; } 90% { filter: drop-shadow(0 0 3px rgba(255, 255, 255, .95)); } }
+.sc-banner.pt.boing { animation: boing .5s var(--ease); }
+.sc-banner.mini.pt, .deco-it .sc-banner.mini { animation: none; }
+.deco-row.parts { margin-bottom: 6px; }
+.deco-row.parts .chip { flex: 1 1 0; }
+
+/* ----- 며칠째 표 ----- */
+/* 1 알약 */
+.bn-a1 b, .bn-a7 b, .bn-b1 b { margin: 0 3px; }
+.bn-a1 { border-radius: 999px; box-shadow: 0 0 0 2px var(--b2), 0 3px 0 2px rgba(60, 40, 30, .18); }
+/* 2 하트표 */
+.bn-a2 b { margin-left: 14px; }
+.bn-a2::before { content: "♥"; left: 6px; top: 50%; margin-top: -9px; font-size: 13px; line-height: 18px; color: var(--b3); }
+/* 3 달력 */
+.bn-a3 { border-top: 5px solid var(--b3); }
+.bn-a3::before, .bn-a3::after { content: ""; top: -9px; width: 3px; height: 7px; background: var(--b2); }
+.bn-a3::before { left: 22%; } .bn-a3::after { right: 22%; }
+/* 4 도장 */
+.bn-a4 { rotate: -4deg; color: var(--b3); box-shadow: 0 0 0 2px var(--b3), 0 0 0 4px var(--b1), 0 0 0 6px var(--b3); }
+/* 5 별표 */
+.bn-a5::before, .bn-a5::after { content: "★"; top: 50%; margin-top: -9px; font-size: 12px; line-height: 18px; color: var(--b3); text-shadow: 1px 0 0 var(--b2), -1px 0 0 var(--b2), 0 1px 0 var(--b2), 0 -1px 0 var(--b2); }
+.bn-a5::before { left: -17px; } .bn-a5::after { right: -17px; }
+/* 6 꼬리표 */
+.bn-a6 b { margin-left: 6px; }
+.bn-a6 { box-shadow: 0 -2px 0 0 var(--b2), 0 2px 0 0 var(--b2), 2px 0 0 0 var(--b2), 0 5px 0 0 rgba(60, 40, 30, .18); }
+.bn-a6::before { content: ""; left: -8px; top: 50%; width: 14px; height: 14px; margin-top: -9px; background: var(--b1); border-left: 2px solid var(--b2); border-bottom: 2px solid var(--b2); transform: rotate(45deg); }
+.bn-a6::after { content: ""; left: 1px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--b2); }
+/* 7 메달 */
+.bn-a7 { border-radius: 999px; box-shadow: 0 0 0 2px var(--b2), 0 0 0 4px var(--b3), 0 0 0 6px var(--b2); }
+.bn-a7::before, .bn-a7::after { content: ""; top: 100%; margin-top: 2px; width: 7px; height: 10px; background: var(--b3); box-shadow: 0 0 0 2px var(--b2); z-index: -1; }
+.bn-a7::before { left: 30%; transform: rotate(14deg); } .bn-a7::after { right: 30%; transform: rotate(-14deg); }
+/* 8 단추 */
+.bn-a8 { border-radius: 6px; box-shadow: 0 0 0 2px var(--b2), 0 4px 0 2px var(--b3), 0 4px 0 4px var(--b2); }
+/* 9 우표 */
+.bn-a9 { border: 2px dashed var(--b3); box-shadow: 0 0 0 2px var(--b1), 0 0 0 4px var(--b2); }
+/* 10 형광펜 */
+.bn-a10, .bn-c0, .bn-c6 { background: none; box-shadow: none; color: var(--b1); text-shadow: 1px 0 0 var(--b2), -1px 0 0 var(--b2), 0 1px 0 var(--b2), 0 -1px 0 var(--b2), 1px 1px 0 var(--b2), -1px 1px 0 var(--b2), 1px -1px 0 var(--b2), -1px -1px 0 var(--b2), 0 2px 0 rgba(60, 40, 30, .3); }
+.bn-a10::before { content: ""; left: 2px; right: 2px; bottom: 1px; height: 9px; background: var(--b3); opacity: .85; z-index: -1; }
+/* 11 네온 */
+.bn-a11 { background: var(--b2); color: var(--b1); box-shadow: 0 0 0 2px var(--b3), 0 0 7px 3px var(--b3); }
+
+/* ----- 기념일 표 ----- */
+/* 0 띠 */
+.bn-b0 { border-left: 6px solid var(--b3); }
+/* 1 풍선 */
+.bn-b1 { border-radius: 999px; box-shadow: 0 0 0 2px var(--b2), inset -3px -2px 0 0 color-mix(in srgb, var(--b1) 78%, var(--b3)); }
+.bn-b1::before { content: ""; left: 50%; top: 100%; margin: 0 0 0 -4px; border: 4px solid transparent; border-bottom: 5px solid var(--b2); border-top: 0; }
+.bn-b1::after { content: ""; left: 50%; top: 100%; margin: 5px 0 0 -1px; width: 5px; height: 8px; border-left: 2px solid var(--b2); border-bottom: 2px solid var(--b2); border-radius: 0 0 0 6px; }
+/* 2 케이크 */
+.bn-b2 b { margin-top: 4px; }
+.bn-b2::before { content: ""; left: 0; right: 0; top: 0; height: 5px; background: radial-gradient(circle at 4px 0, var(--b3) 4px, transparent 4.5px) 0 0 / 8px 5px repeat-x; }
+.bn-b2::after { content: ""; left: 50%; top: -9px; width: 2px; height: 7px; margin-left: -1px; background: var(--b3); box-shadow: 0 -3px 0 0 #ffb52e, 0 0 0 1px var(--b2); }
+/* 3 깃발 */
+.bn-b3 { margin-left: 3px; }
+.bn-b3::before { content: ""; left: -6px; top: -5px; bottom: -11px; width: 3px; background: var(--b2); }
+.bn-b3::after { content: ""; left: 100%; top: -2px; bottom: -2px; width: 10px; background: var(--b2); clip-path: polygon(0 0, 100% 50%, 0 100%); }
+/* 4 왕관 */
+.bn-b4::before { content: ""; left: 50%; top: -11px; width: 20px; height: 9px; margin-left: -10px; background: var(--b3); clip-path: polygon(0 100%, 0 0, 25% 55%, 50% 0, 75% 55%, 100% 0, 100% 100%); filter: drop-shadow(0 -1px 0 var(--b2)); }
+/* 5 선물 */
+.bn-b5 b { margin-left: 9px; }
+.bn-b5 { background: linear-gradient(90deg, var(--b1) 5px, var(--b3) 5px 10px, var(--b1) 10px); }
+.bn-b5::before { content: ""; left: 2px; top: -6px; width: 5px; height: 5px; background: var(--b3); box-shadow: 6px 0 0 0 var(--b3), 0 0 0 1px var(--b2), 6px 0 0 1px var(--b2); }
+/* 6 겹종이 */
+.bn-b6 { box-shadow: 0 0 0 2px var(--b2), 4px 4px 0 0 var(--b3), 4px 4px 0 2px var(--b2); }
+/* 7 점선 */
+.bn-b7 { border-top: 3px dotted var(--b3); border-bottom: 3px dotted var(--b3); }
+/* 8 하트핀 */
+.bn-b8::after { content: "♥"; right: -8px; top: -10px; font-size: 13px; line-height: 16px; color: var(--b3); rotate: 14deg; text-shadow: 1px 0 0 var(--b2), -1px 0 0 var(--b2), 0 1px 0 var(--b2), 0 -1px 0 var(--b2); }
+/* 9 레이스 */
+.bn-b9::after { content: ""; left: -2px; right: -2px; top: 100%; margin-top: 2px; height: 5px; background: radial-gradient(circle at 4px 0, var(--b3) 3.5px, transparent 4px) 0 0 / 8px 5px repeat-x; }
+/* 10 스티커 */
+.bn-b10 { rotate: 3deg; box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--b2), 3px 6px 0 3px rgba(60, 40, 30, .2); }
+/* 11 별밤 */
+.bn-b11 b { margin-left: 12px; }
+.bn-b11 { background: var(--b2); color: var(--b1); box-shadow: 0 0 0 2px var(--b1), 0 0 0 4px var(--b2); }
+.bn-b11::before { content: "★"; left: 5px; top: 50%; margin-top: -9px; font-size: 11px; line-height: 18px; color: var(--b3); animation: twinkle 1.2s steps(2) infinite alternate; }
+
+/* ----- 일정 표 ----- */
+/* 0 글자만: 위의 형광펜과 같은 테두리 글자 */
+/* 1 메모지 */
+.bn-c1::after { content: ""; right: 0; bottom: 0; border: 4px solid var(--b3); border-top-color: transparent; border-left-color: transparent; }
+/* 2 포스트잇 */
+.bn-c2 { rotate: -2deg; border-top: 4px solid color-mix(in srgb, var(--b1) 72%, var(--b3)); box-shadow: 2px 3px 0 0 rgba(60, 40, 30, .28); }
+/* 3 테이프 */
+.bn-c3::before { content: ""; left: 50%; top: -7px; width: 24px; height: 8px; margin-left: -12px; background: color-mix(in srgb, var(--b3) 72%, transparent); rotate: -5deg; }
+/* 4 칠판 */
+.bn-c4 { background: var(--b2); color: var(--b1); box-shadow: 0 0 0 2px var(--b3), 0 0 0 4px var(--b2), 0 7px 0 0 rgba(60, 40, 30, .18); }
+/* 5 공책 */
+.bn-c5 b { margin-left: 8px; }
+.bn-c5 { background: linear-gradient(90deg, transparent 9px, var(--b3) 9px 10px, transparent 10px), var(--b1); }
+.bn-c5::before { content: ""; left: 3px; top: 3px; width: 3px; height: 3px; border-radius: 50%; background: var(--b2); box-shadow: 0 6px 0 0 var(--b2), 0 12px 0 0 var(--b2); }
+/* 6 밑줄 */
+.bn-c6::after { content: ""; left: 4px; right: 4px; bottom: -3px; height: 3px; background: var(--b3); box-shadow: 0 0 0 1px var(--b2); }
+/* 7 말풍선 */
+.bn-c7 { border-radius: 8px; box-shadow: 0 0 0 2px var(--b2), 0 3px 0 2px rgba(60, 40, 30, .18); }
+.bn-c7::after { content: ""; left: 14px; top: 100%; margin-top: 2px; border: 5px solid transparent; border-top: 7px solid var(--b2); border-bottom: 0; border-left-width: 2px; }
+/* 8 압정 */
+.bn-c8::before { content: ""; left: 50%; top: -6px; width: 7px; height: 7px; margin-left: -4px; border-radius: 50%; background: var(--b3); box-shadow: 0 0 0 2px var(--b2), inset 2px 2px 0 0 rgba(255, 255, 255, .5); }
+/* 9 영수증 */
+.bn-c9 { box-shadow: 0 -2px 0 0 var(--b2), -2px 0 0 0 var(--b2), 2px 0 0 0 var(--b2); border-bottom: 2px dashed var(--b3); }
+.bn-c9::after { content: ""; left: -2px; right: -2px; top: 100%; height: 5px; background: linear-gradient(135deg, var(--b2) 33%, transparent 33%) 0 0 / 6px 5px, linear-gradient(225deg, var(--b2) 33%, transparent 33%) 0 0 / 6px 5px; }
+/* 10 클립 */
+.bn-c10 b { margin-left: 5px; }
+.bn-c10::before { content: ""; left: 3px; top: -8px; width: 3px; height: 12px; border: 2px solid var(--b3); border-radius: 4px; box-shadow: 0 0 0 1px var(--b2); }
+/* 11 끈 */
+.bn-c11 { border-left: 5px solid var(--b3); border-right: 5px solid var(--b3); }

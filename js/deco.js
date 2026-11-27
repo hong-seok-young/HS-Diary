@@ -54,7 +54,7 @@
   const PATTERN = ["item", "pet", "mood", "item", "pj", "ban"];
   const ACTS = "출석, 기분 고르기, 질문 답, 하트, 쪽지, 기록, 할 일, 일기, 댓글과 반응, 일정";
   const cut = (t0) => { const t = String(t0 || "").trim(); return t.length > 10 ? t.slice(0, 10) + "…" : t; };
-  let cache = null, kNow = 0, needCache = null, giftCount = 0;
+  let cache = null, kNow = 0, rotNow = 0, needCache = null, giftCount = 0;
   // 동물이 오는 순서: 예전 규칙으로 받은 것(과 그 뒤 두 마리)까지는 그대로, 그다음부터는 날아다니는 친구와 땅 친구가 번갈아 와요
   const isFlyer = (id) => { const sp = Z.BY[id]; return !!sp && sp.fam !== "w" && (sp.m.indexOf("i") >= 0 || (/^bd/.test(id) && ["bd54", "bd55", "bd56", "bd62"].indexOf(id) < 0)); };
   let petsLive = PETS, petsKey = -1;
@@ -87,14 +87,24 @@
     const St = window.Store;
     if (!St) return [];
     const all = (col) => (St.listAll ? St.listAll(col) : St.list(col));
-    const SRC = { pet: PETS, pj: PJS, ban: BAN, item: ITEMS, mood: MOODS };
+    const SRC = { pet: PETS, pj: PJS, ban: { length: 1 + 4 * (BAN.length - 1) }, item: ITEMS, mood: MOODS };
     const n = { pet: 0, pj: 0, ban: 1, item: 0, mood: 0 };
     const out = [];
+    // 이름표 선물: T1 전에는 모두 이름표, 그 뒤로는 며칠째 → 기념일 → 일정 → 이름표 차례로 하나씩
+    const bn = { t: 0, a: 0, b: 0, s: 0 };
+    let rot = 0;
     const give = (cat, at, who, why, lid) => {
       if (n[cat] >= SRC[cat].length) return false;
       const item = cat === "ban" ? n.ban : SRC[cat][n[cat]];
+      const u = { id: `${cat}:${item}`, lid: lid || "", at, day: dayKey(new Date(at)), cat, item, who: who || "", why };
+      if (cat === "ban") {
+        let k = "t";
+        if (at >= T1) { for (let i = 0; i < ROT.length; i++) { k = ROT[rot % ROT.length]; rot++; if (bn[k] < DES[k].length - 1) break; } }
+        if (bn[k] >= DES[k].length - 1) return false;
+        u.part = k; u.di = ++bn[k];
+      }
       n[cat]++;
-      out.push({ id: `${cat}:${item}`, lid: lid || "", at, day: dayKey(new Date(at)), cat, item, who: who || "", why });
+      out.push(u);
       return true;
     };
     // 1) 예전 규칙 (T0 전)
@@ -135,7 +145,7 @@
     acts.forEach((a) => {
       for (let tries = 0; tries < PATTERN.length; tries++) { const cat = PATTERN[k % PATTERN.length]; k++; if (give(cat, a.t, a.who, a.why)) break; }
     });
-    kNow = k;
+    kNow = k; rotNow = rot;
     needCache = null;
     out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
     // 우리 집: 선물을 받은 수가 차면 집이 한 단계씩 좋아져요 (그 선물 바로 다음에 축하)
@@ -159,7 +169,14 @@
     }
     return needCache[cat] || [];
   }
-  const whyLocked = (cat, nth) => { const v = need(cat)[nth]; return `무엇이든 ${v || "여러"}번 더 하면 받아요. (${ACTS} · 하루에 몇 번을 해도 그때마다 선물이 하나씩 와요)`; };
+  // 이름표 조각 k 의 nth 번째 다음 디자인은 앞으로 올 이름표 선물 가운데 몇 번째인가
+  function banNth(k, nth) {
+    unlocks();
+    let c = 0;
+    for (let q = 0; q < 4200; q++) if (ROT[(rotNow + q) % ROT.length] === k && c++ === nth) return q;
+    return 4199;
+  }
+  const whyLocked = (cat, nth, part) => { const v = need(cat)[cat === "ban" ? banNth(part || "t", nth) : nth]; return `무엇이든 ${v || "여러"}번 더 하면 받아요. (${ACTS} · 하루에 몇 번을 해도 그때마다 선물이 하나씩 와요)`; };
   const ownedItems = () => unlocks().filter((u) => u.cat === "item").map((u) => u.item);
   const ownedMoods = () => unlocks().filter((u) => u.cat === "mood").map((u) => u.item);
   // 손에 든 것 (사람마다 따로 골라요)
@@ -202,7 +219,7 @@
   }
   const ownedPets = () => unlocks().filter((u) => u.cat === "pet").map((u) => u.item);
   const ownedPajamas = () => unlocks().filter((u) => u.cat === "pj").map((u) => u.item);
-  const bannerCount = () => 1 + unlocks().filter((u) => u.cat === "ban").length;
+  const bannerCount = (k) => 1 + unlocks().filter((u) => u.cat === "ban" && (u.part || "t") === (k || "t")).length;
   // 출석 찍기 (하루 한 번)
   function attend() {
     const w = me();
@@ -246,72 +263,145 @@
   // 모양과 색을 번갈아 섞어서, 새로 받을 때마다 느낌이 달라져요
   for (let r = 0; r < SHAPES.length; r++) for (let p = 0; p < PALS.length; p++) { const s = (p * 5 + r) % SHAPES.length; BANNERS.push({ s, p, name: `${PALS[p][0]} ${SHAPES[s]}` }); }
   const BAN = BANNERS;
+  // 이름표는 네 조각이에요: 이름, 며칠째, 기념일, 다가오는 일정. 저마다 따로 옮기고, 디자인도 따로 있어요.
+  const T1 = 1795750000000; // 2026-11-27 12:26 (한국 시간): 네 조각으로 나뉜 때
+  const ROT = ["a", "b", "s", "t"];
+  const PARTS = {
+    t: { key: "ban", el: "banner", name: "이름표", tab: "이름", cls: "bn-s", shapes: SHAPES, demo: () => `${NAME.him} ♥ ${NAME.her}` },
+    a: { key: "banA", el: "banA", name: "며칠째 표", tab: "며칠째", cls: "bn-a", mul: 7, shapes: ["딱지", "알약", "하트표", "달력", "도장", "별표", "꼬리표", "메달", "단추", "우표", "형광펜", "네온"], demo: () => "D+100" },
+    b: { key: "banB", el: "banB", name: "기념일 표", tab: "기념일", cls: "bn-b", mul: 11, shapes: ["띠", "풍선", "케이크", "깃발", "왕관", "선물", "겹종이", "점선", "하트핀", "레이스", "스티커", "별밤"], demo: () => "1주년" },
+    s: { key: "banS", el: "banS", name: "일정 표", tab: "일정", cls: "bn-c", mul: 5, rev: true, shapes: ["글자만", "메모지", "포스트잇", "테이프", "칠판", "공책", "밑줄", "말풍선", "압정", "영수증", "클립", "끈"], demo: () => "내일 데이트" },
+  };
+  const PKEYS = ["t", "a", "b", "s"];
+  const DES = { t: BAN };
+  ["a", "b", "s"].forEach((k) => {
+    const P = PARTS[k], L = (DES[k] = []);
+    for (let r = 0; r < P.shapes.length; r++) for (let i = 0; i < PALS.length; i++) { const p = P.rev ? (PALS.length - i) % PALS.length : i, s = (i * P.mul + r) % P.shapes.length; L.push({ s, p, name: `${PALS[p][0]} ${P.shapes[s]}` }); }
+  });
   const defTitle = () => cfg.title || `${call("him")}와 ${call("her")}`;
-  const MODES = ["며칠째 · 주년", "며칠째만", "몇 주", "몇 개월", "몇 시간"];
-  function ban() {
+  const MODES = ["며칠째", "몇 주", "몇 개월", "몇 시간"];
+  // 둘 중 나중에 바꾼 쪽 것이 두 폰에 똑같이 보여요
+  function latest(key) {
     let v = null, t = -1;
-    ["him", "her"].forEach((w) => { const x = Store.pair("ban", w), at = Store.pairTime("ban", w); if (x && at > t) { v = x; t = at; } });
-    v = v && typeof v === "object" ? v : {};
-    const di = Math.min(Math.max(0, Number(v.d) || 0), BAN.length - 1);
-    const title = typeof v.t === "string" && v.t.trim() ? v.t : defTitle();
-    const x = typeof v.x === "number" ? Math.min(0.95, Math.max(0.05, v.x)) : 0.5, y = typeof v.y === "number" ? Math.min(0.8, Math.max(0, v.y)) : 0.03;
-    return { d: di < bannerCount() ? di : 0, t: title, m: Number(v.m) || 0, x, y };
+    ["him", "her"].forEach((w) => { const x = Store.pair(key, w), at = Store.pairTime(key, w); if (x && at > t) { v = x; t = at; } });
+    return v && typeof v === "object" ? v : {};
   }
-  function setBan(patch) {
+  function partOf(k) {
+    const v = latest(PARTS[k].key), L = DES[k];
+    const di = Math.min(Math.max(0, Number(v.d) || 0), L.length - 1);
+    const has = typeof v.x === "number" && typeof v.y === "number";
+    const o = { d: di < bannerCount(k) ? di : 0, auto: k !== "t" && !has };
+    o.x = typeof v.x === "number" ? Math.min(0.95, Math.max(0.05, v.x)) : 0.5;
+    o.y = typeof v.y === "number" ? Math.min(0.85, Math.max(0, v.y)) : 0.03;
+    if (k === "t") { o.t = typeof v.t === "string" && v.t.trim() ? v.t : defTitle(); o.m = Number(v.m) || 0; }
+    // 며칠째를 어떻게 셀지: 예전에 이름표에서 고른 것이 있으면 그대로 이어 받아요
+    if (k === "a") o.m = typeof v.m === "number" ? Math.min(3, Math.max(0, v.m)) : [0, 0, 1, 2, 3][Number(latest("ban").m) || 0] || 0;
+    return o;
+  }
+  const ban = () => partOf("t");
+  // patch 에 home: true 를 주면 자리를 비워서 이름표 아래 제자리로 돌아가요
+  function setPart(k, patch) {
     const w = me();
-    if (!w) return;
-    const b = ban();
-    const cur = { d: b.d, t: b.t, m: b.m, x: b.x, y: b.y };
-    Store.setPair("ban", w, Object.assign(cur, patch));
+    if (!w || !PARTS[k]) return;
+    const b = partOf(k), cur = { d: b.d };
+    if (!b.auto) { cur.x = b.x; cur.y = b.y; }
+    if (k === "t") { cur.t = b.t; cur.m = b.m; }
+    if (k === "a") cur.m = b.m;
+    Object.assign(cur, patch);
+    if (cur.home) { delete cur.home; delete cur.x; delete cur.y; }
+    Store.setPair(PARTS[k].key, w, cur);
     apply();
   }
-  function styleOf(idx) { const b = BAN[idx] || BAN[0], p = PALS[b.p]; return { cls: "bn-s" + b.s, vars: `--b1:${p[1]};--b2:${p[2]};--b3:${p[3]}` }; }
+  const setBan = (patch) => setPart("t", patch);
+  function styleOf(k, idx) { const L = DES[k] || BAN, b = L[idx] || L[0], p = PALS[b.p]; return { cls: (PARTS[k] || PARTS.t).cls + b.s, vars: `--b1:${p[1]};--b2:${p[2]};--b3:${p[3]}` }; }
+  // 모양마다 위아래로 삐져나온 장식만큼 간격을 더 줘요
+  const TOPX = { "bn-b4": 7, "bn-b2": 6, "bn-a3": 4, "bn-c3": 3, "bn-c8": 3, "bn-c10": 5 };
+  const BOTX = { "bn-s2": 10, "bn-s5": 9, "bn-s8": 7, "bn-a7": 9, "bn-b1": 11, "bn-b3": 9, "bn-b9": 5, "bn-c7": 7, "bn-c9": 5, "bn-b6": 4 };
+  const shapeOf = (el) => (/bn-[sabc]\d+/.exec(el.className) || [""])[0];
+  let dragEl = null;
   function apply() {
     applyHold();
-    const el = $("banner");
-    if (!el || !window.Store) return;
-    const b = ban(), st = styleOf(b.d);
-    el.className = "sc-banner " + st.cls;
-    if (!dragging) el.setAttribute("style", `${st.vars};left:${(b.x * 100).toFixed(1)}%;top:${(b.y * 100).toFixed(1)}%`);
-    const t = $("diaryTitle");
-    if (t && t.textContent !== b.t) t.textContent = b.t;
-    document.dispatchEvent(new CustomEvent("hsd:ban", { detail: b }));
+    if (!window.Store) return;
+    PKEYS.forEach((k) => {
+      const el = $(PARTS[k].el);
+      if (!el) return;
+      const b = partOf(k), st = styleOf(k, b.d);
+      el.className = "sc-banner " + (k === "t" ? "" : "pt ") + st.cls;
+      if (dragEl === el) return;
+      el.dataset.auto = b.auto ? "1" : "";
+      el.setAttribute("style", st.vars + ";" + (b.auto ? el.dataset.pos || "visibility:hidden" : `left:${(b.x * 100).toFixed(1)}%;top:${(b.y * 100).toFixed(1)}%`));
+      if (k === "t") {
+        const t = $("diaryTitle");
+        if (t && t.textContent !== b.t) t.textContent = b.t;
+        document.dispatchEvent(new CustomEvent("hsd:ban", { detail: b }));
+      }
+    });
+    layout();
   }
-
-  // 이름표는 끌어서 옮겨요. 살짝 누르기만 하면 이름표 꾸미기가 열려요.
-  let dragging = false;
-  function bindDrag() {
-    const el = $("banner"), scene = $("scene");
-    if (!el || !scene || el.dataset.drag) return;
-    el.dataset.drag = "1";
-    let sx = 0, sy = 0, ox = 0, oy = 0, on = false, moved = false;
-    el.addEventListener("pointerdown", (ev) => {
-      const r = el.getBoundingClientRect(), sr = scene.getBoundingClientRect();
-      sx = ev.clientX; sy = ev.clientY; ox = r.left + r.width / 2 - sr.left; oy = r.top - sr.top; on = true; moved = false;
-      try { el.setPointerCapture(ev.pointerId); } catch (e) { /* 괜찮아요 */ }
-    });
-    el.addEventListener("pointermove", (ev) => {
-      if (!on) return;
-      const dx = ev.clientX - sx, dy = ev.clientY - sy;
-      if (!moved && Math.abs(dx) + Math.abs(dy) < 8) return;
-      moved = true; dragging = true;
-      const sr = scene.getBoundingClientRect();
-      const x = Math.min(0.95, Math.max(0.05, (ox + dx) / sr.width)), y = Math.min(0.8, Math.max(0, (oy + dy) / sr.height));
-      el.style.left = (x * 100).toFixed(1) + "%"; el.style.top = (y * 100).toFixed(1) + "%";
-      el.dataset.x = String(x); el.dataset.y = String(y);
-      ev.preventDefault();
-    });
-    const end = () => {
-      if (!on) return;
-      on = false;
-      if (moved) { dragging = false; el.dataset.moved = String(Date.now()); setBan({ x: Number(el.dataset.x), y: Number(el.dataset.y) }); }
+  // 아직 따로 옮기지 않은 조각은 이름표 바로 아래에 가지런히 놓아요 (이름표를 옮기면 같이 따라가요)
+  function layout() {
+    const T = $("banner");
+    if (!T || !T.offsetParent) return;
+    const W = T.offsetParent.clientWidth, cx = T.offsetLeft;
+    if (!W) return;
+    const isAuto = (el) => el && !el.hidden && el.dataset.auto === "1" && el !== dragEl;
+    const put = (el, x, y) => {
+      const pos = `left:${x.toFixed(1)}px;top:${y.toFixed(1)}px`;
+      if (el.dataset.pos !== pos || el.style.visibility) { el.dataset.pos = pos; el.style.left = x.toFixed(1) + "px"; el.style.top = y.toFixed(1) + "px"; el.style.visibility = ""; }
     };
-    el.addEventListener("pointerup", end);
-    el.addEventListener("pointercancel", end);
+    let top = T.offsetTop + T.offsetHeight + 8 + (BOTX[shapeOf(T)] || 0);
+    const row = [$("banA"), $("banB")].filter(isAuto);
+    if (row.length) {
+      const ws = row.map((el) => el.offsetWidth), total = ws.reduce((a, b) => a + b, 0) + 10 * (row.length - 1);
+      const up = Math.max.apply(null, row.map((el) => TOPX[shapeOf(el)] || 0));
+      let x = Math.max(6, Math.min(W - total - 6, cx - total / 2));
+      row.forEach((el, i) => { put(el, x + ws[i] / 2, top + up); x += ws[i] + 10; });
+      top += up + Math.max.apply(null, row.map((el) => el.offsetHeight + (BOTX[shapeOf(el)] || 0))) + 8;
+    }
+    const S = $("banS");
+    if (isAuto(S)) { const w = S.offsetWidth; put(S, Math.max(6 + w / 2, Math.min(W - 6 - w / 2, cx)), top + (TOPX[shapeOf(S)] || 0)); }
   }
+  window.addEventListener("resize", () => layout());
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => layout());
+
+  // 조각마다 끌어서 옮겨요. 살짝 누르기만 하면 그 조각 꾸미기가 열려요.
+  function bindDrag() {
+    const scene = $("scene");
+    if (!scene) return;
+    PKEYS.forEach((k) => {
+      const el = $(PARTS[k].el);
+      if (!el || el.dataset.drag) return;
+      el.dataset.drag = "1";
+      let sx = 0, sy = 0, ox = 0, oy = 0, on = false, moved = false;
+      el.addEventListener("pointerdown", (ev) => {
+        sx = ev.clientX; sy = ev.clientY; ox = el.offsetLeft; oy = el.offsetTop; on = true; moved = false;
+        try { el.setPointerCapture(ev.pointerId); } catch (e) { /* 괜찮아요 */ }
+      });
+      el.addEventListener("pointermove", (ev) => {
+        if (!on) return;
+        const dx = ev.clientX - sx, dy = ev.clientY - sy;
+        if (!moved && Math.abs(dx) + Math.abs(dy) < 8) return;
+        moved = true; dragEl = el;
+        const P = el.offsetParent || scene, W = P.clientWidth, Hh = P.clientHeight;
+        const x = Math.min(0.95, Math.max(0.05, (ox + dx) / W)), y = Math.min(0.85, Math.max(0, (oy + dy) / Hh));
+        el.style.left = (x * 100).toFixed(1) + "%"; el.style.top = (y * 100).toFixed(1) + "%";
+        el.dataset.x = String(x); el.dataset.y = String(y);
+        if (k === "t") layout();
+        ev.preventDefault();
+      });
+      const end = () => {
+        if (!on) return;
+        on = false;
+        if (moved) { dragEl = null; el.dataset.moved = String(Date.now()); setPart(k, { x: Number(el.dataset.x), y: Number(el.dataset.y) }); }
+      };
+      el.addEventListener("pointerup", end);
+      el.addEventListener("pointercancel", end);
+    });
+  }
+  const justDragged = () => PKEYS.some((k) => { const el = $(PARTS[k].el); return !!(el && Date.now() - Number(el.dataset.moved || 0) < 400); });
 
   // ---------- 꾸미기 창 ----------
-  let root = null, tab = "pj", solo = false, closetTab = "pj";
+  let root = null, tab = "pj", solo = false, closetTab = "pj", banPart = "t";
   function ensure() {
     if (root) return;
     root = document.createElement("div");
@@ -323,9 +413,10 @@
     root.addEventListener("submit", (ev) => { ev.preventDefault(); const v = $("decoText").value.trim().slice(0, 14); if (v) { setBan({ t: v }); render(); if (window.HSD && HSD.toast) HSD.toast("이름표를 바꿨어요"); } });
   }
   const layer = () => document.dispatchEvent(new Event("hsd:layer"));
-  function open(t) {
+  function open(t, part) {
     if (!me()) return;
     ensure();
+    if (t === "ban") banPart = PARTS[part] ? part : "t";
     // 이름표를 눌러 열면 이름표만, 옷장 단추로 열면 잠옷과 동물만 보여요
     // 이름표, 옷장, 동물 집을 눌러 열면 저마다 그것만 보여요
     solo = true;
@@ -362,8 +453,10 @@
       render();
       return;
     }
-    if (k === "ban") { setBan({ d: Number(v) }); render(); return; }
-    if (k === "mode") { setBan({ m: Number(v) }); render(); return; }
+    if (k === "part") { banPart = PARTS[v] ? v : "t"; render(); $("decoBody").scrollTop = 0; return; }
+    if (k === "ban") { setPart(banPart, { d: Number(v) }); render(); return; }
+    if (k === "mode") { setPart("a", { m: Number(v) }); if (window.HSD && HSD.header) HSD.header(); render(); return; }
+    if (k === "bhome") { setPart(banPart, { home: true }); render(); if (window.HSD && HSD.toast) HSD.toast("이름표 아래 제자리로 돌려놨어요"); return; }
   }
   if (window.Store) Store.onChange(() => { cache = null; });
   // 그림은 화면에 보일 때 그려요 (수백 개를 한꺼번에 그리지 않게)
@@ -443,16 +536,18 @@
       html = `<div class="deco-grid">` + own.slice().reverse().map((id) => `<button class="deco-it pet${mine.indexOf(id) >= 0 ? " on" : ""}" data-d="pet" data-v="${id}"><img class="px" alt="" data-k="pet|${id}" src="${BLANK}"><small>${esc(Z.BY[id].name + stage(id))}</small></button>`).join("") +
         petsLive.slice(own.length).map((id, k) => locked("pet", id, k)).join("") + `</div>`;
     } else {
-      const n = bannerCount(), b = ban();
-      tip = `이름표 ${n}개 / ${BAN.length}개 · 무엇이든 할 때마다 선물이 하나씩 와요`;
-      html = `<form class="deco-form"><input type="text" id="decoText" maxlength="14" placeholder="이름표에 쓸 글자" value="${esc(b.t)}" autocomplete="off"><button class="btn small primary" type="submit">바꾸기</button></form>
-        <p class="deco-tip">이름표를 끌면 그림 안 어디로든 옮길 수 있어요</p>
-        <div class="deco-row">${MODES.map((t, i) => `<button class="chip${b.m === i ? " active" : ""}" data-d="mode" data-v="${i}">${t}</button>`).join("")}</div>
-        <div class="deco-grid ban">` + BAN.map((x, i) => {
-          const st = styleOf(i);
+      const k = banPart, P = PARTS[k], L = DES[k], n = bannerCount(k), b = partOf(k), demo = esc(P.demo());
+      tip = `${P.name} 디자인 ${n}개 / ${L.length}개 · 무엇이든 할 때마다 선물이 하나씩 와요`;
+      html = `<div class="deco-row parts">${PKEYS.map((x) => `<button class="chip${x === k ? " active" : ""}" data-d="part" data-v="${x}">${PARTS[x].tab}</button>`).join("")}</div>` +
+        (k === "t" ? `<form class="deco-form"><input type="text" id="decoText" maxlength="14" placeholder="이름표에 쓸 글자" value="${esc(b.t)}" autocomplete="off"><button class="btn small primary" type="submit">바꾸기</button></form>` : "") +
+        `<p class="deco-tip">이름, 며칠째, 기념일, 일정을 저마다 끌어서 따로 옮기고 따로 꾸며요</p>` +
+        (k === "a" ? `<div class="deco-row">${MODES.map((t, i) => `<button class="chip${b.m === i ? " active" : ""}" data-d="mode" data-v="${i}">${t}</button>`).join("")}</div>` : "") +
+        (k !== "t" && !b.auto ? `<div class="deco-row"><button class="chip" data-d="bhome" data-v="">이름표 아래 제자리로</button></div>` : "") +
+        `<div class="deco-grid ban">` + L.map((x, i) => {
+          const st = styleOf(k, i);
           return i < n
-            ? `<button class="deco-it bn${b.d === i ? " on" : ""}" data-d="ban" data-v="${i}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>${esc(x.name)}</small></button>`
-            : `<button class="deco-it bn lock" data-d="why" data-v="${esc(why.ban(i - n))}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span><small>???</small></button>`;
+            ? `<button class="deco-it bn${b.d === i ? " on" : ""}" data-d="ban" data-v="${i}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${demo}</b></span><small>${esc(x.name)}</small></button>`
+            : `<button class="deco-it bn lock" data-d="why" data-v="${esc(whyLocked("ban", i - n, k))}"><span class="sc-banner mini ${st.cls}" style="${st.vars}"><b>${demo}</b></span><small>???</small></button>`;
         }).join("") + `</div>`;
     }
     $("decoTip").textContent = tip;
@@ -527,10 +622,11 @@
     if (u.cat === "pet") return `<img class="px ul-img pet" alt="" src="${S().petImg(u.item, "stand", "happy")}">`;
     if (u.cat === "pj") return `<img class="px ul-img pj" alt="" src="${S().charImg(me() || "him", "down", 0, "wave1", "happy", u.item)}">`;
     if (u.cat === "item") { const it = Items.BY[u.item]; if (it.kind === "hand") return `<img class="px ul-img item" alt="" src="${Items.uri(u.item)}">`; const a = {}; a[it.kind] = u.item; return `<img class="px ul-img pj" alt="" src="${S().charImg(me() || "him", "down", 0, "wave1", "happy", "", a)}">`; }
-    const st = styleOf(u.item);
-    return `<span class="sc-banner mini big ${st.cls}" style="${st.vars}"><b>${esc(NAME.him)} ♥ ${esc(NAME.her)}</b></span>`;
+    const bk = u.part || "t", st = styleOf(bk, u.di === undefined ? u.item : u.di);
+    return `<span class="sc-banner mini big ${st.cls}" style="${st.vars}"><b>${esc(PARTS[bk].demo())}</b></span>`;
   }
-  const nameOf = (u) => (u.cat === "home" ? Home.TIERS[Home.LEVELS[u.item].tier].name : u.cat === "mood" ? MD.name(u.item) : u.cat === "item" ? Items.BY[u.item].name : u.cat === "ban" ? BAN[u.item].name + " 이름표" : Z.BY[u.item].name + (u.cat === "pj" ? " 잠옷" : ""));
+  const banName = (u) => { const k = u.part || "t", L = DES[k], d = L[u.di === undefined ? u.item : u.di] || L[0]; return d.name + " " + PARTS[k].name; };
+  const nameOf = (u) => (u.cat === "home" ? Home.TIERS[Home.LEVELS[u.item].tier].name : u.cat === "mood" ? MD.name(u.item) : u.cat === "item" ? Items.BY[u.item].name : u.cat === "ban" ? banName(u) : Z.BY[u.item].name + (u.cat === "pj" ? " 잠옷" : ""));
   // 누가 무엇을 해서 받았는지
   function whyOf(u) {
     const d = new Date(u.at), today = dayKey(new Date());
@@ -606,7 +702,7 @@
       $("ulFace").parentNode.hidden = true;
       $("ulWho").textContent = "";
       $("ulWhy").textContent = u.cat === "home" ? `둘이 함께 ${Home.LEVELS[u.item].need}번을 채워서` : `${whyOf(u)} 받은 선물`;
-      utypeLine(u.cat === "home" ? `${Home.LEVELS[u.item].msg}!` : `${KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
+      utypeLine(u.cat === "home" ? `${Home.LEVELS[u.item].msg}!` : `${u.cat === "ban" ? "새 " + PARTS[u.part || "t"].name : KIND[u.cat]}: ${nameOf(u)}${u.cat === "pet" ? "가 우리를 찾아왔어요!" : (batchim(nameOf(u)) ? "을" : "를") + " 받았어요!"}`);
       const actName = u.cat === "mood" ? "오늘 기분으로" : u.cat === "pet" ? "그림에 두기" : u.cat === "pj" ? "지금 입기" : u.cat === "item" ? (Items.BY[u.item].kind === "hand" ? "손에 들기" : "지금 하기") : "달기";
       $("ulBtns").innerHTML = u.cat === "home" ? `<button class="btn primary" data-u="next">${uq.length ? "다음" : "좋아"}</button>` : `<button class="btn" data-u="next">${uq.length ? "다음" : "좋아"}</button><button class="btn primary" data-u="use">${actName}</button>`;
       party(u);
@@ -625,7 +721,7 @@
       else if (u.cat === "pet") { let list = placed().slice(); list = list.filter((x) => x !== u.item); if (list.length >= MAXP) list = list.slice(1); Store.setPair("pets", w, list.concat(u.item)); document.dispatchEvent(new CustomEvent("hsd:pets")); }
       else if (u.cat === "pj") { if (window.Tale) Tale.setWear(u.item); document.dispatchEvent(new CustomEvent("hsd:wear")); }
       else if (u.cat === "item") setAcc(Items.BY[u.item].kind, u.item);
-      else setBan({ d: u.item });
+      else setPart(u.part || "t", { d: u.di === undefined ? u.item : u.di });
     }
     markSeen(u.id);
     clearInterval(uTimer);
@@ -653,7 +749,7 @@
 
   window.Deco = {
     open, back: close, isOpen: () => !!(root && !root.hidden && !root.classList.contains("closing")),
-    bindDrag, justDragged: () => { const el = $("banner"); return !!(el && Date.now() - Number(el.dataset.moved || 0) < 400); }, tab: () => tab,
+    bindDrag, justDragged, part: partOf, layout, PARTS, tab: () => tab,
     celebrate, celebrating: () => !!(uroot && !uroot.hidden), attend, unlocks, petAge, whyLocked, need, homeLevel, homeLine, gifts: () => { unlocks(); return giftCount; }, ownedMoods, MOODS, ownedPets, ownedPajamas, ownedItems, holdOf, accOf, setAcc, applyHold, ITEMS, placed, ban, apply, bannerCount, setBan, PETS, PJS, BAN, styleOf, MAXP,
   };
 })();

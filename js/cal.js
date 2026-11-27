@@ -114,7 +114,7 @@
     if (window.MORPH) MORPH(el, html); else el.innerHTML = html;
     if (H.panel && H.panel() === "day" && !form) renderDay();
     const nx = $("banNext");
-    if (nx) { const line = nextLine(); if (nx.textContent !== line) nx.textContent = line; nx.hidden = !line; }
+    if (nx) { const line = nextLine(), box = $("banS"); if (nx.textContent !== line || box.hidden !== !line) { nx.textContent = line; box.hidden = !line; if (window.Deco && Deco.layout) Deco.layout(); } }
   }
 
   // ---------- 그날 일정 ----------
