@@ -1913,3 +1913,7 @@ button.day-it:active { transform: translateY(1px); }
   .view[data-view="home"] .scene { margin: 0; box-shadow: none; }
   .view[data-view="home"] .home-body { display: none; }
 }
+
+/* 공휴일: 날짜가 빨갛게 */
+.cal-d.hol b { color: #d9534f; }
+.day-it.hol .bar { background: #d9534f; }

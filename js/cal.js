@@ -101,12 +101,13 @@
       const k = keyOf(d);
       const out = d.getMonth() !== ym.m;
       const sp = special(d);
+      const hol = window.Holidays ? Holidays.of(d) : ""; // 공휴일이면 날짜가 빨갛게, 이름이 작게 떠요
       const on = list.map((e) => ({ e, i: dayIndex(e, d) })).filter((x) => x.i >= 0);
       const single = on.filter((x) => !spanOf(x.e)), multi = on.filter((x) => spanOf(x.e));
       const has = { him: single.some((x) => x.e.who === "him"), her: single.some((x) => x.e.who === "her"), both: single.some((x) => x.e.who === "both") };
       const bars = multi.slice(0, 2).map((x) => `<u class="${esc(x.e.who)}${x.i === 0 ? " s" : ""}${x.i === spanOf(x.e) ? " e" : ""}"></u>`).join("");
-      const lab = sp[0] || (on[0] && (on[0].i === 0 || d.getDay() === 0 || d.getDate() === 1 ? on[0].e.title : "")) || "";
-      cells += `<button class="cal-d${out ? " out" : ""}${k === today ? " today" : ""}${k === sel ? " sel" : ""}${d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : ""}${sp.length ? " ann" : ""}" data-d="${k}"><b>${d.getDate()}</b><span class="cal-dots">${sp.length ? '<i class="star"></i>' : ""}${has.him ? '<i class="him"></i>' : ""}${has.her ? '<i class="her"></i>' : ""}${has.both ? '<i class="both"></i>' : ""}</span><small class="${sp.length ? "sp" : on[0] ? esc(on[0].e.who) : ""}">${esc(lab)}</small><span class="cal-bars">${bars}</span></button>`;
+      const lab = sp[0] || hol || (on[0] && (on[0].i === 0 || d.getDay() === 0 || d.getDate() === 1 ? on[0].e.title : "")) || "";
+      cells += `<button class="cal-d${out ? " out" : ""}${k === today ? " today" : ""}${k === sel ? " sel" : ""}${d.getDay() === 0 ? " sun" : d.getDay() === 6 ? " sat" : ""}${sp.length ? " ann" : ""}${hol ? " hol" : ""}" data-d="${k}"><b>${d.getDate()}</b><span class="cal-dots">${sp.length ? '<i class="star"></i>' : ""}${has.him ? '<i class="him"></i>' : ""}${has.her ? '<i class="her"></i>' : ""}${has.both ? '<i class="both"></i>' : ""}</span><small class="${sp.length || hol ? "sp" : on[0] ? esc(on[0].e.who) : ""}">${esc(lab)}</small><span class="cal-bars">${bars}</span></button>`;
     }
     const html = `<div class="cal-head"><button class="cal-nav" data-cal="prev" aria-label="이전 달"><i class="l"></i></button><b class="cal-title">${ym.y}년 ${ym.m + 1}월</b><button class="cal-nav" data-cal="next" aria-label="다음 달"><i class="r"></i></button><span class="cal-legend"><i class="him"></i>${esc(NAME.him)}<i class="her"></i>${esc(NAME.her)}<i class="both"></i>같이</span><button class="cal-today" data-cal="today">오늘</button></div>
       <div class="cal-week">${DOW.map((w, i) => `<i class="${i === 0 ? "sun" : i === 6 ? "sat" : ""}">${w}</i>`).join("")}</div>
@@ -125,12 +126,14 @@
     const left = days(parse(keyOf(new Date())), d);
     $("dayTitle").innerHTML = `${d.getMonth() + 1}월 ${d.getDate()}일 <em>${DOW[d.getDay()]}요일</em><i>${left === 0 ? "오늘" : left > 0 ? `D-${left}` : `${-left}일 전`}</i>`;
     const sp = special(d), ev = eventsOn(sel);
+    const hol = window.Holidays ? Holidays.of(d) : "";
     const list = sp.map((n) => `<div class="day-it sp"><i class="bar"></i><div class="day-main"><b>${esc(n)}</b><small>기념일</small></div></div>`).join("") +
+      (hol ? `<div class="day-it sp hol"><i class="bar"></i><div class="day-main"><b>${esc(hol)}</b><small>공휴일</small></div></div>` : "") +
       ev.map(({ e, i }) => {
         const span = spanOf(e);
         const sub = [whenText(e), rangeText(e) + (span ? ` 중 ${i + 1}일째` : ""), NAME[e.who] || ""].filter(Boolean).join(" · ");
         return `<button class="day-it ${esc(e.who)}" data-edit="${esc(e.id)}"><i class="bar"></i><div class="day-main"><b>${esc(e.title)}</b><small>${esc(sub)}</small>${e.memo ? `<p>${esc(e.memo)}</p>` : ""}</div><i class="day-go"></i></button>`;
-      }).join("") + (!sp.length && !ev.length ? `<p class="day-empty">아직 일정이 없어요</p>` : "");
+      }).join("") + (!sp.length && !ev.length && !hol ? `<p class="day-empty">아직 일정이 없어요</p>` : "");
     $("dayList").innerHTML = list;
     $("dayList").hidden = !!form;
     $("dayAdd").hidden = !!form || !me;
@@ -265,6 +268,8 @@
     }
     const sp = special(t0);
     if (sp.length) return `오늘은 ${sp[0]}!`;
+    const hol = window.Holidays ? Holidays.of(t0) : "";
+    if (hol) return `오늘은 ${hol}!`;
     const list = Store.list("cal");
     if (!list.length) return "";
     for (let n = 1; n <= 200; n++) {
