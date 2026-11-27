@@ -186,8 +186,8 @@
     try {
       if (document.hidden && window.Notification && Notification.permission === "granted" && !(window.Notify && Notify.pushOn())) {
         const body = String(n.text || "").slice(0, 60);
-        if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then((reg) => reg.showNotification(text, { body, icon: "icons/icon-192.png", tag: "hsd-note" })).catch(() => {});
-        else new Notification(text, { body, icon: "icons/icon-192.png", tag: "hsd-note" });
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) navigator.serviceWorker.ready.then((reg) => reg.showNotification(text, { body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag: "hsd-note" })).catch(() => {});
+        else new Notification(text, { body, icon: "icons/icon-192.png", badge: "icons/badge-96.png", tag: "hsd-note" });
       }
     } catch (e) { /* 알림을 못 띄워도 우체통에는 들어 있어요 */ }
   }
