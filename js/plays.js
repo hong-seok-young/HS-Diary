@@ -200,13 +200,15 @@
     const res = yield* b.launch(90 * d, 720, { noLand: true, spin: 420 * d });
     if (res === "land") {
       // 머리부터 땅에 콱 박혀서 다리만 버둥버둥
-      b.pivot = "mid"; b.rot = 180; b.y = 10; b.pose = ""; b.face = "ko";
+      b.pose = ""; b.face = "ko";
+      yield* tween(b, { rot: Math.round((b.rot - 180) / 360) * 360 + 180, y: 10 }, 0.08, E.in);
+      b.rot = 180;
       pow(b.x, 34, "콱!", { big: true }); dust(b.x, 12, 8); quake(3.5);
       yield* wait(1.1, (k, dt, t) => { b.rot = 180 + Math.sin(t * 19) * 7; b.frame = Math.floor(t * 9) % 2 ? 1 : 2; });
       // 뽁! 하고 빠져나와요
       pow(b.x, 50, "뽁!"); b.frame = 0;
       yield* wait(0.36, (k) => { b.rot = 180 + 180 * E.out(k); b.y = 10 + Math.sin(k * Math.PI) * 30 - 10 * k; });
-      b.pivot = "feet"; b.rot = 0; b.y = 0;
+      b.rot = 0; b.y = 0; b.setPivot("feet"); b.y = 0;
       yield* b.squash(1.14, 0.84, 0.04);
       yield* b.dizzy(1.0, true);
     }
@@ -255,7 +257,7 @@
     yield* wait(0.09);
     b.sy = 1;
     let rolled = 0;
-    ev.forEach((e, i) => fork((function* () { yield* e.bounce(i ? rand(60, 150) : rand(-50, 50), rand(240, 330), 6); if (e.x < g.pond.x1 + 20) e.x = g.pond.x1 + 20 + rand(0, 20); rolled++; })()));
+    ev.forEach((e, i) => fork((function* () { yield* e.bounce(i ? rand(60, 150) : rand(-50, 50), rand(240, 330), 6); if (e.x < g.pond.x1 + 20) { if (PL()) PL().ring(e.x); yield* e.arc(g.pond.x1 + 24 + rand(0, 20), 6, 30, 0.4, 720); } rolled++; })()));
     fork((function* () { a.pose = ""; yield* a.lean(0, 0.12); a.front(); yield* a.laugh(1.8); })());
     // 내 눈! 더듬더듬
     b.pose = "act"; b.say(pick(["내 눈! 내 눈!", "앞이 안 보여!", "눈알 어디 갔어!"]), 1500);
@@ -353,7 +355,7 @@
     yield* wait(0.08);
     carry = false; a.pose = "punch";
     fork((function* () { yield* a.lean(14 * td, 0.07, E.in); yield* wait(0.5); yield* a.lean(0, 0.15); a.pose = "act"; a.front(); a.say(pick(["손 좀 털고", "가볍네", "나이스 샷"]), 1100); yield* wait(1.2); a.pose = ""; a.look(b); })());
-    b.rot = 0; b.frame = 0;
+    b.frame = 0;
     const res = yield* b.launch(660 * td, 200, { brk: true });
     if (res === "land") { yield* b.dizzy(0.9); yield* b.getUp(); }
     yield* react(a, b, depth, toss);
@@ -434,7 +436,8 @@
     yield* wait(0.1);
     b.sy = 1; b.sx = 1;
     yield* b.launch(0, 800, { noLand: true, pose: "raise" });
-    b.pivot = "feet"; b.rot = 0; b.y = 0; b.front(); b.face = "hit"; b.pose = "";
+    yield* b.upright();
+    b.front(); b.face = "hit"; b.pose = "";
     dust(b.x, 12, 6);
     yield* b.squash(1.2, 0.76, 0.06);
     // 다리가 후들후들 풀려서 털썩
@@ -472,8 +475,8 @@
     pow(a.x - 16, a.b + 40, "톡", { ms: 400 });
     b.face = "hit";
     yield* wait(0.1);
-    yield* tween(b, { rot: -70 }, 0.3, E.in);
-    b.rot = 0; b.x = g.pond.x1 - 20;
+    yield* tween(b, { rot: -50 }, 0.22, E.in);
+    { const x0 = b.x, x1 = g.pond.x1 - 20; b.setPivot("mid"); const y0 = b.y, r0 = b.rot; yield* wait(0.3, (k) => { b.x = x0 + (x1 - x0) * k; b.y = y0 + Math.sin(k * Math.PI) * 14 - 22 * k * k; b.rot = r0 - 130 * k; }); }
     fork((function* () { a.pose = ""; a.front(); yield* a.laugh(2.2); })());
     yield* splashIn(b);
     yield* react(a, b, depth, pondpush);
@@ -521,8 +524,8 @@
     // 어깨 위로 크게 넘겨요
     b.pivot = "mid"; b.z = 10;
     const ax = a.x, x0 = b.x;
-    yield* wait(0.34, (k) => { const th = Math.PI * E.in(k); b.x = ax + Math.cos(th) * (x0 - ax); b.y = Math.sin(th) * 58 - 20 * k; b.rot = -d * 270 * k; });
-    b.x = ax - (x0 - ax); b.y = -20; b.rot = -270 * d; b.face = "ko";
+    yield* wait(0.34, (k) => { const th = Math.PI * E.in(k); b.x = ax + Math.cos(th) * (x0 - ax); b.y = Math.sin(th) * 58 - 11 * k; b.rot = -d * 270 * k; });
+    b.x = ax - (x0 - ax); b.y = -11; b.rot = -270 * d; b.face = "ko";
     impact(b.x, 34, "쿵!!"); dust(b.x, 12, 9); quake(4);
     b.rot = 90 * d;
     yield* tween(b, { sx: 1.12 }, 0.05); yield* tween(b, { sx: 1 }, 0.2, E.el);
@@ -552,7 +555,8 @@
     fork((function* () { a.pose = ""; yield* a.lean(0, 0.1); a.front(); yield* a.laugh(1.8); })());
     // 로켓처럼 솟았다가
     yield* b.launch(30 * d, 660, { noLand: true, pose: "raise" });
-    b.pivot = "feet"; b.rot = 0; b.y = 0; b.front();
+    yield* b.upright();
+    b.front();
     // 엉덩이를 잡고 팔짝팔짝
     b.say(pick(["아야야야야!", "누구야!!", "엉덩이에 불났어"]), 1300);
     for (let i = 0; i < 4; i++) { b.pose = "crouch"; b.face = i % 2 ? "cry1" : "cry2"; const x0 = b.x, tx = clamp(x0 + (i % 2 ? -1 : 1) * 16, 30, geo().W - 30); yield* wait(0.24, (k) => { b.x = x0 + (tx - x0) * k; b.y = Math.sin(k * Math.PI) * 14; }); b.y = 0; dust(b.x, 12, 2); }
@@ -669,8 +673,9 @@
     b.face = "ko";
     yield* all(tween(b, { sy: 0.3, sx: 1.4 }, 0.16, E.in), tween(a, { y: 0 }, 0.16, E.in));
     impact(b.x, 30, "풀썩", false); dust(b.x, 12, 8);
-    a.pose = ""; a.front(); a.x = b.x + 26 * d * -1;
-    yield* wait(0.7);
+    a.pose = ""; a.front();
+    { const x0 = a.x, x1 = clamp(b.x - 34 * d, 24, g.W - 24); yield* wait(0.26, (k) => { a.x = x0 + (x1 - x0) * k; a.y = Math.sin(k * Math.PI) * 12; }); a.y = 0; dust(a.x, 12, 2); }
+    yield* wait(0.5);
     yield* tween(b, { sy: 1, sx: 1 }, 0.4, E.el);
     b.front();
     yield* all(a.laugh(0.8), b.dizzy(0.8, true));
@@ -714,7 +719,7 @@
     // 점점 크게 흔들리다가
     yield* wait(1.6, (k, dt, t) => { a.rot = 180 + Math.sin(t * 6) * (3 + 16 * k); a.face = k > 0.6 ? "hit" : "m15"; });
     const d = pick([-1, 1]);
-    yield* tween(a, { rot: 180 + 90 * d, y: -20 }, 0.22, E.in);
+    yield* tween(a, { rot: 180 + 90 * d, y: -11 }, 0.22, E.in);
     a.rot = 90 * d * -1 + 0; a.face = "ko";
     impact(a.x + 20 * d, 34, "쿠당", false); dust(a.x, 12, 7);
     b.look(a); fork(b.laugh(1.2));
@@ -735,12 +740,13 @@
       yield* all(wait(0.9), clap(b, 0.9));
       a.pose = "";
     } else {
-      a.rot = 180; a.y = 10; a.pose = ""; a.face = "ko";
+      a.rot = 180; a.pose = ""; a.face = "ko";
+      yield* tween(a, { y: 10 }, 0.05, E.in);
       impact(a.x, 34, "쿵!"); dust(a.x, 12, 7);
       b.face = "hit";
       yield* wait(0.7, (k, dt, t) => { a.rot = 180 + Math.sin(t * 16) * 5; a.frame = Math.floor(t * 8) % 2 ? 1 : 2; });
       a.frame = 0;
-      yield* tween(a, { rot: 270, y: -20 }, 0.25, E.in);
+      yield* tween(a, { rot: 270, y: -11 }, 0.25, E.in);
       a.rot = -90; dust(a.x, 12, 5);
       stick(a, "bump", { db: 58, sec: 6 });
       fork(b.laugh(1.2));

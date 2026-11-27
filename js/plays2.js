@@ -21,7 +21,7 @@
   const follow = (e, p, dx, db, on) => (function* () { let t = 0; while (on()) { t += yield; e.x = p.x + dx() ; e.b = p.b + db; } })();
   const reg = (id, name, pickFn, run, o) => Play.def(Object.assign({ id, name, w: 2, n: 2, pick: pickFn, run }, o || {}));
   // 동물이 맞고 대자로 뻗었다가 일어나요
-  function* aKO(e, sec) { e.rot = 180; e.face = "sweat"; e.frame = "stand"; orbit(e, sec); yield* wait(sec, (k, dt, t) => { e.tx = Math.sin(t * 9) * 1; }); e.tx = 0; e.rot = 0; yield* A.hop(e, 6, 0.2); }
+  function* aKO(e, sec) { e.face = "sweat"; e.frame = "stand"; yield* tween(e, { rot: Math.round((e.rot - 180) / 360) * 360 + 180 }, 0.14, E.out); e.rot = 180; orbit(e, sec); yield* wait(sec, (k, dt, t) => { e.tx = Math.sin(t * 9) * 1; }); e.tx = 0; yield* all(tween(e, { rot: 360 }, 0.2, E.back), wait(0.2, (k) => { e.lift = Math.sin(k * Math.PI) * 8; })); e.rot = 0; e.lift = 0; }
   // 사람이 맞고 날아갔다 일어나요
   function* pFly(p, vx, vy) { const res = yield* p.launch(vx, vy, {}); if (res === "land") { yield* p.dizzy(1.0); yield* p.getUp(); } }
 
@@ -230,10 +230,10 @@
     }
     // 봤지? 하고 한눈을 파는 사이
     yield* tween(p, { sy: 0.9 }, 0.07); p.sy = 1;
-    fork(wait(0.7, (k) => { e.b = hb + 30 + Math.sin(k * Math.PI) * 70 - 30 * k * 0; e.rot = 720 * k; }));
+    fork(wait(0.7, (k) => { e.b = hb + Math.sin(k * Math.PI) * Math.min(96, geo().H - hb - 40); e.rot = 720 * k; }));
     p.pose = "wave1"; p.face = "happy"; p.say(pick(["나 잘하지?", "봤어 봤어?"]), 900);
     yield* wait(0.7);
-    e.rot = 0; e.b = hb - 6;
+    e.rot = 0; e.b = hb;
     impact(p.x, hb + 10, "쿵!");
     p.sy = 0.66; p.sx = 1.25; p.face = "ko"; p.pose = "";
     yield* wait(0.1);
@@ -382,7 +382,7 @@
     yield* wait(0.1);
     p.sy = 1; p.sx = 1;
     let on = true, t0 = 0;
-    fork((function* () { while (on) { t0 += yield; e.x = p.x - 14 * (p.dir === "side" ? p.fwd() : d); e.b = p.b + 12; e.flip = p.dir === "side" ? p.flip : d < 0; e.rot = Math.sin(t0 * 16) * 14; } })());
+    fork((function* () { while (on) { const dt = yield; t0 += dt; const tx = p.x - 14 * (p.dir === "side" ? p.fwd() : d), k = Math.min(1, dt * 22); e.x += (tx - e.x) * k; e.b += (p.b + 12 - e.b) * k; e.flip = p.dir === "side" ? p.flip : d < 0; e.rot = Math.sin(t0 * 16) * 14; } })());
     // 펄쩍 뛰고 이리저리 달려요
     p.pose = "raise";
     yield* p.hop(34, 0.4);
@@ -431,7 +431,7 @@
     fork(eye.bounce(rand(-40, 40), 60, 6));
     fork((function* () { e.rot = 0; yield* wait(0.5, (k) => { e.rot = 360 * k * (e.flip ? -1 : 1); }); e.rot = 0; yield* A.fly(e, clamp(e.x + 60 * sd, 30, g.W - 30), g.H * 0.66, 120); })());
     yield* wait(1.1);
-    if (eye.x < g.pond.x1 + 20) eye.x = g.pond.x1 + 24;
+    if (eye.x < g.pond.x1 + 20) { PL().ring(eye.x); yield* eye.arc(g.pond.x1 + 30, 6, 30, 0.4, 720); }
     p.pose = "act";
     yield* p.walk(eye.x + (p.x < eye.x ? -18 : 18), 50, { pose: "act" });
     p.look(eye.x); p.pose = "crouch";
@@ -838,7 +838,7 @@
     yield* wait(1.6, (k, dt, t) => { l.forEach((e, i) => { e.tx = Math.sin(t * 5) * i * (2 + 9 * k); e.face = k > 0.6 && i ? "sweat" : e.face; }); });
     // 와르르
     impact(bx, top - 10, "와르르!");
-    l.forEach((e, i) => { e.tx = 0; e.zz = 0; if (i) PL().throwEnt(e, rand(-200, 200), 160 + i * 60); });
+    l.forEach((e, i) => { const x = e.x + (e.tx || 0); e.zz = 0; if (i) { PL().throwEnt(e, rand(-200, 200), 160 + i * 60); e.x = x; } else e.tx = 0; });
     base.sy = 0.6; base.face = "sweat";
     yield* tween(base, { sy: 1 }, 0.4, E.el);
     yield* until(() => l.every((e) => !e.thrown), 8);

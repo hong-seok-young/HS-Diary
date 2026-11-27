@@ -70,6 +70,8 @@ export class Couple extends DurableObject {
     this.sql = ctx.storage.sql;
     this.sql.exec(`CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS devices (tok TEXT PRIMARY KEY, who TEXT, at INTEGER, seen INTEGER)`);
+    // 기기 목록에 보여 줄 것: 어떤 폰인지(ua), 누가 허락했는지(by), 폰이 스스로 붙인 번호(did)
+    ["ua", "okby", "did"].forEach((c) => { try { this.sql.exec(`ALTER TABLE devices ADD COLUMN ${c} TEXT`); } catch (e) { /* 이미 있어요 */ } });
     this.sql.exec(`CREATE TABLE IF NOT EXISTS photos (name TEXT PRIMARY KEY, type TEXT, data BLOB)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS reqs (id TEXT PRIMARY KEY, who TEXT, at INTEGER, status TEXT, tok TEXT, ua TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS subs (endpoint TEXT PRIMARY KEY, who TEXT, p256dh TEXT, auth TEXT, at INTEGER, ok INTEGER, fail TEXT)`);
@@ -107,9 +109,9 @@ export class Couple extends DurableObject {
       }
     }
   }
-  newDevice(who) {
+  newDevice(who, ua, by) {
     const tok = rid(24);
-    this.sql.exec(`INSERT INTO devices (tok, who, at, seen) VALUES (?, ?, ?, ?)`, tok, who, Date.now(), Date.now());
+    this.sql.exec(`INSERT INTO devices (tok, who, at, seen, ua, okby, did) VALUES (?, ?, ?, ?, ?, ?, '')`, tok, who, Date.now(), Date.now(), String(ua || "").slice(0, 80), by || "first");
     return tok;
   }
   async fetch(req) {
@@ -125,7 +127,7 @@ export class Couple extends DurableObject {
       const who = b.who === "her" ? "her" : b.who === "him" ? "him" : "";
       if (!who) return json({ error: "who" }, 400);
       const has = this.sql.exec(`SELECT COUNT(*) AS n FROM devices WHERE who = ?`, who).toArray()[0].n;
-      if (!has) return json({ tok: this.newDevice(who) });
+      if (!has) return json({ tok: this.newDevice(who, b.ua, "first") });
       // 이미 그 사람 폰이 있으면 허락을 기다려요
       const id = rid(12);
       this.sql.exec(`INSERT INTO reqs (id, who, at, status, tok, ua) VALUES (?, ?, ?, 'wait', '', ?)`, id, who, Date.now(), String(b.ua || "").slice(0, 80));
@@ -150,6 +152,20 @@ export class Couple extends DurableObject {
       return new Response(null, { status: 101, webSocket: pair[0] });
     }
 
+    // ---- 기기 목록 ----
+    // 폰이 열릴 때마다 자기가 어떤 폰인지 한 줄 알려 줘요
+    if (p === "/hello" && req.method === "POST" && dev) {
+      const b = await req.json().catch(() => ({}));
+      this.sql.exec(`UPDATE devices SET ua = ?, did = ? WHERE tok = ?`, String(b.ua || "").slice(0, 80), String(b.did || "").slice(0, 40), dev.tok);
+      return json({ ok: true });
+    }
+    // 석영이 폰에서만 볼 수 있어요. 열쇠(tok)는 절대 내보내지 않아요.
+    if (p === "/mydevices" && req.method === "GET") {
+      if (!admin && !(dev && dev.who === "him")) return json({ error: "forbidden" }, 403);
+      const list = this.sql.exec(`SELECT rowid AS id, who, at, seen, ua, okby, did, tok FROM devices ORDER BY at`).toArray().map((r) => ({ id: r.id, who: r.who, at: r.at, seen: r.seen, ua: r.ua || "", by: r.okby || "", did: r.did || "", me: !!dev && r.tok === dev.tok }));
+      return json({ list });
+    }
+
     // ---- 허락 ----
     if (p === "/pending" && req.method === "GET") {
       const since = Date.now() - 3 * 86400000;
@@ -158,9 +174,9 @@ export class Couple extends DurableObject {
     }
     if (p === "/approve" && req.method === "POST") {
       const b = await req.json().catch(() => ({}));
-      const r = this.sql.exec(`SELECT who, status FROM reqs WHERE id = ?`, String(b.id || "")).toArray()[0];
+      const r = this.sql.exec(`SELECT who, status, ua FROM reqs WHERE id = ?`, String(b.id || "")).toArray()[0];
       if (!r || r.status !== "wait") return json({ error: "gone" }, 404);
-      if (b.ok) this.sql.exec(`UPDATE reqs SET status = 'ok', tok = ? WHERE id = ?`, this.newDevice(r.who), String(b.id));
+      if (b.ok) this.sql.exec(`UPDATE reqs SET status = 'ok', tok = ? WHERE id = ?`, this.newDevice(r.who, r.ua, dev ? dev.who : "admin"), String(b.id));
       else this.sql.exec(`UPDATE reqs SET status = 'no' WHERE id = ?`, String(b.id));
       return json({ ok: true });
     }

@@ -18,8 +18,8 @@
     return d;
   }
   // ---------- 이 폰이 스스로 아는 것 ----------
-  function look() {
-    const ua = navigator.userAgent || "";
+  function look(given) {
+    const ua = given || navigator.userAgent || "";
     const ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
     const pf = /iPhone/.test(ua) ? "아이폰" : ipad ? "아이패드" : /Android/.test(ua) ? "안드로이드 폰" : /Windows/.test(ua) ? "윈도우 컴퓨터" : /Macintosh/.test(ua) ? "맥" : "기타";
     let os = "";
@@ -27,6 +27,7 @@
     if ((pf === "아이폰" || pf === "아이패드") && mi) os = `iOS ${mi[1]}.${mi[2]}`;
     else if (ma) os = `안드로이드 ${ma[1]}`;
     const br = /KAKAOTALK/i.test(ua) ? "카카오톡 안 브라우저" : /NAVER/i.test(ua) ? "네이버 앱" : /SamsungBrowser/.test(ua) ? "삼성 인터넷" : /CriOS|Chrome/.test(ua) && !/Edg/.test(ua) ? "크롬" : /Edg/.test(ua) ? "엣지" : /Safari/.test(ua) ? "사파리" : "기타";
+    if (given) return { pf, os, br };
     let pwa = false;
     try { pwa = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches; } catch (e) { /* 모르면 아님 */ }
     let noti = "none";
@@ -34,10 +35,20 @@
     return { pf, os, br, pwa, noti, push: !!window.__pushOn };
   }
   const key = () => "st:" + did();
+  const label = (c) => [c.pf, c.os, c.br, c.pwa ? "홈 화면 앱" : ""].filter(Boolean).join(" · ");
+  // 서버의 기기 목록에 "어떤 폰인지" 한 줄 알려 둬요 (석영이의 기기 목록 화면에 보여요)
+  let helloed = "";
+  function hello() {
+    if (!window.Store || !Store.call) return;
+    const l = label(look());
+    if (helloed === l) return;
+    Promise.resolve(Store.call("/hello", { method: "POST", body: { ua: l, did: did() } })).then((r) => { if (r && r.ok) helloed = l; }).catch(() => {});
+  }
   // 바뀐 게 있거나 마지막으로 적은 지 10분이 지났으면 적어요
   function report(force) {
     const w = me();
     if (!w || !window.Store) return;
+    hello();
     const now = Date.now(), cur = look();
     const old = Store.pair(key(), w) || null;
     const v = Object.assign({ first: now, n: 0 }, old || {}, cur);
@@ -56,5 +67,5 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) soon(); });
   // 알림 허용이 바뀌었는지 가끔 살펴요 (물어보는 창에 답한 직후를 잡으려고)
   setInterval(() => { if (!document.hidden) report(false); }, 20000);
-  window.Phones = { report };
+  window.Phones = { report, did, label, ofUa: (ua) => look(ua) };
 })();

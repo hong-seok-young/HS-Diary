@@ -1890,3 +1890,12 @@ button.day-it:active { transform: translateY(1px); }
 .bob.puppet .ch-wrap { animation: none !important; }
 .bob.nohead .mood-tag, .bob.nohead .prop-top, .bob.nohead .stuck-plane { visibility: hidden; }
 .play-stick { position: absolute; left: 50%; z-index: 3; image-rendering: pixelated; pointer-events: none; transform-origin: 50% 100%; }
+
+/* 우체통의 톱니바퀴: 허락한 기기 목록 (석영이 폰에서만) */
+.mail-tabs.has-dev { grid-template-columns: repeat(3, minmax(0, 1fr)) 38px; }
+.mail-tabs .chip.mt-dev { line-height: 0; }
+.mail-tabs .chip.mt-dev svg { display: block; }
+.mail-it.dev { padding-right: 12px; }
+.mail-it.dev b { font-weight: normal; }
+.dev-me { font-style: normal; font-size: 11px; padding: 0 5px; background: var(--butter); box-shadow: 0 0 0 2px var(--ink); margin-left: 4px; }
+.dev-tip { font-size: 12px; line-height: 1.5; color: #7a6a5a; margin: 0 0 4px; }

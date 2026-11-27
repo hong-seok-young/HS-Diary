@@ -1066,6 +1066,8 @@
   function release(e) {
     e.script = null; e.zz = 0; e.rot = 0; e.lift = 0; e.tx = 0; e.scale = 1; e.sx = 1; e.sy = 1; e.face = ""; e.fx.target = 0;
     if (e.thrown || e.held) return;
+    // 공중에 있던 친구는 툭 옮기지 않고 제 무게로 떨어지게 해요
+    if (e.kind !== "bird" && !e.swim && e.b > 14) { e.thrown = { vx: 0, vy: 0, t: 0 }; return; }
     if (e.kind === "bird") { e.fx.tx = e.x; e.fx.tb = Math.max(e.b, H * 0.4); e.vx = 0; e.vb = 0; setState(e, "hover", 1.2); }
     else if (e.kind === "hippo") { if (e.swim || (e.x > pond.x0 + 6 && e.x < pond.x1 - 6 && e.b < 16)) { e.swim = true; setState(e, "swim", rand(3, 6)); } else { e.b = 6; toPond(e); } }
     else if (e.kind === "egg") { e.b = 5; setState(e, "sit", 3); }

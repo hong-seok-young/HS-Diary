@@ -227,11 +227,14 @@
     const w = me();
     const inn = inbox(), out = sent();
     const qNew = !myAnswer();
-    $("mailTabs").innerHTML = `<button class="chip${tab === "q" ? " active" : ""}${qNew ? " dot" : ""}" data-mt="q">오늘의 질문</button><button class="chip${tab === "in" ? " active" : ""}${unread().length ? " dot" : ""}" data-mt="in">받은 쪽지 ${inn.length}</button><button class="chip${tab === "out" ? " active" : ""}" data-mt="out">보낸 쪽지 ${out.length}</button>`;
+    $("mailTabs").innerHTML = `<button class="chip${tab === "q" ? " active" : ""}${qNew ? " dot" : ""}" data-mt="q">오늘의 질문</button><button class="chip${tab === "in" ? " active" : ""}${unread().length ? " dot" : ""}" data-mt="in">받은 쪽지 ${inn.length}</button><button class="chip${tab === "out" ? " active" : ""}" data-mt="out">보낸 쪽지 ${out.length}</button>` + (w === "him" ? `<button class="chip mt-dev${tab === "dev" ? " active" : ""}" data-mt="dev" aria-label="허락한 기기">${window.PIXEL ? PIXEL.icon("gear", 2) : "기기"}</button>` : "");
+    $("mailTabs").classList.toggle("has-dev", w === "him");
+    if (tab === "dev" && w !== "him") tab = "q";
     $("mailQuest").hidden = tab !== "q";
     $("mailList").hidden = tab === "q";
-    $("mailWrite").hidden = tab === "q";
+    $("mailWrite").hidden = tab === "q" || tab === "dev";
     if (tab === "q") { if (H.renderQuest) H.renderQuest(); return; }
+    if (tab === "dev") { renderDevs(); return; }
     const list = tab === "in" ? inn : out;
     const html = list.length
       ? list.map((n) => `<div class="mail-it ${esc(n.from)}${tab === "in" && !n.r ? " new" : ""}"><p>${esc(n.text).replace(/\n/g, "<br>")}</p><small>${tab === "in" ? esc(NAME[n.from]) : `${esc(call(n.to))}에게`} · ${when(n.c)}${tab === "out" ? (n.r ? " · 읽음" : " · 아직 안 읽음") : !n.r ? " · 새 쪽지" : ""}</small><button class="day-del" data-ndel="${esc(n.id)}" aria-label="지우기"></button></div>`).join("")
@@ -249,6 +252,32 @@
     }
   }
 
+  // ---------- 허락한 기기 (석영이 폰에서만 보여요) ----------
+  let devs = null, devState = "";
+  function loadDevs() {
+    devState = "load";
+    Promise.resolve(Store.call ? Store.call("/mydevices") : null).then((j) => { devs = j && j.list ? j.list : null; devState = devs ? "" : "fail"; if (tab === "dev") renderMail(); }).catch(() => { devState = "fail"; if (tab === "dev") renderMail(); });
+  }
+  const ago = (t) => { const m = Math.max(0, Math.round((Date.now() - t) / 60000)); return m < 2 ? "방금" : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.round(m / 60)}시간 전` : `${Math.round(m / 1440)}일 전`; };
+  function renderDevs() {
+    let html;
+    if (!devs) html = `<p class="day-empty">${devState === "fail" ? "목록을 불러오지 못했어요. 인터넷이 이어지면 다시 눌러 주세요" : "불러오는 중…"}</p>`;
+    else {
+      const P = window.Phones;
+      const kind = (d) => {
+        const st = d.did ? Store.pair("st:" + d.did, d.who) : null;
+        if (st && st.pf) return [st.pf, st.os, st.br, st.pwa ? "홈 화면 앱" : "", st.noti === "granted" ? "알림 켬" : st.noti === "denied" ? "알림 끔" : ""].filter(Boolean).join(" · ");
+        if (d.ua && !/^Mozilla/.test(d.ua)) return d.ua;
+        if (d.ua && P && P.ofUa) { const c = P.ofUa(d.ua); return [c.pf, c.os].filter(Boolean).join(" · "); }
+        return "어떤 폰인지 아직 몰라요 (그 폰에서 앱을 한 번 열면 떠요)";
+      };
+      const how = (d) => (d.by === "first" ? "처음 들어온 폰" : d.by === "him" || d.by === "her" ? `${call(d.by)}가 허락` : d.by === "admin" ? "만든 사람이 허락" : "허락 기록이 없던 때 들어온 폰");
+      html = `<p class="dev-tip">우리 기록을 볼 수 있는 폰은 모두 ${devs.length}대예요. 이 화면은 ${esc(NAME.him)} 폰에서만 보여요.</p>` +
+        devs.slice().sort((a, b) => b.seen - a.seen).map((d) => `<div class="mail-it dev ${esc(d.who)}"><p><b>${esc(NAME[d.who] || d.who)} 폰</b>${d.me ? ` <i class="dev-me">지금 이 폰</i>` : ""}<br>${esc(kind(d))}</p><small>${when(d.at)}에 들어옴 · ${esc(how(d))} · 마지막으로 연 때 ${ago(d.seen)}</small></div>`).join("");
+    }
+    if (window.MORPH) MORPH($("mailList"), html); else $("mailList").innerHTML = html;
+  }
+
   function bind(h) {
     H = h || {};
     const scene = $("scene");
@@ -258,7 +287,7 @@
       if (ev.target.closest("#mailbox")) { ev.stopPropagation(); if (H.play) H.play($("mailbox"), "boing"); tab = unread().length ? "in" : "q"; H.setPanel("mail"); renderMail(); askNotify(); }
     });
     $("noteForm").addEventListener("submit", (ev) => { ev.preventDefault(); send(); });
-    $("mailTabs").addEventListener("click", (ev) => { const b = ev.target.closest("[data-mt]"); if (b) { tab = b.dataset.mt; renderMail(); } });
+    $("mailTabs").addEventListener("click", (ev) => { const b = ev.target.closest("[data-mt]"); if (b) { tab = b.dataset.mt; if (tab === "dev") loadDevs(); renderMail(); } });
     $("mailList").addEventListener("click", (ev) => {
       const b = ev.target.closest("[data-ndel]");
       if (!b) return;

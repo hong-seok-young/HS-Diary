@@ -24,7 +24,11 @@
   const GY = 12, CW = 54, CH = 78; // 사람이 서는 높이, 사람 그림판 크기
   let scene = null, layer = null, couple = null, W = 360, H = 200, pond = { x0: 14, x1: 106 };
   const runs = [], gfx = [], flyers = [];
-  let cur = null, nextAt = 8, clock = 0, dragAt = 0, busyAt = -99, paused = false;
+  let cur = null, nextAt = 8, clock = 0, dragAt = 0, busyAt = -99, paused = false, cOff = 0;
+  // 누운 몸이 땅에 반쯤 묻히지 않게: 발을 축으로 기울수록 조금 들어 올려요
+  const lieUp = (rot) => { const s = Math.abs(Math.sin((rot * Math.PI) / 180)); return 20 * Math.max(0, (s - 0.35) / 0.65); };
+  const PIV = { feet: 0, mid: 31, head: 48 };
+  function readOff() { if (couple && scene) cOff = couple.getBoundingClientRect().left - scene.getBoundingClientRect().left; return cOff; }
   const hist = [];
 
   // ---------- 순서 조각 (제너레이터) ----------
@@ -135,8 +139,8 @@
   function headPos(t) {
     if (t instanceof Person) {
       if (!t.on) return { x: t.x, b: GY + 42 };
-      const th = (t.rot * Math.PI) / 180, mid = t.pivot === "mid", py = mid ? 31 : 0, v = mid ? 11 : 42;
-      return { x: t.x + v * Math.sin(th), b: t.b + py + v * Math.cos(th) };
+      const th = (t.rot * Math.PI) / 180, h = PIV[t.pivot] || 0, up = t.pivot === "feet" ? lieUp(t.rot) : 0, v = 42 - h;
+      return { x: t.x + v * Math.sin(th), b: t.b + up + h + v * Math.cos(th) };
     }
     if (t instanceof Part) return { x: t.x, b: t.b };
     const ih = (t.img && t.img.naturalHeight ? t.img.naturalHeight * 2 : 30) * (t.size || 1);
@@ -213,28 +217,46 @@
 
   // ---------- 사람 ----------
   const people = {};
-  function Person(who, el) { this.who = who; this.el = el; this.on = false; this.owner = null; this.home = 0; this.x = 0; this.reset(); }
+  function Person(who, el) { this.who = who; this.el = el; this.on = false; this.owner = null; this.h0 = 0; this.x = 0; this.reset(); }
+  // 집 자리: 두 사람 묶음이 산책으로 움직이면 같이 움직여요
+  Object.defineProperty(Person.prototype, "home", { get() { return this.h0 + cOff; } });
   Person.prototype.reset = function () { this.y = 0; this.rot = 0; this.sx = 1; this.sy = 1; this.dir = "down"; this.flip = false; this.frame = 0; this.pose = ""; this.face = ""; this.cut = ""; this.clip = 0; this.pivot = "feet"; this.z = ""; this.hide = false; };
   Object.defineProperty(Person.prototype, "b", { get() { return GY + this.y; } });
   Person.prototype.measure = function () {
     const sr = scene.getBoundingClientRect();
+    readOff();
     if (!this.on) {
       // 평소: 그림 속 자리 그대로 (제 동작으로 살짝 옮겨 있던 만큼은 빼요)
       const r = this.el.getBoundingClientRect(), st = CA() && CA().state(this.who);
-      this.home = r.left - sr.left + r.width / 2 - ((st && st.dx) || 0);
+      this.h0 = r.left - sr.left + r.width / 2 - ((st && st.dx) || 0) - cOff;
       return this.home;
     }
     const s = this.el.style, keep = [s.translate, s.rotate, s.scale];
     s.translate = ""; s.rotate = ""; s.scale = "";
     const r = this.el.getBoundingClientRect();
-    this.home = r.left - sr.left + r.width / 2;
+    this.h0 = r.left - sr.left + r.width / 2 - cOff;
     s.translate = keep[0]; s.rotate = keep[1]; s.scale = keep[2];
     return this.home;
   };
+  // 축을 바꿔도 몸이 그 자리에 그대로 있게 (발, 몸 가운데, 머리)
+  Person.prototype.setPivot = function (to) {
+    const from = this.pivot;
+    if (from === to) return this;
+    const th = (this.rot * Math.PI) / 180, hA = PIV[from], hB = PIV[to];
+    const cA = from === "feet" ? lieUp(this.rot) : 0, cB = to === "feet" ? lieUp(this.rot) : 0;
+    this.x += (hB - hA) * Math.sin(th);
+    this.y = this.y + cA + hA + (hB - hA) * Math.cos(th) - hB - cB;
+    this.pivot = to;
+    return this;
+  };
+  // 돌아간 각도를 -180~180 으로 (보이는 건 그대로)
+  Person.prototype.norm = function () { this.rot = ((((this.rot + 180) % 360) + 360) % 360) - 180; return this; };
   Person.prototype.take = function () {
-    if (!this.on) { this.measure(); this.x = this.home; this.reset(); this.on = true; this.el.classList.add("puppet"); if (CA()) CA().ctl(this.who, this); }
+    if (!this.on) { this.measure(); const st = CA() && CA().state(this.who); this.x = this.home + ((st && st.dx) || 0); this.reset(); this.on = true; this.el.classList.add("puppet"); if (CA()) CA().ctl(this.who, this); }
     this.owner = cur;
     if (cur && cur.people.indexOf(this) < 0) cur.people.push(this);
+    // 조각 그림을 미리 준비해 둬요 (흩어지는 첫 순간에 빈 그림이 뜨지 않게)
+    if (!this.pre) { this.pre = Object.keys(PARTS).concat("body").map((n) => { const im = new Image(); im.src = S.charCut(this.who, "down", 0, "", n === "head" ? "hit" : "", n); return im; }); setTimeout(() => { this.pre = null; }, 20000); }
     return this;
   };
   Person.prototype.drop = function () {
@@ -247,7 +269,7 @@
   Person.prototype.apply = function () {
     if (!this.on) return;
     const s = this.el.style;
-    s.translate = `${(this.x - this.home).toFixed(1)}px ${(-this.y).toFixed(1)}px`;
+    s.translate = `${(this.x - this.home).toFixed(1)}px ${(-this.y - (this.pivot === "feet" ? lieUp(this.rot) : 0)).toFixed(1)}px`;
     s.rotate = this.rot ? this.rot.toFixed(1) + "deg" : "";
     s.scale = this.sx !== 1 || this.sy !== 1 ? `${this.sx.toFixed(3)} ${this.sy.toFixed(3)}` : "";
     s.transformOrigin = this.pivot === "mid" ? "50% 55%" : this.pivot === "head" ? "50% 30%" : "50% 100%";
@@ -321,20 +343,30 @@
   };
   // 뒤로 벌러덩 (또는 앞으로 철퍼덕)
   Person.prototype.fall = function* (dirn) {
-    this.pivot = "feet";
+    this.setPivot("feet");
     yield* tween(this, { rot: 90 * dirn }, 0.26, E.in);
     dust(this.x + 26 * dirn, GY, 6); quake(2);
-    yield* tween(this, { sy: 0.9 }, 0.05); yield* tween(this, { sy: 1 }, 0.12, E.back);
+    yield* tween(this, { sx: 1.08 }, 0.05); yield* tween(this, { sx: 1 }, 0.12, E.back);
   };
   // 누워 있다가 영차 일어나기
   Person.prototype.getUp = function* () {
-    if (Math.abs(this.rot) < 20 && this.y > -4) { this.rot = 0; this.y = 0; return; }
-    if (this.pivot === "mid") { const d = this.rot > 0 ? 1 : -1; this.pivot = "feet"; this.x -= 22 * d; this.y = 0; this.rot = 90 * d; }
+    this.setPivot("feet").norm();
+    this.sx = 1; this.sy = 1;
+    if (Math.abs(this.rot) < 20) { if (this.rot || this.y) yield* tween(this, { rot: 0, y: 0 }, 0.12, E.out); this.rot = 0; this.y = 0; return; }
+    if (Math.abs(this.rot) > 135) yield* tween(this, { rot: this.rot > 0 ? 90 : -90, y: 0 }, 0.2, E.io); // 거꾸로 서 있었으면 먼저 옆으로 눕고
     this.face = "blink"; this.pose = "";
-    yield* tween(this, { rot: this.rot * 0.82 }, 0.12, E.out);
+    yield* tween(this, { rot: this.rot * 0.82, y: 0 }, 0.12, E.out);
     yield* tween(this, { rot: 0 }, 0.3, E.back);
+    this.rot = 0;
     this.front();
     yield* this.squash(1.06, 0.94, 0.04);
+  };
+  // 공중에서 돌던 몸을 바로 세워 발로 딛기
+  Person.prototype.upright = function* () {
+    this.setPivot("mid");
+    const r = Math.round(this.rot / 360) * 360;
+    if (Math.abs(this.rot - r) > 1 || this.y) yield* tween(this, { rot: r, y: 0 }, 0.09, E.out);
+    this.rot = 0; this.setPivot("feet"); this.y = 0;
   };
   // 고개를 도리도리 털기
   Person.prototype.shakeHead = function* (n) { for (let i = 0; i < (n || 4); i++) { this.dir = "side"; this.flip = i % 2 === 0; yield* wait(0.07); } this.front(); };
@@ -342,7 +374,7 @@
   Person.prototype.launch = function* (vx, vy, o) {
     o = o || {};
     const p = this, f = { vx, vy, src: p, hit: [] };
-    p.pivot = "mid"; p.dir = "down"; p.frame = 0; p.pose = o.pose == null ? "raise" : o.pose; p.face = o.face || "hit"; p.z = 9; p.sx = 1; p.sy = 1; p.clip = 0;
+    p.setPivot("mid"); p.dir = "down"; p.frame = 0; p.pose = o.pose == null ? "raise" : o.pose; p.face = o.face || "hit"; p.z = 9; p.sx = 1; p.sy = 1; p.clip = 0;
     flyers.push(f);
     let n = 0, t = 0, res = "land";
     try {
@@ -370,18 +402,25 @@
     } finally { const i = flyers.indexOf(f); if (i >= 0) flyers.splice(i, 1); }
     if (res === "pond") { yield* splashIn(p); return res; }
     if (o.noLand) return res;
-    // 바닥에 대자로 뻗어요
-    const d = f.vx >= 0 ? 1 : -1;
-    p.pivot = "feet"; p.rot = 90 * d; p.x = clamp(p.x - 22 * d, 24, W - 24); p.y = 0; p.pose = ""; p.face = "ko";
-    dust(p.x + 22 * d, GY, 5);
-    yield* tween(p, { sy: 0.88 }, 0.05); yield* tween(p, { sy: 1 }, 0.14, E.back);
+    // 바닥에 대자로 뻗어요: 돌던 방향 그대로 가장 가까운 누운 각도까지 마저 돌아요
+    const lie = Math.round((p.rot - 90) / 180) * 180 + 90;
+    p.pose = ""; p.face = "ko";
+    dust(p.x, GY, 5);
+    yield* tween(p, { rot: lie, y: -11 }, 0.1, E.out);
+    p.x = clamp(p.x, 46, W - 46);
+    p.setPivot("feet").norm(); p.y = 0;
+    yield* tween(p, { sx: 1.08 }, 0.05); yield* tween(p, { sx: 1 }, 0.14, E.back);
     return res;
   };
   // 연못에 풍덩
   function* splashIn(p) {
     const P = PL();
-    p.pivot = "feet"; p.rot = 0; p.sx = 1; p.sy = 1; p.front(); p.face = "hit"; p.pose = "raise"; p.y = -26; p.clip = 30; p.z = "";
+    p.sx = 1; p.sy = 1; p.front(); p.face = "hit"; p.pose = "raise"; p.z = "";
     P.ring(p.x); P.drops(p.x, 14, 18, 34, "#bfe6ff"); pow(p.x, 40, "풍덩!", { big: true });
+    // 물보라 속에서 몸을 바로 하며 가라앉아요
+    p.setPivot("mid"); p.clip = 30;
+    yield* tween(p, { rot: Math.round(p.rot / 360) * 360, y: -26, x: clamp(p.x, pond.x0 + 24, pond.x1 - 16) }, 0.14, E.out);
+    p.rot = 0; p.setPivot("feet"); p.y = -26;
     const hip = P.ents.find((e) => e.kind === "hippo" && e.swim && !e.held && !e.thrown);
     if (hip) P.say(hip, pick(["뿌?!", "누구야!", "내 연못인데…"]));
     yield* wait(0.5, (k) => { p.y = -26 - Math.sin(k * Math.PI) * 10; });
@@ -497,8 +536,9 @@
     const parts = {};
     Object.keys(PARTS).forEach((n) => {
       const k = new Part(p.who, n, n === "head" ? "hit" : "");
-      const a = k.at(p.x, p.b);
-      k.x = clamp(a.x, k.r + 2, W - k.r - 2); k.b = Math.max(a.b, k.rest());
+      const a = k.at(0, 0), th = (p.rot * Math.PI) / 180, vx = a.x, vb = a.b - PIV[p.pivot] - (p.pivot === "feet" ? 0 : 0);
+      const px = p.x, pb = p.b + PIV[p.pivot] + (p.pivot === "feet" ? lieUp(p.rot) : 0);
+      k.x = clamp(px + vx * Math.cos(th) + vb * Math.sin(th), k.r + 2, W - k.r - 2); k.b = Math.max(pb - vx * Math.sin(th) + vb * Math.cos(th), k.rest()); k.rot = p.rot;
       k.vx = -dirn * rand(30, 150) + rand(-40, 40); k.vy = rand(160, 400) + (n === "head" ? 80 : 0); k.vr = rand(-720, 720);
       parts[n] = k;
     });
@@ -528,7 +568,7 @@
       yield* wait(i * 0.14);
       yield* k.jump(k.x, k.rest(), 12, 0.2);
       yield* k.go(tgt(k).x, 120);
-      yield* k.jump(tgt(k).x, tgt(k).b, 6, 0.12);
+      yield* k.jump(tgt(k).x, tgt(k).b, 6, 0.18);
       dust(k.x, GY, 2);
     })()));
     pow(G, GY + 16, "착!", { ms: 420 });
@@ -576,7 +616,7 @@
   }
   // 벽에 세게 부딪혀서 와장창
   function* shatter(p, dirn, speed) {
-    p.x = clamp(p.x, 22, W - 22); p.rot = 0;
+    p.x = clamp(p.x, 22, W - 22);
     const parts = burst(p, dirn, speed);
     pow(p.x - dirn * 10, clamp(p.b + 46, 30, H - 30), "와장창!", { big: true });
     stars(p.x, p.b + 40, 8); quake(4);
@@ -718,19 +758,43 @@
       if (p.owner !== run) return;
       if (hard || (Math.abs(p.x - p.home) < 2 && !p.rot && !p.y && !p.hide && !p.cut)) { p.drop(); return; }
       // 아직 집 밖이면 걸어서 돌아가요
-      startRun(function* () { p.take(); p.hide = false; p.cut = ""; p.clip = 0; yield* goHome(p); }, { key: "home" });
+      startRun(function* () { p.take(); yield* goHome(p); }, { key: "home" });
     });
     if (!runs.length && couple) couple.style.zIndex = "";
     if (run.auto) nextAt = clock + rand(8, 16); // 한 장난이 끝나면 한숨 돌려요
   }
   function* goHome(p) {
-    p.sx = 1; p.sy = 1; p.z = "";
-    if (p.y < -4) { p.y = 0; }
+    p.sx = 1; p.sy = 1; p.z = ""; p.hide = false; p.cut = ""; p.clip = 0;
+    if (p.y < -8 && Math.abs(p.rot) < 20) yield* tween(p, { y: 0 }, 0.2, E.out); // 연못 속이었다면 올라와요
     yield* p.getUp();
     p.pose = ""; p.face = "";
     p.measure();
-    if (Math.abs(p.x - p.home) > 2) yield* p.walk(p.home, 56);
-    p.x = p.home; p.front();
+    p.dir = "side";
+    let t = 0;
+    while (Math.abs(p.home - p.x) > 1) {
+      const dt = yield;
+      t += dt;
+      const d = p.home > p.x ? 1 : -1;
+      p.flip = d < 0;
+      p.x += d * Math.min(Math.abs(p.home - p.x), 60 * dt);
+      const c = Math.floor(t / 0.12) % 4; p.frame = c === 1 ? 1 : c === 3 ? 2 : 0;
+      if (p.y) p.y += (0 - p.y) * Math.min(1, dt * 10);
+    }
+    p.x = p.home; p.y = 0; p.front();
+  }
+  // 하던 장난을 그만두기: 사람은 있던 자리에서 걸어서 돌아오고(순간이동하지 않아요), 동물은 제 버릇으로
+  function soften(run, keep) {
+    const i = runs.indexOf(run);
+    if (i >= 0) runs.splice(i, 1);
+    run.props.forEach((k) => { if (!k.dead) k.remove(); });
+    run.pets.forEach((e) => { if (e.script) PL().release(e); });
+    run.people.forEach((p) => {
+      if (p.owner !== run) return;
+      p.hide = false; p.cut = ""; p.owner = null;
+      if (p === keep) return;
+      startRun(function* () { p.take(); yield* goHome(p); }, { key: "home" });
+    });
+    if (run.auto) nextAt = clock + rand(8, 16);
   }
   function abort(only) {
     runs.slice().forEach((r) => { if (!only || only(r)) endRun(r, true); });
@@ -790,8 +854,9 @@
   function tick(dt) {
     if (!ensure()) return;
     clock += dt;
+    if (people.him && (people.him.on || people.her.on)) readOff();
     const free = sceneFree();
-    if (!free) { abort((r) => r.auto); busyAt = clock; }
+    if (!free) { runs.slice().forEach((r) => { if (r.auto) soften(r); }); busyAt = clock; }
     runs.slice().forEach((r) => stepRun(r, dt));
     collide();
     Object.keys(people).forEach((w) => people[w].apply());
@@ -883,15 +948,19 @@
   function grab(p, g) {
     if (window.Deco && Deco.celebrating && Deco.celebrating()) return false;
     if (window.Notes && Notes.busy && Notes.busy()) return false;
-    abort((r) => r.auto || r.key === "home");
+    runs.slice().forEach((r) => { if (r.auto || r.key === "home") soften(r, p); });
     if (p.on && p.owner) return false; // 이미 날아가는 중이거나 조립 중이면 건드리지 않아요
     const other = people[p.who === "him" ? "her" : "him"];
     if (window.HSD && HSD.bubble && other && !other.on) HSD.bubble(pick(["어어, 어디 가!", "내려놔~", "살살 해", "ㅋㅋㅋ 들렸다"]), other.who);
     const pop = g.headZone && Math.random() < 0.35; // 머리 쪽을 잡으면 가끔 머리만 쏙
     startRun(function* () {
       p.take();
-      g.tx = p.x; g.tb = p.b + 46;
-      p.front(); p.face = "hit"; p.z = 20; p.pivot = "head";
+      p.setPivot("feet").norm();
+      if (Math.abs(p.rot) > 1) yield* tween(p, { rot: 0 }, 0.08, E.out);
+      p.rot = 0; p.sx = 1; p.sy = 1; p.clip = 0;
+      p.front(); p.face = "hit"; p.z = 20; p.setPivot("head");
+      // 손가락을 향해 스르륵 딸려 올라가요 (툭 튀지 않게)
+      let pull = 0;
       p.say(pick(["으아 내려 줘!", "어어어?", "높아 높아!", "살살…!"]), 1200);
       let th = 0, om = 0, t = 0, head = null;
       while (!g.done) {
@@ -899,7 +968,9 @@
         t += dt;
         if (!head) {
           // 머리를 잡혀 대롱대롱: 몸이 추처럼 흔들리고 다리를 버둥거려요
-          const tx = g.tx, ty = Math.max(-4, g.tb - 46 - GY);
+          pull = Math.min(1, pull + dt * 7);
+          const k = Math.min(1, dt * (8 + 40 * pull));
+          const tx = p.x + (g.tx - p.x) * k, ty = p.y + (Math.max(-4, g.tb - 46 - GY) - p.y) * k;
           const ax = (tx - p.x) / Math.max(dt, 0.008);
           p.x = tx; p.y = ty;
           om += (-th * 70 - om * 6 - ax * 0.9) * dt; th = clamp(th + om * dt, -50, 50);
@@ -912,12 +983,13 @@
             head = headOff(p);
             pow(p.x, p.b + 60, "뽁!", { big: true }); stars(p.x, p.b + 50, 5);
             const bx = landX(p.x);
-            p.pivot = "feet"; p.rot = 0; p.z = 9; p.frame = 0;
+            p.setPivot("feet"); p.z = 9; p.frame = 0;
+            fork(tween(p, { rot: 0 }, 0.12, E.out));
             fork((function* () { const y0 = p.y; yield* wait(0.25, (k) => { p.y = y0 * (1 - k * k); p.x += (bx - p.x) * k; }); p.y = 0; p.x = bx; dust(p.x, GY, 4); yield* p.squash(1.15, 0.8, 0.05); yield* panic(p, () => !!head.landed); })());
             head.say(pick(["어? 몸이 없어!", "내 몸 어디 갔어!", "머리만 왔네…"]), 1300);
           }
         } else {
-          head.x = g.tx; head.b = clamp(g.tb, head.rest(), H - 20); head.z = 20;
+          { const k = Math.min(1, dt * 40); head.x += (g.tx - head.x) * k; head.b += (clamp(g.tb, head.rest(), H - 20) - head.b) * k; } head.z = 20;
           head.rot = clamp(g.vx * 0.03, -30, 30);
           head.face = Math.floor(t * 7) % 2 ? "cry1" : "hit";
         }
@@ -932,7 +1004,6 @@
     return true;
   }
   function* thrownBody(p, vx, vy, brk) {
-    p.rot = 0;
     const res = yield* p.launch(vx, vy, { brk });
     if (res === "land") { yield* p.dizzy(1.1); yield* p.getUp(); yield* p.shakeHead(4); p.say(pick(["어질어질…", "또 던져 봐!", "누가 던졌어!", "세상이 돈다"]), 1300); yield* wait(0.5); }
     else yield* wait(0.4);
@@ -950,19 +1021,28 @@
     if (!ensure()) return;
     const p = people[d.who === "her" ? "her" : "him"];
     if (!p) return;
-    abort((r) => r.auto || r.key === "home");
+    runs.slice().forEach((r) => { if (r.auto || r.key === "home") soften(r, p); });
     if (p.on && p.owner) return;
     startRun(function* () {
       p.take(); p.z = 9;
-      if (d.head) { const head = headOff(p); head.x = clamp(d.x * W, 20, W - 20); head.b = clamp(d.b * H, head.rest(), H - 20); pow(p.x, p.b + 60, "뽁!", { big: true }); fork(panic(p, () => !!head.landed)); yield* thrownHead(p, head, d.vx * W, d.vy * H); }
-      else { p.x = clamp(d.x * W, 20, W - 20); p.y = clamp(d.b * H, 0, H - 80); yield* thrownBody(p, d.vx * W, d.vy * H, !!d.brk); }
+      p.setPivot("feet").norm(); p.sx = 1; p.sy = 1; p.clip = 0; p.front(); p.face = "hit"; p.pose = "raise";
+      if (d.head) {
+        const head = headOff(p);
+        pow(p.x, p.b + 60, "뽁!", { big: true });
+        fork((function* () { yield* tween(p, { rot: 0, y: 0 }, 0.12, E.out); yield* panic(p, () => !!head.landed); })());
+        yield* tween(head, { x: clamp(d.x * W, 20, W - 20), b: clamp(d.b * H, head.rest(), H - 20) }, 0.22, E.out);
+        yield* thrownHead(p, head, d.vx * W, d.vy * H);
+      } else {
+        yield* tween(p, { x: clamp(d.x * W, 20, W - 20), y: clamp(d.b * H, 0, H - 80), rot: 0 }, 0.22, E.out);
+        yield* thrownBody(p, d.vx * W, d.vy * H, !!d.brk);
+      }
     }, { key: "held" });
     if (PL().kick) PL().kick();
   }
   if (window.Live) Live.on("pthrow", remoteThrow);
 
   window.Play = {
-    tick, abort: () => abort((r) => r.auto), play, def, ids: () => DEFS.map((d) => d.id), count: () => DEFS.reduce((n, d) => n + (d.n || 1), 0),
+    tick, abort: () => abort((r) => r.auto), soft: () => runs.slice().forEach((r) => { if (r.auto) soften(r); }), play, def, ids: () => DEFS.map((d) => d.id), count: () => DEFS.reduce((n, d) => n + (d.n || 1), 0),
     remote: remoteThrow, clock: () => clock, pause: (v) => { paused = !!v; }, dragged: () => Date.now() - dragAt < 400, busy: () => runs.length > 0, people, runs,
     // js/plays.js 가 쓰는 도구들
     kit: { E, rand, pick, clamp, wait, tween, all, until, fork, pow, puff, stars, dust, sweat, feathers, quake, orbit, bubble, stick, Prop, Part, A, hold, headOff, headOn, panic, reunite, burst, assemble, shatter, splashIn, climbOut, inPond, landX, headPos, geo: () => ({ W, H, pond, GY }), spr },
