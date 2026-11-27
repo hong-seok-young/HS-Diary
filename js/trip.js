@@ -18,7 +18,11 @@
     todo: ["숙소 예약", "교통편 예매 (기차, 버스, 배, 비행기)", "가고 싶은 맛집 예약과 쉬는 날 확인", "떠나기 전날 날씨 확인"],
     pack: ["신분증", "충전기와 보조 배터리", "세면도구", "상비약", "우산", "편한 신발"],
   };
+  // 미리 다 짜 둔 여행(삿포로)은 그 구성 그대로: 일정 · 맛집 · 쇼핑 · 볼거리 · 예약 · 운전 · 체크 · 더보기
+  const TABS_C = [["plan", "일정"], ["food", "맛집"], ["shop", "쇼핑"], ["sight", "볼거리"], ["book", "예약"], ["drive", "운전"], ["check", "체크"], ["more", "더보기"]];
+  const SUBS = { book: ["flight", "stay", "car", "icn"], drive: ["fuel", "park"], check: ["todo", "pack"], more: ["jp", "cost", "atm", "info", "set"] };
   let root = null, sheet = null, P = null, tab = "plan", loading = {};
+  let ui = { day: 0, area: { food: 0, shop: 0, sight: 0 }, kf: "", sub: { book: "flight", drive: "fuel", check: "todo", more: "jp" } };
 
   // ---------- 둘이 같이 쓰는 값 ----------
   const key = (k) => `tp:${P.id}:${k}`;
@@ -42,11 +46,12 @@
     root = document.createElement("div");
     root.className = "modal trip"; root.id = "tripPage"; root.hidden = true;
     root.innerHTML = `<div class="trip-card"><header class="trip-head"><div class="trip-ttl"><b id="tripName"></b><small id="tripTag"></small></div><span class="trip-st" id="tripSt"></span></header><nav class="trip-tabs" id="tripTabs"></nav><div class="trip-body" id="tripBody"></div></div>`;
-    document.body.appendChild(root);
     sheet = document.createElement("div");
     sheet.className = "modal trip-sheet"; sheet.id = "tripSheet"; sheet.hidden = true;
     sheet.innerHTML = `<div class="modal-card box trip-sh" id="tripShBody"></div>`;
+    // 뒤로 가기는 문서에서 앞에 있는 창부터 닫아요. 자세히 보기 창이 먼저 닫히게 그것을 앞에 둬요.
     document.body.appendChild(sheet);
+    document.body.appendChild(root);
     sheet.addEventListener("click", (ev) => { if (ev.target === sheet) history.back(); });
     root.addEventListener("click", onClick);
     sheet.addEventListener("click", onClick);
@@ -58,6 +63,7 @@
     if (!me()) return;
     ensure();
     P = place; tab = "plan";
+    ui = { day: 0, area: { food: 0, shop: 0, sight: 0 }, kf: "", sub: { book: "flight", drive: "fuel", check: "todo", more: "jp" } };
     show(root);
     render();
     // 조사해 둔 자료를 그때 불러와요
@@ -79,11 +85,17 @@
     $("tripTag").textContent = d ? d.tagline || "" : "";
     $("tripSt").className = "trip-st " + st.st;
     $("tripSt").textContent = st.st === "been" ? `가 봤어요 · ${st.when}` : st.st === "soon" ? st.when : "아직 안 가 봤어요";
-    $("tripTabs").innerHTML = TABS.map(([k, n]) => `<button class="chip${tab === k ? " active" : ""}" data-tt="${k}">${n}</button>`).join("");
+    const C = d && d.custom;
+    const tabs = C ? TABS_C : TABS;
+    if (!tabs.some((t) => t[0] === tab)) tab = "plan";
+    $("tripTabs").innerHTML = tabs.map(([k, n]) => `<button class="chip${tab === k ? " active" : ""}" data-tt="${k}">${n}</button>`).join("");
     const body = $("tripBody"), top = body.scrollTop;
-    const html = ({ plan: vPlan, food: vFood, sight: vSight, shop: vShop, way: vWay, check: vCheck, more: vMore })[tab](d, st);
-    if (window.MORPH) MORPH(body, html); else body.innerHTML = html;
+    const html = C
+      ? (tab === "plan" ? cPlan(C) : tab === "food" || tab === "shop" || tab === "sight" ? cCards(C, tab) : cSub(C, tab, st))
+      : ({ plan: vPlan, food: vFood, sight: vSight, shop: vShop, way: vWay, check: vCheck, more: vMore })[tab](d, st);
+    body.innerHTML = html;
     body.scrollTop = top;
+    if (C) post(C);
   }
   const none = (d, what) => `<p class="day-empty">${!d && loading[P.id] === 1 ? "불러오는 중…" : `${what} 자료는 아직 준비 중이에요`}</p>`;
   const sec = (t, x) => `<h3 class="trip-sec">${esc(t)}${x ? `<small>${esc(x)}</small>` : ""}</h3>`;
@@ -157,6 +169,85 @@
     if (d) h += `<p class="trip-src">조사한 날 ${esc(M().dots(d.checked || ""))} · 가게 시간과 값은 바뀔 수 있어요. 가기 전에 한 번 더 확인해요.</p>`;
     return h;
   }
+  // ---------- 미리 짜 둔 여행 (삿포로) ----------
+  const wiki = (f, w) => `https://upload.wikimedia.org/wikipedia/commons/thumb/${f}/${w || 500}px-${f.split("/").pop()}`;
+  const priv = () => { const v = M().latest(key("set")); return v && typeof v === "object" ? v : {}; };
+  // 일정: 날짜를 고르면 그날의 시간표
+  function cPlan(C) {
+    const n = Math.min(ui.day, C.hero.length - 1), h = C.hero[n], day = C.days.find((x) => x.day === n + 1) || { stops: [] };
+    return `<div class="trip-days">${C.hero.map((x, i) => `<button class="chip${i === n ? " active" : ""}" data-ta="day" data-i="${i}"><b>${esc(x.d)}</b> ${esc(x.w)}</button>`).join("")}</div>` +
+      `<div class="trip-hero"><img alt="" src="${esc(h.img)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"><div><small>${esc(h.mood || "")}</small><b>${esc(h.title)}</b><span>${esc(h.sub || "")}</span></div></div>` +
+      `<ol class="trip-tl sp">` + day.stops.map((s) => `<li class="${s.opt ? "opt" : ""}"><time>${esc(s.t)}</time><div><b>${s.ic ? `<i class="ic">${esc(s.ic)}</i>` : ""}${s.title}</b>${s.note ? `<small>${s.note}</small>` : ""}` +
+        (s.tiles.length ? `<div class="trip-tiles">${s.tiles.map((t) => `<div class="trip-tile">${t.img ? `<button class="ti" data-src="${esc(t.img)}" data-cap="${esc(t.cap || t.name)}"><img alt="" loading="lazy" referrerpolicy="no-referrer" src="${esc(t.img)}" onerror="this.parentNode.remove()"></button>` : ""}<b>${esc(t.name)}</b>${t.tx ? `<small>${esc(t.tx)}</small>` : ""}<div class="ta">${t.map ? `<a class="map" href="${esc(t.map)}" target="_blank" rel="noopener">지도</a>` : ""}${t.ads.map((a) => `<button data-ad="${esc(a.ad)}" data-n="${esc(a.n)}">${esc(a.n === "일본어 주소" ? "JP" : a.n === "영어 주소" ? "EN" : "주소")}</button>`).join("")}${t.tel ? `<button class="tel" data-c="${esc(t.tel[0])}">${esc(t.tel[1])}</button>` : ""}</div></div>`).join("")}</div>` : "") +
+        (s.extra || "") + `</div></li>`).join("") + `</ol>`;
+  }
+  // 맛집, 쇼핑, 볼거리: 동네를 고르고 카드 목록
+  function cCards(C, kind) {
+    const areas = C.groups[kind] || [], n = Math.min(ui.area[kind], areas.length - 1), a = areas[n] || { blocks: [] }, st = stars();
+    let h = `<div class="trip-days">${areas.map((x, i) => `<button class="chip${i === n ? " active" : ""}" data-ta="area" data-i="${i}">${esc(x.area)}</button>`).join("")}</div>`;
+    if (kind === "food") h += `<div class="trip-days kf">${[["", "전체"], ["meal", "식사"], ["drink", "술"], ["sweet", "디저트·카페"]].map(([k, t]) => `<button class="chip${ui.kf === k ? " active" : ""}" data-ta="kf" data-k="${k}">${t}</button>`).join("")}</div>`;
+    a.blocks.forEach((b) => {
+      if (b.html) { h += `<div class="sp trip-box">${b.html}</div>`; return; }
+      const items = b.items.filter((it) => kind !== "food" || !ui.kf || it.k === ui.kf);
+      if (!items.length) return;
+      if (b.h) h += sec(b.h, `${items.length}곳`);
+      h += `<div class="trip-cards">` + items.map((it) => {
+        const c = C.cards[it.i] || {};
+        const rate = [c.tb ? `타베로그 ${c.tb[0]}` : "", c.g ? `구글 ${c.g[0]}` : ""].filter(Boolean).join(" · ");
+        return `<div class="trip-c pic${st[c.n] ? " on" : ""}"><button class="trip-c-main" data-ta="copen" data-i="${it.i}" data-img="${esc(it.img || "")}">${it.img ? `<img alt="" loading="lazy" referrerpolicy="no-referrer" src="${esc(it.img)}" onerror="this.remove()">` : ""}<span><b>${esc(c.n || "")}</b><small>${esc(it.meta || c.cat || "")}</small>${rate ? `<small class="rt">${esc(rate)}</small>` : ""}${it.badge.length ? `<small class="bd">${it.badge.map(esc).join(" · ")}</small>` : ""}</span></button><button class="trip-star" data-ta="star" data-n="${esc(c.n || "")}" aria-label="찜">${st[c.n] ? "★" : "☆"}</button></div>`;
+      }).join("") + `</div>`;
+    });
+    return h;
+  }
+  // 예약, 운전, 체크, 더보기: 작은 갈래를 고르면 그 내용
+  function cSub(C, group, st) {
+    const list = SUBS[group].filter((k) => k === "set" || C.subs[k]);
+    const cur = list.indexOf(ui.sub[group]) >= 0 ? ui.sub[group] : list[0];
+    let h = `<div class="trip-days">${list.map((k) => `<button class="chip${k === cur ? " active" : ""}" data-ta="sub" data-g="${group}" data-k="${k}">${esc(k === "set" ? "내 정보" : C.subs[k].label.replace(/^[^가-힣A-Za-z]+/, ""))}</button>`).join("")}</div>`;
+    if (cur === "set") {
+      const v = priv();
+      h += `<p class="trip-src">예약번호 같은 내 정보예요. 여기에 적으면 예약 화면의 빈칸에 채워져요. 둘이 쓰는 기록에만 저장되고, 누구나 볼 수 있는 곳에는 올라가지 않아요.</p><div class="trip-set">` +
+        C.fields.map((f) => `<label><span>${esc(f.label)}</span><input type="text" data-set="${esc(f.k)}" value="${esc(v[f.k] || "")}" placeholder="${esc(f.ph || "")}" autocomplete="off"></label>`).join("") + `</div>`;
+      h += sec("우리 기록", st.recs.length ? `${st.recs.length}개` : "") + (st.recs.length ? `<div class="trip-box">${st.recs.map((e) => `<div class="trip-rec"><time>${esc(M().dots(e.date))}</time><b>${esc(e.title || e.place || "")}</b></div>`).join("")}</div>` : `<p class="day-empty">다녀와서 기록을 남기면 여기에 모여요</p>`);
+    } else h += `<div class="sp" data-sp="${cur}">${C.subs[cur].html}</div>`;
+    return h;
+  }
+  // 그린 뒤에 채우는 것: 내 정보 빈칸, 체크 표시
+  function post(C) {
+    const body = $("tripBody"), v = priv(), ck = checks();
+    body.querySelectorAll(".sv[data-k]").forEach((el) => { const x = v[el.dataset.k]; el.textContent = x || "—"; el.dataset.c = x || ""; });
+    body.querySelectorAll('.checks input[type="checkbox"]').forEach((el) => { const c = ck["sp:" + el.id]; el.checked = !!(c && c[0]); });
+    body.querySelectorAll("ul.checks").forEach((ul) => { const all = ul.querySelectorAll("input").length, on = ul.querySelectorAll("input:checked").length, hd = ul.previousElementSibling; if (hd && hd.classList.contains("sec")) { let s = hd.querySelector(".cnt"); if (!s) { s = document.createElement("small"); s.className = "cnt"; hd.appendChild(s); } s.textContent = ` ${on} / ${all}`; } });
+  }
+  function copy(text, what) {
+    if (!text) return;
+    const done = () => toast(`${what || "글"}을 복사했어요`);
+    try { navigator.clipboard.writeText(text).then(done, () => {}); } catch (e) { /* 복사를 못 하는 곳도 있어요 */ }
+  }
+  function openImage(src, cap) {
+    $("tripShBody").innerHTML = `<img class="trip-ph big" alt="" referrerpolicy="no-referrer" src="${esc(src)}"><p class="trip-what">${esc(cap || "")}</p>`;
+    sheet.dataset.k = ""; show(sheet);
+  }
+  function openCard(i, img) {
+    const C = data().custom, c = C.cards[i];
+    if (!c) return;
+    const st = stars();
+    const pics = (img ? [img] : []).concat(c.rp || []).filter((x, k, a) => a.indexOf(x) === k).slice(0, 5).map((u) => ({ u, l: "" })).concat((c.ph || []).map((x) => ({ u: wiki(x.f), l: x.l })));
+    const rows = [["하는 시간", c.ht], ["가는 길", c.drv], ["미슐랭", c.mi]].filter((r) => r[1]);
+    $("tripShBody").innerHTML = (pics.length ? `<div class="trip-pics">${pics.map((x) => `<figure><img alt="" loading="lazy" referrerpolicy="no-referrer" src="${esc(x.u)}" onerror="this.parentNode.remove()">${x.l ? `<figcaption>${esc(x.l)}</figcaption>` : ""}</figure>`).join("")}</div>` : "") +
+      `<h2>${esc(c.n)}</h2>${c.ja ? `<p class="trip-ja">${esc(c.ja)}</p>` : ""}<p class="trip-what">${esc(c.cat || "")}</p>` +
+      ((c.tb || c.g) ? `<p class="trip-rate">${c.tb ? `<a href="${esc(c.tb[2] || "#")}" target="_blank" rel="noopener">타베로그 ${esc(c.tb[0])} (${Number(c.tb[1]).toLocaleString("ko-KR")})</a>` : ""}${c.g ? `<span>구글 ${esc(c.g[0])} (${Number(c.g[1]).toLocaleString("ko-KR")})</span>` : ""}</p>` : "") +
+      (c.badges && c.badges.length ? `<p class="trip-bds">${c.badges.map((x) => `<i>${esc(Array.isArray(x) ? x[1] : x)}</i>`).join("")}</p>` : "") +
+      (rows.length ? `<dl class="trip-dl">${rows.map((r) => `<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join("")}</dl>` : "") +
+      (c.items && c.items.length ? `<ul class="trip-ul">${c.items.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : "") +
+      (c.tip ? `<p class="trip-tip">${esc(c.tip)}</p>` : "") +
+      (c.rv && c.rv.length ? `<ul class="trip-ul rv">${c.rv.map((r) => `<li>${esc(r[0])}${r[1] ? ` <a href="${esc(r[1])}" target="_blank" rel="noopener">글 보기</a>` : ""}</li>`).join("")}</ul>` : "") +
+      `<div class="trip-acts">${c.q ? `<a class="btn small primary" href="${esc(c.q)}" target="_blank" rel="noopener">지도</a>` : ""}${c.tel ? `<a class="btn small" href="tel:${esc(String(c.tel).replace(/[^0-9+]/g, ""))}">전화 ${esc(c.tel)}</a>` : ""}<button class="btn small" data-ta="star" data-n="${esc(c.n)}">${st[c.n] ? "★ 찜했어요" : "☆ 찜"}</button></div>` +
+      (c.credit ? `<p class="trip-src">사진·자료: ${esc(c.credit)}</p>` : "");
+    sheet.dataset.k = "card"; sheet.dataset.i = String(i); sheet.dataset.img = img || "";
+    show(sheet);
+  }
+
   // 자세히 보기
   function openSheet(kind, i) {
     const d = data(), x = d && d[kind] && d[kind][i];
@@ -182,11 +273,29 @@
   function onClick(ev) {
     const t = ev.target.closest("[data-tt]");
     if (t) { tab = t.dataset.tt; render(); $("tripBody").scrollTop = 0; return; }
+    // 옮겨 온 내용 안의 단추들: 주소 복사, 전화, 사진 크게, 문장 복사, 내 정보 복사
+    const ad = ev.target.closest("[data-ad]");
+    if (ad) { copy(ad.dataset.ad, ad.dataset.n || "주소"); return; }
+    const tel = ev.target.closest("button.tel[data-c]");
+    if (tel) { location.href = "tel:" + String(tel.dataset.c).replace(/[^0-9+]/g, ""); return; }
+    const ti = ev.target.closest(".ti[data-src]");
+    if (ti) { openImage(ti.dataset.src, ti.dataset.cap); return; }
+    const tk = ev.target.closest(".sp .tk-img img");
+    if (tk) { openImage(tk.src, ""); return; }
+    const jp = ev.target.closest(".sp .jp button");
+    if (jp) { const t = jp.parentNode.querySelector("b"); copy(t ? t.textContent : "", "문장"); return; }
+    const sv = ev.target.closest(".sv.copyable");
+    if (sv) { copy(sv.dataset.c, "번호"); return; }
     const b = ev.target.closest("[data-ta]");
     if (!b || !P) return;
     const a = b.dataset.ta;
+    if (a === "day") { ui.day = Number(b.dataset.i); render(); $("tripBody").scrollTop = 0; return; }
+    if (a === "area") { ui.area[tab] = Number(b.dataset.i); render(); $("tripBody").scrollTop = 0; return; }
+    if (a === "kf") { ui.kf = b.dataset.k; render(); return; }
+    if (a === "sub") { ui.sub[b.dataset.g] = b.dataset.k; render(); $("tripBody").scrollTop = 0; return; }
+    if (a === "copen") return openCard(Number(b.dataset.i), b.dataset.img);
     if (a === "open") return openSheet(b.dataset.k, Number(b.dataset.i));
-    if (a === "star") { toggleStar(b.dataset.n); if (!sheet.hidden) openSheet(sheet.dataset.k, Number(sheet.dataset.i)); render(); return; }
+    if (a === "star") { toggleStar(b.dataset.n); if (!sheet.hidden) { if (sheet.dataset.k === "card") openCard(Number(sheet.dataset.i), sheet.dataset.img); else openSheet(sheet.dataset.k, Number(sheet.dataset.i)); } render(); return; }
     if (a === "chk") { const k = b.dataset.k, c = checks(); setCheck(k, !(c[k] && c[k][0])); render(); return; }
     if (a === "delown") { const o = own(); o[b.dataset.kind] = o[b.dataset.kind].filter((x) => x !== b.dataset.t); saveOwn(o); render(); return; }
     if (a === "del") { savePlan({ items: (plan().items || []).filter((x) => String(x.i) !== b.dataset.i) }); render(); return; }
@@ -201,6 +310,9 @@
   }
   function onChange(ev) {
     if (!P) return;
+    // 옮겨 온 체크 목록, 내 정보 칸
+    if (ev.target.matches('.checks input[type="checkbox"]')) { setCheck("sp:" + ev.target.id, ev.target.checked); post(data().custom); return; }
+    if (ev.target.dataset.set) { const v = Object.assign({}, priv()); v[ev.target.dataset.set] = ev.target.value.trim(); Store.setPair(key("set"), me(), v); toast("적어 뒀어요"); return; }
     if (ev.target.id === "tpFrom" || ev.target.id === "tpTo") {
       let from = $("tpFrom").value, to = $("tpTo").value;
       if (from && (!to || to < from)) to = from;
